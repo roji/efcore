@@ -447,7 +447,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         /// </summary>
         public virtual void TrackedFromQuery(
             InternalEntityEntry entry,
-            ISet<IForeignKey> handledForeignKeys)
+            ISet<IForeignKey>? handledForeignKeys)
         {
             try
             {
@@ -533,12 +533,12 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 
         private void InitialFixup(
             InternalEntityEntry entry,
-            ISet<IForeignKey> handledForeignKeys,
+            ISet<IForeignKey>? handledForeignKeys,
             bool fromQuery)
         {
             var entityType = (EntityType)entry.EntityType;
             var stateManager = entry.StateManager;
-            IForeignKey conflictingPrincipalForeignKey = null;
+            IForeignKey? conflictingPrincipalForeignKey = null;
             var matchingPrincipal = false;
 
             foreach (var foreignKey in entityType.GetForeignKeys())
@@ -850,7 +850,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 
         private void ConditionallyNullForeignKeyProperties(
             InternalEntityEntry dependentEntry,
-            InternalEntityEntry principalEntry,
+            InternalEntityEntry? principalEntry,
             IForeignKey foreignKey)
         {
             var principalProperties = foreignKey.PrincipalKey.Properties;
@@ -906,7 +906,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             }
         }
 
-        private void SetNavigation(InternalEntityEntry entry, INavigation navigation, InternalEntityEntry value)
+        private void SetNavigation(InternalEntityEntry entry, INavigation? navigation, InternalEntityEntry? value)
         {
             if (navigation != null)
             {

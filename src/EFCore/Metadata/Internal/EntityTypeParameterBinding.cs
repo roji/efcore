@@ -16,7 +16,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public EntityTypeParameterBinding([CanBeNull] IPropertyBase consumedProperty = null)
+        public EntityTypeParameterBinding([CanBeNull] IPropertyBase? consumedProperty = null)
             : base(typeof(IEntityType), typeof(IEntityType), consumedProperty)
         {
         }
@@ -28,7 +28,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         public override Expression BindToParameter(
             Expression materializationExpression,
             Expression entityTypeExpression,
-            Expression entityExpression)
+            Expression? entityExpression)
             => entityTypeExpression;
     }
 }

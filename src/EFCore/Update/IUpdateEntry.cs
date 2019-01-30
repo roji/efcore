@@ -60,7 +60,7 @@ namespace Microsoft.EntityFrameworkCore.Update
         /// </summary>
         /// <param name="propertyBase"> The property to get the value for. </param>
         /// <returns> The value for the property. </returns>
-        object GetCurrentValue([NotNull] IPropertyBase propertyBase);
+        object? GetCurrentValue([NotNull] IPropertyBase propertyBase);
 
         /// <summary>
         ///     Gets the value assigned to the property when it was retrieved from the database.

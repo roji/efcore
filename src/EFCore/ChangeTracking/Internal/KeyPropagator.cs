@@ -34,7 +34,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual InternalEntityEntry PropagateValue(InternalEntityEntry entry, IProperty property)
+        public virtual InternalEntityEntry? PropagateValue(InternalEntityEntry entry, IProperty property)
         {
             Debug.Assert(property.IsForeignKey());
 
@@ -66,7 +66,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual async Task<InternalEntityEntry> PropagateValueAsync(
+        public virtual async Task<InternalEntityEntry?> PropagateValueAsync(
             InternalEntityEntry entry,
             IProperty property,
             CancellationToken cancellationToken = default)
@@ -97,7 +97,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             return principalEntry;
         }
 
-        private static InternalEntityEntry TryPropagateValue(InternalEntityEntry entry, IProperty property)
+        private static InternalEntityEntry? TryPropagateValue(InternalEntityEntry entry, IProperty property)
         {
             var entityType = entry.EntityType;
             var stateManager = entry.StateManager;
@@ -111,7 +111,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                         var principal = foreignKey.DependentToPrincipal == null
                             ? null
                             : entry[foreignKey.DependentToPrincipal];
-                        InternalEntityEntry principalEntry = null;
+                        InternalEntityEntry? principalEntry = null;
                         if (principal != null)
                         {
                             principalEntry = stateManager.GetOrCreateEntry(principal);
@@ -136,7 +136,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                             {
                                 if (principalEntry.HasTemporaryValue(principalProperty))
                                 {
-                                    entry.SetTemporaryValue(property, principalValue);
+                                    entry.SetTemporaryValue(property, principalValue!);
                                 }
                                 else
                                 {
@@ -155,7 +155,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             return null;
         }
 
-        private ValueGenerator TryGetValueGenerator(IProperty property)
+        private ValueGenerator? TryGetValueGenerator(IProperty property)
         {
             var generationProperty = property.GetGenerationProperty();
 

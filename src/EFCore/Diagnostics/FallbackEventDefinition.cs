@@ -38,7 +38,7 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         public FallbackEventDefinition(
             EventId eventId,
             LogLevel level,
-            [CanBeNull] string eventIdCode,
+            [CanBeNull] string? eventIdCode,
             [NotNull] string messageFormat)
             : base(eventId, level, eventIdCode)
         {

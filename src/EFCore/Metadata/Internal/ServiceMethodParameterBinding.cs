@@ -24,7 +24,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             [NotNull] Type parameterType,
             [NotNull] Type serviceType,
             [NotNull] MethodInfo method,
-            [CanBeNull] IPropertyBase consumedProperty = null)
+            [CanBeNull] IPropertyBase? consumedProperty = null)
             : base(parameterType, serviceType, consumedProperty)
         {
             Method = method;
@@ -43,7 +43,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         public override Expression BindToParameter(
             Expression materializationExpression,
             Expression entityTypeExpression,
-            Expression entityExpression)
+            Expression? entityExpression)
         {
             var parameters = Method.GetParameters().Select(
                 (p, i) => Expression.Parameter(p.ParameterType, "param" + i)).ToArray();

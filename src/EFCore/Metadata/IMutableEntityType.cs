@@ -28,12 +28,12 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// <summary>
         ///     Gets or sets the base type of the entity. Returns null if this is not a derived type in an inheritance hierarchy.
         /// </summary>
-        new IMutableEntityType BaseType { get; [param: CanBeNull] set; }
+        new IMutableEntityType? BaseType { get; [param: CanBeNull] set; }
 
         /// <summary>
         ///     Gets or sets the LINQ expression filter automatically applied to queries for this entity type.
         /// </summary>
-        new LambdaExpression QueryFilter { get; [param: CanBeNull] set; }
+        new LambdaExpression? QueryFilter { get; [param: CanBeNull] set; }
 
         /// <summary>
         ///     Gets or sets whether this entity type is a query type.
@@ -44,14 +44,14 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// <summary>
         ///     Gets the LINQ query used as the default source for queries of this type.
         /// </summary>
-        new LambdaExpression DefiningQuery { get; [param: CanBeNull] set; }
+        new LambdaExpression? DefiningQuery { get; [param: CanBeNull] set; }
 
         /// <summary>
         ///     Sets the primary key for this entity.
         /// </summary>
         /// <param name="properties"> The properties that make up the primary key. </param>
         /// <returns> The newly created key. </returns>
-        IMutableKey SetPrimaryKey([CanBeNull] IReadOnlyList<IMutableProperty> properties);
+        IMutableKey? SetPrimaryKey([CanBeNull] IReadOnlyList<IMutableProperty>? properties);
 
         /// <summary>
         ///     <para>
@@ -78,7 +78,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// </summary>
         /// <param name="properties"> The properties that make up the key. </param>
         /// <returns> The key, or null if none is defined. </returns>
-        new IMutableKey FindKey([NotNull] IReadOnlyList<IProperty> properties);
+        new IMutableKey? FindKey([NotNull] IReadOnlyList<IProperty> properties);
 
         /// <summary>
         ///     Gets the primary and alternate keys for this entity.
@@ -91,7 +91,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// </summary>
         /// <param name="properties"> The properties that make up the key. </param>
         /// <returns> The key that was removed. </returns>
-        IMutableKey RemoveKey([NotNull] IReadOnlyList<IProperty> properties);
+        IMutableKey? RemoveKey([NotNull] IReadOnlyList<IProperty> properties);
 
         /// <summary>
         ///     Adds a new relationship to this entity.
@@ -143,7 +143,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         ///     base type of the hierarchy).
         /// </param>
         /// <returns> The foreign key that was removed. </returns>
-        IMutableForeignKey RemoveForeignKey(
+        IMutableForeignKey? RemoveForeignKey(
             [NotNull] IReadOnlyList<IProperty> properties,
             [NotNull] IKey principalKey,
             [NotNull] IEntityType principalEntityType);
@@ -160,7 +160,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// </summary>
         /// <param name="properties"> The properties to find the index on. </param>
         /// <returns> The index, or null if none is found. </returns>
-        new IMutableIndex FindIndex([NotNull] IReadOnlyList<IProperty> properties);
+        new IMutableIndex? FindIndex([NotNull] IReadOnlyList<IProperty> properties);
 
         /// <summary>
         ///     Gets the indexes defined on this entity.
@@ -173,7 +173,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// </summary>
         /// <param name="properties"> The properties that make up the index. </param>
         /// <returns> The index that was removed. </returns>
-        IMutableIndex RemoveIndex([NotNull] IReadOnlyList<IProperty> properties);
+        IMutableIndex? RemoveIndex([NotNull] IReadOnlyList<IProperty> properties);
 
         /// <summary>
         ///     Adds a property to this entity.
@@ -223,7 +223,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// </summary>
         /// <param name="name"> The name of the property to remove. </param>
         /// <returns> The property that was removed. </returns>
-        IMutableProperty RemoveProperty([NotNull] string name);
+        IMutableProperty? RemoveProperty([NotNull] string name);
 
         /// <summary>
         ///     Adds a <see cref="IMutableServiceProperty" /> to this entity.
@@ -260,6 +260,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// </summary>
         /// <param name="name"> The name of the property to remove. </param>
         /// <returns> The property that was removed. </returns>
-        IMutableServiceProperty RemoveServiceProperty([NotNull] string name);
+        IMutableServiceProperty? RemoveServiceProperty([NotNull] string name);
     }
 }

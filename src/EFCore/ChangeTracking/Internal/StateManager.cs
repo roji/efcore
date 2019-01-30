@@ -33,13 +33,13 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             = new LazyRef<IDictionary<object, IList<Tuple<INavigation, InternalEntityEntry>>>>(
                 () => new Dictionary<object, IList<Tuple<INavigation, InternalEntityEntry>>>(ReferenceEqualityComparer.Instance));
 
-        private IIdentityMap _identityMap0;
-        private IIdentityMap _identityMap1;
-        private Dictionary<IKey, IIdentityMap> _identityMaps;
+        private IIdentityMap? _identityMap0;
+        private IIdentityMap? _identityMap1;
+        private Dictionary<IKey, IIdentityMap>? _identityMaps;
         private bool _needsUnsubscribe;
         private bool _queryIsTracked;
         private TrackingQueryMode _trackingQueryMode = TrackingQueryMode.Simple;
-        private IEntityType _singleQueryModeEntityType;
+        private IEntityType? _singleQueryModeEntityType;
 
         private readonly IDiagnosticsLogger<DbLoggerCategory.ChangeTracking> _changeTrackingLogger;
         private readonly IInternalEntityEntryFactory _internalEntityEntryFactory;
@@ -321,7 +321,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual InternalEntityEntry TryGetEntry(IKey key, object[] keyValues)
+        public virtual InternalEntityEntry? TryGetEntry(IKey key, object[] keyValues)
             => FindIdentityMap(key)?.TryGetEntry(keyValues);
 
         /// <summary>
@@ -335,7 +335,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual InternalEntityEntry TryGetEntry(object entity, bool throwOnNonUniqueness = true)
+        public virtual InternalEntityEntry? TryGetEntry(object entity, bool throwOnNonUniqueness = true)
         {
             if (_entityReferenceMap.TryGetValue(entity, out var entry))
             {
@@ -375,7 +375,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual InternalEntityEntry TryGetEntry(object entity, IEntityType entityType)
+        public virtual InternalEntityEntry? TryGetEntry(object entity, IEntityType entityType)
             => _entityReferenceMap.TryGetValue(entity, out var entry)
                 ? entry
                 : _dependentTypeReferenceMap.TryGetValue(entityType, out var entries)
@@ -421,7 +421,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             return identityMap;
         }
 
-        private IIdentityMap FindIdentityMap(IKey key)
+        private IIdentityMap? FindIdentityMap(IKey key)
         {
             if (_identityMap0 == null)
             {
@@ -637,21 +637,21 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual InternalEntityEntry GetPrincipal(InternalEntityEntry dependentEntry, IForeignKey foreignKey)
+        public virtual InternalEntityEntry? GetPrincipal(InternalEntityEntry dependentEntry, IForeignKey foreignKey)
             => FindIdentityMap(foreignKey.PrincipalKey)?.TryGetEntry(foreignKey, dependentEntry);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual InternalEntityEntry GetPrincipalUsingPreStoreGeneratedValues(InternalEntityEntry dependentEntry, IForeignKey foreignKey)
+        public virtual InternalEntityEntry? GetPrincipalUsingPreStoreGeneratedValues(InternalEntityEntry dependentEntry, IForeignKey foreignKey)
             => FindIdentityMap(foreignKey.PrincipalKey)?.TryGetEntryUsingPreStoreGeneratedValues(foreignKey, dependentEntry);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual InternalEntityEntry GetPrincipalUsingRelationshipSnapshot(InternalEntityEntry dependentEntry, IForeignKey foreignKey)
+        public virtual InternalEntityEntry? GetPrincipalUsingRelationshipSnapshot(InternalEntityEntry dependentEntry, IForeignKey foreignKey)
             => FindIdentityMap(foreignKey.PrincipalKey)?.TryGetEntryUsingRelationshipSnapshot(foreignKey, dependentEntry);
 
         /// <summary>
@@ -721,7 +721,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual IEnumerable<InternalEntityEntry> GetDependentsFromNavigation(InternalEntityEntry principalEntry, IForeignKey foreignKey)
+        public virtual IEnumerable<InternalEntityEntry>? GetDependentsFromNavigation(InternalEntityEntry principalEntry, IForeignKey foreignKey)
         {
             var navigation = foreignKey.PrincipalToDependent;
             if (navigation == null)
@@ -744,7 +744,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                     : Enumerable.Empty<InternalEntityEntry>();
             }
 
-            return ((IEnumerable<object>)navigationValue).Select(v => TryGetEntry(v)).Where(e => e != null);
+            return (IEnumerable<InternalEntityEntry>)((IEnumerable<object>)navigationValue).Select(v => TryGetEntry(v)).Where(e => e != null);
         }
 
         /// <summary>
@@ -1005,7 +1005,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public event EventHandler<EntityTrackedEventArgs> Tracked;
+        public event EventHandler<EntityTrackedEventArgs>? Tracked;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -1031,7 +1031,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public event EventHandler<EntityStateChangedEventArgs> StateChanged;
+        public event EventHandler<EntityStateChangedEventArgs>? StateChanged;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

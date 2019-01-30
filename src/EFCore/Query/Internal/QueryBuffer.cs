@@ -22,9 +22,9 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
     {
         private readonly QueryContextDependencies _dependencies;
 
-        private IWeakReferenceIdentityMap _identityMap0;
-        private IWeakReferenceIdentityMap _identityMap1;
-        private Dictionary<IKey, IWeakReferenceIdentityMap> _identityMaps;
+        private IWeakReferenceIdentityMap? _identityMap0;
+        private IWeakReferenceIdentityMap? _identityMap1;
+        private Dictionary<IKey, IWeakReferenceIdentityMap>? _identityMaps;
 
         private readonly ConditionalWeakTable<object, object> _valueBuffers
             = new ConditionalWeakTable<object, object>();
@@ -47,7 +47,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual object GetEntity(
+        public virtual object? GetEntity(
             IKey key,
             EntityLoadInfo entityLoadInfo,
             bool queryStateManager,
@@ -162,9 +162,10 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
             Func<IEnumerable<TRelated>> relatedEntitiesFactory,
             Func<TEntity, TRelated, bool> joinPredicate)
             where TRelated : TElement
+            where TEntity : class
         {
-            IDisposable untypedEnumerator = null;
-            IEnumerator<TRelated> enumerator = null;
+            IDisposable? untypedEnumerator = null;
+            IEnumerator<TRelated>? enumerator = null;
 
             if (includeId == -1
                 || !_includedCollections.TryGetValue(includeId, out untypedEnumerator))
@@ -204,7 +205,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                 enumerator = (IEnumerator<TRelated>)untypedEnumerator;
             }
 
-            IIncludeKeyComparer keyComparer = null;
+            IIncludeKeyComparer? keyComparer = null;
 
             if (joinPredicate == null)
             {
@@ -308,9 +309,10 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
             Func<TEntity, TRelated, bool> joinPredicate,
             CancellationToken cancellationToken)
             where TRelated : TElement
+            where TEntity : class
         {
-            IDisposable untypedAsyncEnumerator = null;
-            IAsyncEnumerator<TRelated> asyncEnumerator = null;
+            IDisposable? untypedAsyncEnumerator = null;
+            IAsyncEnumerator<TRelated>? asyncEnumerator = null;
 
             if (includeId == -1
                 || !_includedCollections.TryGetValue(includeId, out untypedAsyncEnumerator))
@@ -350,7 +352,7 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                 asyncEnumerator = (IAsyncEnumerator<TRelated>)untypedAsyncEnumerator;
             }
 
-            IIncludeKeyComparer keyComparer = null;
+            IIncludeKeyComparer? keyComparer = null;
 
             if (joinPredicate == null)
             {
@@ -508,8 +510,8 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
             where TCollection : ICollection<TOut>
             where TInner : TOut
         {
-            IDisposable untypedEnumerator = null;
-            IEnumerator<Tuple<TInner, MaterializedAnonymousObject, MaterializedAnonymousObject>> enumerator = null;
+            IDisposable? untypedEnumerator = null;
+            IEnumerator<Tuple<TInner, MaterializedAnonymousObject, MaterializedAnonymousObject>>? enumerator = null;
 
             if (!_correlatedCollectionMetadata.TryGetValue(correlatedCollectionId, out var correlatedCollectionMetadataElement))
             {

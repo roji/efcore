@@ -20,7 +20,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         /// </summary>
         public ContextParameterBinding(
             [NotNull] Type contextType,
-            [CanBeNull] IPropertyBase consumedProperty = null)
+            [CanBeNull] IPropertyBase? consumedProperty = null)
             : base(contextType, contextType, consumedProperty)
         {
         }
@@ -32,7 +32,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         public override Expression BindToParameter(
             Expression materializationExpression,
             Expression entityTypeExpression,
-            Expression entityExpression)
+            Expression? entityExpression)
         {
             var propertyExpression
                 = Expression.Property(

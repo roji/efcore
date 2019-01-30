@@ -2376,9 +2376,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         /// </summary>
         public virtual InternalRelationshipBuilder CreateForeignKey(
             [NotNull] InternalEntityTypeBuilder principalEntityTypeBuilder,
-            [CanBeNull] IReadOnlyList<Property> dependentProperties,
-            [CanBeNull] Key principalKey,
-            [CanBeNull] string navigationToPrincipalName,
+            [CanBeNull] IReadOnlyList<Property>? dependentProperties,
+            [CanBeNull] Key? principalKey,
+            [CanBeNull] string? navigationToPrincipalName,
             bool? isRequired,
             ConfigurationSource configurationSource)
         {
@@ -2608,7 +2608,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         public virtual IReadOnlyList<Property> GetOrCreateProperties(
             [CanBeNull] IReadOnlyList<string> propertyNames,
             ConfigurationSource? configurationSource,
-            [CanBeNull] IReadOnlyList<Property> referencedProperties = null,
+            [CanBeNull] IReadOnlyList<Property>? referencedProperties = null,
             bool required = false,
             bool useDefaultType = false)
         {

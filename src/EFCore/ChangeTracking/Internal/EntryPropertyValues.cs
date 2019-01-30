@@ -19,7 +19,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
     /// </summary>
     public abstract class EntryPropertyValues : PropertyValues
     {
-        private IReadOnlyList<IProperty> _properties;
+        private IReadOnlyList<IProperty>? _properties;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

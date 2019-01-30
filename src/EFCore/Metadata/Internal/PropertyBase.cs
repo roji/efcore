@@ -16,15 +16,15 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
     /// </summary>
     public abstract class PropertyBase : ConventionalAnnotatable, IMutablePropertyBase
     {
-        private FieldInfo _fieldInfo;
+        private FieldInfo? _fieldInfo;
         private ConfigurationSource? _fieldInfoConfigurationSource;
         private readonly bool _isIndexedProperty;
 
         // Warning: Never access these fields directly as access needs to be thread-safe
-        private IClrPropertyGetter _getter;
-        private IClrPropertySetter _setter;
-        private PropertyAccessors _accessors;
-        private PropertyIndexes _indexes;
+        private IClrPropertyGetter? _getter;
+        private IClrPropertySetter? _setter;
+        private PropertyAccessors? _accessors;
+        private PropertyIndexes? _indexes;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -32,8 +32,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         /// </summary>
         protected PropertyBase(
             [NotNull] string name,
-            [CanBeNull] PropertyInfo propertyInfo,
-            [CanBeNull] FieldInfo fieldInfo)
+            [CanBeNull] PropertyInfo? propertyInfo,
+            [CanBeNull] FieldInfo? fieldInfo)
         {
             Check.NotEmpty(name, nameof(name));
 
@@ -75,13 +75,13 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual PropertyInfo PropertyInfo { [DebuggerStepThrough] get; }
+        public virtual PropertyInfo? PropertyInfo { [DebuggerStepThrough] get; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual FieldInfo FieldInfo
+        public virtual FieldInfo? FieldInfo
         {
             [DebuggerStepThrough] get => _fieldInfo;
             [DebuggerStepThrough]
@@ -137,7 +137,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual void SetFieldInfo([CanBeNull] FieldInfo fieldInfo, ConfigurationSource configurationSource)
+        public virtual void SetFieldInfo([CanBeNull] FieldInfo? fieldInfo, ConfigurationSource configurationSource)
         {
             if (Equals(FieldInfo, fieldInfo))
             {
@@ -244,7 +244,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void OnFieldInfoSet([CanBeNull] FieldInfo oldFieldInfo)
+        protected virtual void OnFieldInfoSet([CanBeNull] FieldInfo? oldFieldInfo)
         {
         }
 

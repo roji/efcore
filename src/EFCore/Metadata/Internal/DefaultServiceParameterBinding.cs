@@ -27,7 +27,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         public DefaultServiceParameterBinding(
             [NotNull] Type parameterType,
             [NotNull] Type serviceType,
-            [CanBeNull] IPropertyBase consumedProperty = null)
+            [CanBeNull] IPropertyBase? consumedProperty = null)
             : base(parameterType, serviceType, consumedProperty)
         {
         }
@@ -39,7 +39,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         public override Expression BindToParameter(
             Expression materializationExpression,
             Expression entityTypeExpression,
-            Expression entityExpression)
+            Expression? entityExpression)
             => Expression.Call(
                 _getServiceMethod.MakeGenericMethod(ServiceType),
                 Expression.Convert(

@@ -105,7 +105,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
         /// </summary>
         /// <param name="instance"> The instance. </param>
         /// <returns> The snapshot. </returns>
-        public abstract object Snapshot([CanBeNull] object instance);
+        public abstract object? Snapshot([CanBeNull] object? instance);
 
         /// <summary>
         ///     The comparison expression.

@@ -15,27 +15,27 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// <summary>
         ///     Gets the base type of the entity. Returns null if this is not a derived type in an inheritance hierarchy.
         /// </summary>
-        IEntityType BaseType { get; }
+        IEntityType? BaseType { get; }
 
         /// <summary>
         ///     Gets the name of the defining navigation.
         /// </summary>
-        string DefiningNavigationName { get; }
+        string? DefiningNavigationName { get; }
 
         /// <summary>
         ///     Gets the defining entity type.
         /// </summary>
-        IEntityType DefiningEntityType { get; }
+        IEntityType? DefiningEntityType { get; }
 
         /// <summary>
         ///     Gets the LINQ expression filter automatically applied to queries for this entity type.
         /// </summary>
-        LambdaExpression QueryFilter { get; }
+        LambdaExpression? QueryFilter { get; }
 
         /// <summary>
         ///     Gets the LINQ query used as the default source for queries of this type.
         /// </summary>
-        LambdaExpression DefiningQuery { get; }
+        LambdaExpression? DefiningQuery { get; }
 
         /// <summary>
         ///     Gets whether this entity type is a query type.
@@ -61,7 +61,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// </summary>
         /// <param name="properties"> The properties that make up the key. </param>
         /// <returns> The key, or null if none is defined. </returns>
-        IKey FindKey([NotNull] IReadOnlyList<IProperty> properties);
+        IKey? FindKey([NotNull] IReadOnlyList<IProperty> properties);
 
         /// <summary>
         ///     Gets the primary and alternate keys for this entity.
@@ -97,7 +97,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// </summary>
         /// <param name="properties"> The properties to find the index on. </param>
         /// <returns> The index, or null if none is found. </returns>
-        IIndex FindIndex([NotNull] IReadOnlyList<IProperty> properties);
+        IIndex? FindIndex([NotNull] IReadOnlyList<IProperty> properties);
 
         /// <summary>
         ///     Gets the indexes defined on this entity.

@@ -44,7 +44,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 return IsEmpty ? entry.GetCurrentValue<T>(property) : _values.GetValue<T>(index);
             }
 
-            public void SetValue(IProperty property, object value, int index)
+            public void SetValue(IProperty property, object? value, int index)
             {
                 Debug.Assert(!IsEmpty);
 
@@ -104,7 +104,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 }
             }
 
-            private static object SnapshotValue(IProperty property, object value)
+            private static object? SnapshotValue(IProperty property, object? value)
             {
                 var comparer = property.GetValueComparer() ?? property.FindMapping()?.Comparer;
 

@@ -22,37 +22,19 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         private readonly Dictionary<string, ConfigurationSource> _ignoredMembers
             = new Dictionary<string, ConfigurationSource>(StringComparer.Ordinal);
 
-        private Dictionary<string, PropertyInfo> _runtimeProperties;
-        private Dictionary<string, FieldInfo> _runtimeFields;
+        private Dictionary<string, PropertyInfo>? _runtimeProperties;
+        private Dictionary<string, FieldInfo>? _runtimeFields;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         protected TypeBase([NotNull] string name, [NotNull] Model model, ConfigurationSource configurationSource)
-            : this(model, configurationSource)
         {
             Check.NotEmpty(name, nameof(name));
             Check.NotNull(model, nameof(model));
 
             Name = name;
-        }
-
-        /// <summary>
-        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        protected TypeBase([NotNull] Type clrType, [NotNull] Model model, ConfigurationSource configurationSource)
-            : this(model, configurationSource)
-        {
-            Check.NotNull(model, nameof(model));
-
-            Name = model.GetDisplayName(clrType);
-            ClrType = clrType;
-        }
-
-        private TypeBase([NotNull] Model model, ConfigurationSource configurationSource)
-        {
             Model = model;
             _configurationSource = configurationSource;
         }
@@ -61,7 +43,21 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual Type ClrType { [DebuggerStepThrough] get; }
+        protected TypeBase([NotNull] Type clrType, [NotNull] Model model, ConfigurationSource configurationSource)
+        {
+            Check.NotNull(model, nameof(model));
+
+            Name = model.GetDisplayName(clrType);
+            ClrType = clrType;
+            Model = model;
+            _configurationSource = configurationSource;
+        }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        public virtual Type? ClrType { [DebuggerStepThrough] get; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -99,7 +95,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual Dictionary<string, PropertyInfo> GetRuntimeProperties()
+        public virtual Dictionary<string, PropertyInfo>? GetRuntimeProperties()
         {
             if (ClrType == null)
             {
@@ -126,7 +122,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual Dictionary<string, FieldInfo> GetRuntimeFields()
+        public virtual Dictionary<string, FieldInfo>? GetRuntimeFields()
         {
             if (ClrType == null)
             {
@@ -227,7 +223,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             [DebuggerStepThrough] get => Model;
         }
 
-        Type ITypeBase.ClrType
+        Type? ITypeBase.ClrType
         {
             [DebuggerStepThrough] get => ClrType;
         }

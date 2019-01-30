@@ -14,22 +14,22 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
     /// </summary>
     public class InternalEntityEntryNotifier : IInternalEntityEntryNotifier
     {
-        private readonly IQueryTrackingListener[] _queryTrackingListeners;
-        private readonly IEntityStateListener[] _entityStateListeners;
-        private readonly IPropertyListener[] _propertyListeners;
-        private readonly INavigationListener[] _navigationListeners;
-        private readonly IKeyListener[] _keyListeners;
+        private readonly IQueryTrackingListener[]? _queryTrackingListeners;
+        private readonly IEntityStateListener[]? _entityStateListeners;
+        private readonly IPropertyListener[]? _propertyListeners;
+        private readonly INavigationListener[]? _navigationListeners;
+        private readonly IKeyListener[]? _keyListeners;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public InternalEntityEntryNotifier(
-            [CanBeNull] IEnumerable<IEntityStateListener> entityStateListeners,
-            [CanBeNull] IEnumerable<IPropertyListener> propertyListeners,
-            [CanBeNull] IEnumerable<INavigationListener> navigationListeners,
-            [CanBeNull] IEnumerable<IKeyListener> keyListeners,
-            [CanBeNull] IEnumerable<IQueryTrackingListener> queryTrackingListeners)
+            [CanBeNull] IEnumerable<IEntityStateListener>? entityStateListeners,
+            [CanBeNull] IEnumerable<IPropertyListener>? propertyListeners,
+            [CanBeNull] IEnumerable<INavigationListener>? navigationListeners,
+            [CanBeNull] IEnumerable<IKeyListener>? keyListeners,
+            [CanBeNull] IEnumerable<IQueryTrackingListener>? queryTrackingListeners)
         {
             if (entityStateListeners != null)
             {
@@ -102,7 +102,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         /// </summary>
         public virtual void TrackedFromQuery(
             InternalEntityEntry entry,
-            ISet<IForeignKey> handledForeignKeys)
+            ISet<IForeignKey>? handledForeignKeys)
         {
             if (_entityStateListeners == null)
             {

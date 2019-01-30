@@ -32,14 +32,14 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         ///     Gets the <see cref="PropertyInfo" /> for the underlying CLR property that this
         ///     object represents. This may be null for shadow properties or properties mapped directly to fields.
         /// </summary>
-        PropertyInfo PropertyInfo { get; }
+        PropertyInfo? PropertyInfo { get; }
 
         /// <summary>
         ///     Gets the <see cref="FieldInfo" /> for the underlying CLR field that this
         ///     object represents. This may be null for shadow properties or if the backing field for the
         ///     property is not known.
         /// </summary>
-        FieldInfo FieldInfo { get; }
+        FieldInfo? FieldInfo { get; }
 
         /// <summary>
         ///     Gets a value indicating whether this is a shadow property. A shadow property is one that does not have a

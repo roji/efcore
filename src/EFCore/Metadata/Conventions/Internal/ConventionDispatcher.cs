@@ -78,7 +78,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         /// </summary>
         public virtual InternalEntityTypeBuilder OnBaseEntityTypeChanged(
             [NotNull] InternalEntityTypeBuilder entityTypeBuilder,
-            [CanBeNull] EntityType previousBaseType)
+            [CanBeNull] EntityType? previousBaseType)
             => _scope.OnBaseEntityTypeChanged(Check.NotNull(entityTypeBuilder, nameof(entityTypeBuilder)), previousBaseType);
 
         /// <summary>
@@ -146,7 +146,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual void OnPrimaryKeyChanged(
-            [NotNull] InternalEntityTypeBuilder entityTypeBuilder, [CanBeNull] Key previousPrimaryKey)
+            [NotNull] InternalEntityTypeBuilder entityTypeBuilder, [CanBeNull] Key? previousPrimaryKey)
             => _scope.OnPrimaryKeyChanged(Check.NotNull(entityTypeBuilder, nameof(entityTypeBuilder)), previousPrimaryKey);
 
         /// <summary>
@@ -257,7 +257,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual bool OnPropertyFieldChanged(
-            [NotNull] InternalPropertyBuilder propertyBuilder, [CanBeNull] FieldInfo oldFieldInfo)
+            [NotNull] InternalPropertyBuilder propertyBuilder, [CanBeNull] FieldInfo? oldFieldInfo)
             => _scope.OnPropertyFieldChanged(Check.NotNull(propertyBuilder, nameof(propertyBuilder)), oldFieldInfo);
 
         /// <summary>

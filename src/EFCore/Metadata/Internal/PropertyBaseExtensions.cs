@@ -95,13 +95,13 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         // GetMemberInfo to get the property/field to use, which may be different.
         public static MemberInfo GetIdentifyingMemberInfo(
             [NotNull] this IPropertyBase propertyBase)
-            => propertyBase.PropertyInfo ?? (MemberInfo)propertyBase.FieldInfo;
+            => propertyBase.PropertyInfo ?? (MemberInfo?)propertyBase.FieldInfo ?? throw new InvalidOperationException();
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public static MemberInfo GetMemberInfo(
+        public static MemberInfo? GetMemberInfo(
             [NotNull] this IPropertyBase propertyBase,
             bool forConstruction,
             bool forSet)
@@ -122,8 +122,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             [NotNull] this IPropertyBase propertyBase,
             bool forConstruction,
             bool forSet,
-            out MemberInfo memberInfo,
-            out string errorMessage)
+            out MemberInfo? memberInfo,
+            out string? errorMessage)
         {
             memberInfo = null;
             errorMessage = null;

@@ -15,7 +15,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
     /// </summary>
     public class ServiceProperty : PropertyBase, IMutableServiceProperty
     {
-        private ServiceParameterBinding _parameterBinding;
+        private ServiceParameterBinding? _parameterBinding;
 
         private ConfigurationSource _configurationSource;
         private ConfigurationSource? _parameterBindingConfigurationSource;
@@ -26,8 +26,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         /// </summary>
         public ServiceProperty(
             [NotNull] string name,
-            [CanBeNull] PropertyInfo propertyInfo,
-            [CanBeNull] FieldInfo fieldInfo,
+            [CanBeNull] PropertyInfo? propertyInfo,
+            [CanBeNull] FieldInfo? fieldInfo,
             [NotNull] EntityType declaringEntityType,
             ConfigurationSource configurationSource)
             : base(name, propertyInfo, fieldInfo)

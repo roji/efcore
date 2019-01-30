@@ -3,6 +3,9 @@
 
 using System.Linq;
 
+// TODO: https://github.com/dotnet/roslyn/issues/30953
+#nullable disable
+
 namespace Microsoft.EntityFrameworkCore.ChangeTracking
 {
     /// <summary>

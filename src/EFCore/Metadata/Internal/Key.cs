@@ -22,10 +22,10 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         private ConfigurationSource _configurationSource;
 
         // Warning: Never access these fields directly as access needs to be thread-safe
-        private Func<bool, IIdentityMap> _identityMapFactory;
+        private Func<bool, IIdentityMap>? _identityMapFactory;
 
-        private Func<IWeakReferenceIdentityMap> _weakReferenceIdentityMap;
-        private object _principalKeyValueFactory;
+        private Func<IWeakReferenceIdentityMap>? _weakReferenceIdentityMap;
+        private object? _principalKeyValueFactory;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -130,7 +130,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         // Note this is ISet because there is no suitable readonly interface in the profiles we are using
-        public virtual ISet<ForeignKey> ReferencingForeignKeys { get; [param: CanBeNull] set; }
+        public virtual ISet<ForeignKey>? ReferencingForeignKeys { get; [param: CanBeNull] set; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

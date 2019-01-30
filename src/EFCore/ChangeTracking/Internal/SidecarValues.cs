@@ -20,7 +20,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 _values = ((EntityType)entry.EntityType).SidecarValuesFactory(entry);
             }
 
-            public bool TryGetValue(int index, out object value)
+            public bool TryGetValue(int index, out object? value)
             {
                 if (IsEmpty)
                 {
@@ -32,10 +32,13 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 return true;
             }
 
+#nullable disable
+            // TODO: https://github.com/dotnet/roslyn/issues/30953
             public T GetValue<T>(int index)
                 => IsEmpty ? default : _values.GetValue<T>(index);
+#nullable enable
 
-            public void SetValue(IProperty property, object value, int index)
+            public void SetValue(IProperty property, object? value, int index)
             {
                 Debug.Assert(!IsEmpty);
 
@@ -50,7 +53,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
                 _values[index] = SnapshotValue(property, value);
             }
 
-            private static object SnapshotValue(IProperty property, object value)
+            private static object? SnapshotValue(IProperty property, object? value)
             {
                 var comparer = property.GetValueComparer() ?? property.FindMapping()?.Comparer;
 

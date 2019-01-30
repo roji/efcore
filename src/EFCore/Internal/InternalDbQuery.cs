@@ -23,8 +23,8 @@ namespace Microsoft.EntityFrameworkCore.Internal
         where TQuery : class
     {
         private readonly DbContext _context;
-        private IEntityType _entityType;
-        private EntityQueryable<TQuery> _entityQueryable;
+        private IEntityType? _entityType;
+        private EntityQueryable<TQuery>? _entityQueryable;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

@@ -19,6 +19,6 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         /// </summary>
         void TrackedFromQuery(
             [NotNull] InternalEntityEntry entry,
-            [CanBeNull] ISet<IForeignKey> handledForeignKeys);
+            [CanBeNull] ISet<IForeignKey>? handledForeignKeys);
     }
 }

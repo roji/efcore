@@ -48,7 +48,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             [NotNull] IEntityType baseEntityType,
             [NotNull] object entity,
             in ValueBuffer valueBuffer,
-            [CanBeNull] ISet<IForeignKey> handledForeignKeys);
+            [CanBeNull] ISet<IForeignKey>? handledForeignKeys);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -60,7 +60,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        InternalEntityEntry TryGetEntry([NotNull] IKey key, [NotNull] object[] keyValues);
+        InternalEntityEntry? TryGetEntry([NotNull] IKey key, [NotNull] object[] keyValues);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -72,13 +72,13 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        InternalEntityEntry TryGetEntry([NotNull] object entity, bool throwOnNonUniqueness = true);
+        InternalEntityEntry? TryGetEntry([NotNull] object entity, bool throwOnNonUniqueness = true);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        InternalEntityEntry TryGetEntry([NotNull] object entity, [NotNull] IEntityType type);
+        InternalEntityEntry? TryGetEntry([NotNull] object entity, [NotNull] IEntityType type);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -144,19 +144,19 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        InternalEntityEntry GetPrincipal([NotNull] InternalEntityEntry dependentEntry, [NotNull] IForeignKey foreignKey);
+        InternalEntityEntry? GetPrincipal([NotNull] InternalEntityEntry dependentEntry, [NotNull] IForeignKey foreignKey);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        InternalEntityEntry GetPrincipalUsingPreStoreGeneratedValues([NotNull] InternalEntityEntry dependentEntry, [NotNull] IForeignKey foreignKey);
+        InternalEntityEntry? GetPrincipalUsingPreStoreGeneratedValues([NotNull] InternalEntityEntry dependentEntry, [NotNull] IForeignKey foreignKey);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        InternalEntityEntry GetPrincipalUsingRelationshipSnapshot([NotNull] InternalEntityEntry dependentEntry, [NotNull] IForeignKey foreignKey);
+        InternalEntityEntry? GetPrincipalUsingRelationshipSnapshot([NotNull] InternalEntityEntry dependentEntry, [NotNull] IForeignKey foreignKey);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -241,7 +241,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        event EventHandler<EntityTrackedEventArgs> Tracked;
+        event EventHandler<EntityTrackedEventArgs>? Tracked;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -253,7 +253,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        event EventHandler<EntityStateChangedEventArgs> StateChanged;
+        event EventHandler<EntityStateChangedEventArgs>? StateChanged;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

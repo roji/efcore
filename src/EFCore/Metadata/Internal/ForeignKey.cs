@@ -188,14 +188,14 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual Navigation DependentToPrincipal { [DebuggerStepThrough] get; private set; }
+        public virtual Navigation? DependentToPrincipal { [DebuggerStepThrough] get; private set; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual Navigation HasDependentToPrincipal(
-            [CanBeNull] string name,
+            [CanBeNull] string? name,
             // ReSharper disable once MethodOverloadWithOptionalParameter
             ConfigurationSource configurationSource = ConfigurationSource.Explicit)
             => Navigation(PropertyIdentity.Create(name), configurationSource, pointsToPrincipal: true);
@@ -227,14 +227,14 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual Navigation PrincipalToDependent { [DebuggerStepThrough] get; private set; }
+        public virtual Navigation? PrincipalToDependent { [DebuggerStepThrough] get; private set; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual Navigation HasPrincipalToDependent(
-            [CanBeNull] string name,
+            [CanBeNull] string? name,
             // ReSharper disable once MethodOverloadWithOptionalParameter
             ConfigurationSource configurationSource = ConfigurationSource.Explicit)
             => Navigation(PropertyIdentity.Create(name), configurationSource, pointsToPrincipal: false);
@@ -244,7 +244,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual Navigation HasPrincipalToDependent(
-            [CanBeNull] MemberInfo property,
+            [CanBeNull] MemberInfo? property,
             // ReSharper disable once MethodOverloadWithOptionalParameter
             ConfigurationSource configurationSource = ConfigurationSource.Explicit)
             => Navigation(PropertyIdentity.Create(property), configurationSource, pointsToPrincipal: false);
@@ -671,10 +671,10 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         public static bool AreCompatible(
             [NotNull] EntityType principalEntityType,
             [NotNull] EntityType dependentEntityType,
-            [CanBeNull] MemberInfo navigationToPrincipal,
-            [CanBeNull] MemberInfo navigationToDependent,
-            [CanBeNull] IReadOnlyList<Property> dependentProperties,
-            [CanBeNull] IReadOnlyList<Property> principalProperties,
+            [CanBeNull] MemberInfo? navigationToPrincipal,
+            [CanBeNull] MemberInfo? navigationToDependent,
+            [CanBeNull] IReadOnlyList<Property>? dependentProperties,
+            [CanBeNull] IReadOnlyList<Property>? principalProperties,
             bool? unique,
             bool? required,
             bool shouldThrow)

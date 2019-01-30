@@ -29,9 +29,9 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
     /// <typeparam name="T"> The type. </typeparam>
     public class ValueComparer<T> : ValueComparer, IEqualityComparer<T>
     {
-        private Func<T, T, bool> _equals;
-        private Func<T, int> _hashCode;
-        private Func<T, T> _snapshot;
+        private Func<T, T, bool>? _equals;
+        private Func<T, int>? _hashCode;
+        private Func<T, T>? _snapshot;
 
         /// <summary>
         ///     Creates a new <see cref="ValueComparer{T}" /> with a default comparison

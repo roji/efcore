@@ -50,7 +50,7 @@ namespace Microsoft.EntityFrameworkCore.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual TEntity Find(object[] keyValues)
+        public virtual TEntity? Find(object[] keyValues)
         {
             return keyValues?.Any(v => v == null) != false
                 ? null
@@ -62,18 +62,18 @@ namespace Microsoft.EntityFrameworkCore.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        object IEntityFinder.Find(object[] keyValues)
+        object? IEntityFinder.Find(object[] keyValues)
             => Find(keyValues);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual Task<TEntity> FindAsync(object[] keyValues, CancellationToken cancellationToken = default)
+        public virtual Task<TEntity?> FindAsync(object[] keyValues, CancellationToken cancellationToken = default)
         {
             if (keyValues?.Any(v => v == null) != false)
             {
-                return Task.FromResult<TEntity>(null);
+                return Task.FromResult<TEntity?>(null);
             }
 
             var tracked = FindTracked(keyValues, out var keyProperties);
@@ -86,16 +86,16 @@ namespace Microsoft.EntityFrameworkCore.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        Task<object> IEntityFinder.FindAsync(object[] keyValues, CancellationToken cancellationToken)
+        Task<object?> IEntityFinder.FindAsync(object[] keyValues, CancellationToken cancellationToken)
         {
             if (keyValues?.Any(v => v == null) != false)
             {
-                return Task.FromResult<object>(null);
+                return Task.FromResult<object?>(null);
             }
 
             var tracked = FindTracked(keyValues, out var keyProperties);
             return tracked != null
-                ? Task.FromResult((object)tracked)
+                ? Task.FromResult((object?)tracked)
                 : _queryRoot.FirstOrDefaultAsync(
                     BuildObjectLambda(keyProperties, new ValueBuffer(keyValues)), cancellationToken);
         }
@@ -185,7 +185,7 @@ namespace Microsoft.EntityFrameworkCore.Internal
             => GetDatabaseValuesQuery(entry)?.FirstOrDefaultAsync(cancellationToken);
 #pragma warning restore RCS1210 // Return Task.FromResult instead of returning null.
 
-        private IQueryable<object[]> GetDatabaseValuesQuery(InternalEntityEntry entry)
+        private IQueryable<object[]>? GetDatabaseValuesQuery(InternalEntityEntry entry)
         {
             var entityType = entry.EntityType;
             var properties = entityType.FindPrimaryKey().Properties;
@@ -193,11 +193,12 @@ namespace Microsoft.EntityFrameworkCore.Internal
             var keyValues = new object[properties.Count];
             for (var i = 0; i < keyValues.Length; i++)
             {
-                keyValues[i] = entry[properties[i]];
-                if (keyValues[i] == null)
+                var keyValue = entry[properties[i]];
+                if (keyValue == null)
                 {
                     return null;
                 }
+                keyValues[i] = keyValue;
             }
 
             return _queryRoot.AsNoTracking().IgnoreQueryFilters()
@@ -215,7 +216,7 @@ namespace Microsoft.EntityFrameworkCore.Internal
         IQueryable IEntityFinder.Query(INavigation navigation, InternalEntityEntry entry)
             => Query(navigation, entry);
 
-        private static object[] GetLoadValues(INavigation navigation, InternalEntityEntry entry)
+        private static object[]? GetLoadValues(INavigation navigation, InternalEntityEntry entry)
         {
             var properties = navigation.IsDependentToPrincipal()
                 ? navigation.ForeignKey.Properties
@@ -225,11 +226,12 @@ namespace Microsoft.EntityFrameworkCore.Internal
 
             for (var i = 0; i < values.Length; i++)
             {
-                values[i] = entry[properties[i]];
-                if (values[i] == null)
+                var value = entry[properties[i]];
+                if (value == null)
                 {
                     return null;
                 }
+                values[i] = value;
             }
 
             return values;
@@ -240,7 +242,7 @@ namespace Microsoft.EntityFrameworkCore.Internal
                 ? navigation.ForeignKey.PrincipalKey.Properties
                 : navigation.ForeignKey.Properties;
 
-        private TEntity FindTracked(object[] keyValues, out IReadOnlyList<IProperty> keyProperties)
+        private TEntity? FindTracked(object[] keyValues, out IReadOnlyList<IProperty> keyProperties)
         {
             var key = _model.FindEntityType(typeof(TEntity)).FindPrimaryKey();
             keyProperties = key.Properties;
@@ -326,7 +328,7 @@ namespace Microsoft.EntityFrameworkCore.Internal
         {
             var keyValuesConstant = Expression.Constant(keyValues);
 
-            BinaryExpression predicate = null;
+            BinaryExpression? predicate = null;
             for (var i = 0; i < keyProperties.Count; i++)
             {
                 var property = keyProperties[i];

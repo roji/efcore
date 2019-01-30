@@ -51,7 +51,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public abstract object Entity { get; }
+        public abstract object? Entity { get; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -69,7 +69,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual InternalEntityEntry SharedIdentityEntry { get; [param: CanBeNull] set; }
+        public virtual InternalEntityEntry? SharedIdentityEntry { get; [param: CanBeNull] set; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -472,7 +472,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 
         private CurrentValueType GetValueType(
             IProperty property,
-            Func<object, object, bool> equals = null)
+            Func<object, object, bool>? equals = null)
         {
             var tempIndex = property.GetStoreGeneratedIndex();
             if (tempIndex == -1)
@@ -555,12 +555,15 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         internal static readonly MethodInfo ReadShadowValueMethod
             = typeof(InternalEntityEntry).GetTypeInfo().GetDeclaredMethod(nameof(ReadShadowValue));
 
+#nullable disable
+        // TODO: https://github.com/dotnet/roslyn/issues/30953
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         [UsedImplicitly]
         protected virtual T ReadShadowValue<T>(int shadowIndex) => default;
+#nullable enable
 
         internal static readonly MethodInfo ReadOriginalValueMethod
             = typeof(InternalEntityEntry).GetTypeInfo().GetDeclaredMethod(nameof(ReadOriginalValue));
@@ -622,7 +625,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual object ReadPropertyValue([NotNull] IPropertyBase propertyBase)
+        protected virtual object? ReadPropertyValue([NotNull] IPropertyBase propertyBase)
         {
             Debug.Assert(!propertyBase.IsShadowProperty);
 
@@ -644,7 +647,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        protected virtual void WritePropertyValue([NotNull] IPropertyBase propertyBase, [CanBeNull] object value)
+        protected virtual void WritePropertyValue([NotNull] IPropertyBase propertyBase, [CanBeNull] object? value)
         {
             Debug.Assert(!propertyBase.IsShadowProperty);
 
@@ -699,7 +702,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual object GetCurrentValue(IPropertyBase propertyBase)
+        public virtual object? GetCurrentValue(IPropertyBase propertyBase)
             => !(propertyBase is IProperty property) || !IsConceptualNull(property)
                 ? this[propertyBase]
                 : null;
@@ -708,7 +711,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual object GetPreStoreGeneratedCurrentValue([NotNull] IPropertyBase propertyBase)
+        public virtual object? GetPreStoreGeneratedCurrentValue([NotNull] IPropertyBase propertyBase)
             => !(propertyBase is IProperty property) || !IsConceptualNull(property)
                 ? ReadPropertyValue(propertyBase)
                 : null;
@@ -732,7 +735,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual void SetOriginalValue(
-            [NotNull] IPropertyBase propertyBase, [CanBeNull] object value,
+            [NotNull] IPropertyBase propertyBase, [CanBeNull] object? value,
             int index = -1)
         {
             EnsureOriginalValues();
@@ -761,7 +764,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public virtual void SetRelationshipSnapshotValue([NotNull] IPropertyBase propertyBase, [CanBeNull] object value)
+        public virtual void SetRelationshipSnapshotValue([NotNull] IPropertyBase propertyBase, [CanBeNull] object? value)
         {
             EnsureRelationshipSnapshot();
             _relationshipsSnapshot.SetValue(propertyBase, value);
@@ -865,7 +868,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public object this[[NotNull] IPropertyBase propertyBase]
+        public object? this[[NotNull] IPropertyBase propertyBase]
         {
             get
             {
@@ -908,13 +911,13 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         /// </summary>
         public virtual void SetProperty(
             [NotNull] IPropertyBase propertyBase,
-            [CanBeNull] object value,
+            [CanBeNull] object? value,
             bool setModified = true)
             => SetProperty(propertyBase, value, setModified, CurrentValueType.Normal);
 
         private void SetProperty(
             [NotNull] IPropertyBase propertyBase,
-            [CanBeNull] object value,
+            [CanBeNull] object? value,
             bool setModified,
             CurrentValueType valueType)
         {
@@ -923,7 +926,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             var asProperty = propertyBase as Property;
             int propertyIndex;
             CurrentValueType currentValueType;
-            Func<object, object, bool> equals;
+            Func<object?, object?, bool> equals;
 
             if (asProperty != null)
             {
@@ -1034,7 +1037,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             }
         }
 
-        private static Func<object, object, bool> ValuesEqualFunc(IProperty property)
+        private static Func<object?, object?, bool> ValuesEqualFunc(IProperty property)
         {
             var comparer = property.GetValueComparer()
                            ?? property.FindMapping()?.Comparer;

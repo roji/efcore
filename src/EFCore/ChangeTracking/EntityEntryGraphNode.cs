@@ -16,7 +16,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
     /// </summary>
     public class EntityEntryGraphNode : IInfrastructure<InternalEntityEntry>
     {
-        private readonly InternalEntityEntry _sourceEntry;
+        private readonly InternalEntityEntry? _sourceEntry;
         private readonly InternalEntityEntry _entry;
 
         /// <summary>
@@ -26,8 +26,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
         [DebuggerStepThrough]
         public EntityEntryGraphNode(
             [NotNull] InternalEntityEntry entry,
-            [CanBeNull] InternalEntityEntry sourceEntry,
-            [CanBeNull] INavigation inboundNavigation)
+            [CanBeNull] InternalEntityEntry? sourceEntry,
+            [CanBeNull] INavigation? inboundNavigation)
         {
             Check.NotNull(entry, nameof(entry));
 
@@ -39,17 +39,17 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
         /// <summary>
         ///     Gets the entry tracking information about this entity.
         /// </summary>
-        public virtual EntityEntry SourceEntry => _sourceEntry == null ? null : new EntityEntry(_sourceEntry);
+        public virtual EntityEntry? SourceEntry => _sourceEntry == null ? null : new EntityEntry(_sourceEntry);
 
         /// <summary>
         ///     Gets the navigation property that is being traversed to reach this node in the graph.
         /// </summary>
-        public virtual INavigation InboundNavigation { get; }
+        public virtual INavigation? InboundNavigation { get; }
 
         /// <summary>
         ///     Gets or sets state that will be available to all nodes that are visited after this node.
         /// </summary>
-        public virtual object NodeState { get; [param: CanBeNull] set; }
+        public virtual object? NodeState { get; [param: CanBeNull] set; }
 
         /// <summary>
         ///     Gets the entry tracking information about this entity.

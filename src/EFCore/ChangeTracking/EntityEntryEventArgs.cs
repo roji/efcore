@@ -13,7 +13,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
     public class EntityEntryEventArgs : EventArgs
     {
         private readonly InternalEntityEntry _internalEntityEntry;
-        private EntityEntry _entry;
+        private EntityEntry? _entry;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

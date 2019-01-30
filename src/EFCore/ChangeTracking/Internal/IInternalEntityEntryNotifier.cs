@@ -31,7 +31,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         /// </summary>
         void TrackedFromQuery(
             [NotNull] InternalEntityEntry entry,
-            [CanBeNull] ISet<IForeignKey> handledForeignKeys);
+            [CanBeNull] ISet<IForeignKey>? handledForeignKeys);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

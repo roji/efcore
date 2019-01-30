@@ -39,7 +39,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         /// </summary>
         protected virtual Expression CreateConstructorExpression(
             [NotNull] IEntityType entityType,
-            [CanBeNull] ParameterExpression parameter)
+            [CanBeNull] ParameterExpression? parameter)
         {
             var count = GetPropertyCount(entityType);
 
@@ -87,7 +87,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
         }
 
         private Expression CreateSnapshotExpression(
-            Type entityType,
+            Type? entityType,
             ParameterExpression parameter,
             Type[] types,
             IList<IPropertyBase> propertyBases)
@@ -265,7 +265,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
             = typeof(SnapshotFactoryFactory).GetTypeInfo().GetDeclaredMethod(nameof(SnapshotCollection));
 
         [UsedImplicitly]
-        private static HashSet<object> SnapshotCollection(IEnumerable<object> collection)
+        private static HashSet<object>? SnapshotCollection(IEnumerable<object> collection)
             => collection == null
                 ? null
                 : new HashSet<object>(collection, ReferenceEqualityComparer.Instance);

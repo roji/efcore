@@ -50,8 +50,8 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
     public class LocalView<TEntity> : ICollection<TEntity>, INotifyCollectionChanged, INotifyPropertyChanged, INotifyPropertyChanging, IListSource
         where TEntity : class
     {
-        private ObservableBackedBindingList<TEntity> _bindingList;
-        private ObservableCollection<TEntity> _observable;
+        private ObservableBackedBindingList<TEntity>? _bindingList;
+        private ObservableCollection<TEntity>? _observable;
         private readonly DbContext _context;
         private int _count;
         private bool _triggeringStateManagerChange;

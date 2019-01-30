@@ -15,7 +15,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
     /// </summary>
     public abstract class ServiceParameterBinding : ParameterBinding
     {
-        private Func<MaterializationContext, IEntityType, object, object> _serviceDelegate;
+        private Func<MaterializationContext, IEntityType, object, object>? _serviceDelegate;
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -24,7 +24,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         protected ServiceParameterBinding(
             [NotNull] Type parameterType,
             [NotNull] Type serviceType,
-            [CanBeNull] IPropertyBase consumedProperty = null)
+            [CanBeNull] IPropertyBase? consumedProperty = null)
             : base(parameterType, consumedProperty != null ? new[] { consumedProperty } : Array.Empty<IPropertyBase>())
         {
             ServiceType = serviceType;
@@ -53,7 +53,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         public abstract Expression BindToParameter(
             [NotNull] Expression materializationExpression,
             [NotNull] Expression entityTypeExpression,
-            [CanBeNull] Expression entityExpression);
+            [CanBeNull] Expression? entityExpression);
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

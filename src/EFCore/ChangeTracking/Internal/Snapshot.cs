@@ -6,6 +6,9 @@ using System.Linq.Expressions;
 using System.Reflection;
 using JetBrains.Annotations;
 
+// TODO: https://github.com/dotnet/roslyn/issues/30953
+#nullable disable
+
 namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal
 {
     /// <summary>
