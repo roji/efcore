@@ -5,8 +5,6 @@
     <IncludeSourceRevisionInInformationalVersion>False</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
   <PropertyGroup Label="Arcade settings">
-    <!-- Opt-in to using the version of the Roslyn compiler bundled with Arcade. -->
-    <UsingToolMicrosoftNetCompilers>true</UsingToolMicrosoftNetCompilers>
     <UsingToolNetFrameworkReferenceAssemblies>True</UsingToolNetFrameworkReferenceAssemblies>
     <UsingToolXliff>False</UsingToolXliff>
   </PropertyGroup>
