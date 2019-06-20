@@ -18,7 +18,7 @@ namespace Microsoft.EntityFrameworkCore.Query
             : base(fixture)
         {
             Fixture.TestSqlLoggerFactory.Clear();
-            //Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
+            Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
         }
 
         [ConditionalFact]
@@ -428,6 +428,74 @@ WHERE ([a].[Discriminator] = N'Kiwi') AND ([a].[Species] LIKE N'%owenii')");
 END
 FROM [Animal] AS [a]
 WHERE [a].[Discriminator] = N'Kiwi'");
+        }
+
+        public override void Can_union_kiwis_and_eagles_as_birds()
+        {
+            base.Can_union_kiwis_and_eagles_as_birds();
+
+            AssertSql(
+                @"    SELECT [a].[Species], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[EagleId], [a].[IsFlightless], NULL AS [Group], [a].[FoundOn]
+    FROM [Animal] AS [a]
+    WHERE [a].[Discriminator] = N'Kiwi'
+UNION
+    SELECT [a0].[Species], [a0].[CountryId], [a0].[Discriminator], [a0].[Name], [a0].[EagleId], [a0].[IsFlightless], [a0].[Group], NULL AS [FoundOn]
+    FROM [Animal] AS [a0]
+    WHERE [a0].[Discriminator] = N'Eagle'");
+        }
+
+        public override void OfType_Union_subquery()
+        {
+            base.OfType_Union_subquery();
+
+            AssertSql(
+                @"SELECT [t].[Species], [t].[CountryId], [t].[Discriminator], [t].[Name], [t].[EagleId], [t].[IsFlightless], [t].[FoundOn]
+FROM (
+        SELECT [a].[Species], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn]
+        FROM [Animal] AS [a]
+        WHERE [a].[Discriminator] IN (N'Eagle', N'Kiwi') AND ([a].[Discriminator] = N'Kiwi')
+    UNION
+        SELECT [a0].[Species], [a0].[CountryId], [a0].[Discriminator], [a0].[Name], [a0].[EagleId], [a0].[IsFlightless], [a0].[FoundOn]
+        FROM [Animal] AS [a0]
+        WHERE [a0].[Discriminator] IN (N'Eagle', N'Kiwi') AND ([a0].[Discriminator] = N'Kiwi')
+) AS [t]
+WHERE ([t].[FoundOn] = CAST(0 AS tinyint)) AND [t].[FoundOn] IS NOT NULL");
+        }
+
+        public override void Union_different_types_in_hierarchy_in_subquery()
+        {
+            base.Union_different_types_in_hierarchy_in_subquery();
+
+            AssertSql(
+                @"SELECT [t].[Species], [t].[CountryId], [t].[Discriminator], [t].[Name], [t].[EagleId], [t].[IsFlightless], [t].[Group], [t].[FoundOn]
+FROM (
+        SELECT [a].[Species], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[EagleId], [a].[IsFlightless], NULL AS [Group], [a].[FoundOn]
+        FROM [Animal] AS [a]
+        WHERE ([a].[Discriminator] IN (N'Eagle', N'Kiwi') AND (([a].[Name] = N'Great spotted kiwi') AND [a].[Name] IS NOT NULL)) AND ([a].[Discriminator] = N'Kiwi')
+    UNION
+        SELECT [a0].[Species], [a0].[CountryId], [a0].[Discriminator], [a0].[Name], [a0].[EagleId], [a0].[IsFlightless], [a0].[Group], [a0].[FoundOn]
+        FROM [Animal] AS [a0]
+        WHERE [a0].[Discriminator] IN (N'Eagle', N'Kiwi') AND (([a0].[Name] = N'American golden eagle') AND [a0].[Name] IS NOT NULL)
+) AS [t]
+WHERE [t].[IsFlightless] = CAST(1 AS bit)");
+        }
+
+        public override void Union_entity_equality()
+        {
+            base.Union_entity_equality();
+
+            AssertSql(
+                @"SELECT [t].[Species], [t].[CountryId], [t].[Discriminator], [t].[Name], [t].[EagleId], [t].[IsFlightless], [t].[Group], [t].[FoundOn]
+FROM (
+        SELECT [a].[Species], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[EagleId], [a].[IsFlightless], NULL AS [Group], [a].[FoundOn]
+        FROM [Animal] AS [a]
+        WHERE [a].[Discriminator] = N'Kiwi'
+    UNION
+        SELECT [a0].[Species], [a0].[CountryId], [a0].[Discriminator], [a0].[Name], [a0].[EagleId], [a0].[IsFlightless], [a0].[Group], NULL AS [FoundOn]
+        FROM [Animal] AS [a0]
+        WHERE [a0].[Discriminator] = N'Eagle'
+) AS [t]
+WHERE CAST(0 AS bit) = CAST(1 AS bit)");
         }
 
         protected override void UseTransaction(DatabaseFacade facade, IDbContextTransaction transaction)

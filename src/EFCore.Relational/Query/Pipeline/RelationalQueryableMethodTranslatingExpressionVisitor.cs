@@ -45,6 +45,36 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline
             _sqlExpressionFactory = sqlExpressionFactory;
         }
 
+        protected override Expression TranslateQueryableMethodCall(
+            MethodCallExpression methodCallExpression,
+            ShapedQueryExpression source)
+        {
+            var selectExpression = (SelectExpression)source.QueryExpression;
+
+            if (selectExpression.IsSetOperation && IsSetOperationPushdownRequired(methodCallExpression))
+            {
+                selectExpression.PushdownIntoSubquery();
+            }
+
+            return base.TranslateQueryableMethodCall(methodCallExpression, source);
+        }
+
+        /// <summary>
+        /// Most LINQ operators over a set operation cause a pushdown into a subquery (e.g. ("SELECT * FROM (a UNION b) WHERE ...")),
+        /// but some operators are supported directly on the set operation (e.g. ("a UNION b ORDER BY x")). This method is
+        /// responsible for performing pushdown as necessary.
+        /// </summary>
+        protected virtual bool IsSetOperationPushdownRequired(MethodCallExpression methodCallExpression)
+            => methodCallExpression.Method.Name switch {
+                nameof(Queryable.Union) => false,
+                nameof(Queryable.Intersect) => false,
+                nameof(Queryable.Except) => false,
+                nameof(Queryable.OrderBy) => false,
+                nameof(Queryable.Take) => false,
+                nameof(Queryable.Skip) => false,
+                _ => true
+            };
+
         public override ShapedQueryExpression TranslateSubquery(Expression expression)
         {
             return (ShapedQueryExpression)new RelationalQueryableMethodTranslatingExpressionVisitor(
@@ -150,7 +180,14 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline
             return source;
         }
 
-        protected override ShapedQueryExpression TranslateConcat(ShapedQueryExpression source1, ShapedQueryExpression source2) => throw new NotImplementedException();
+        protected override ShapedQueryExpression TranslateConcat(ShapedQueryExpression source1, ShapedQueryExpression source2)
+        {
+            // TODO: Make sure we're doing the operation over entity types from the same hierarchy
+            var operand1 = (SelectExpression)source1.QueryExpression;
+            var operand2 = (SelectExpression)source2.QueryExpression;
+            operand1.ApplySetOperation(SetOperationType.UnionAll, operand2);
+            return source1;
+        }
 
         protected override ShapedQueryExpression TranslateContains(ShapedQueryExpression source, Expression item)
         {
@@ -212,7 +249,14 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline
 
         protected override ShapedQueryExpression TranslateElementAtOrDefault(ShapedQueryExpression source, Expression index, bool returnDefault) => throw new NotImplementedException();
 
-        protected override ShapedQueryExpression TranslateExcept(ShapedQueryExpression source1, ShapedQueryExpression source2) => throw new NotImplementedException();
+        protected override ShapedQueryExpression TranslateExcept(ShapedQueryExpression source1, ShapedQueryExpression source2)
+        {
+            // TODO: Make sure we're doing the operation over entity types from the same hierarchy
+            var operand1 = (SelectExpression)source1.QueryExpression;
+            var operand2 = (SelectExpression)source2.QueryExpression;
+            operand1.ApplySetOperation(SetOperationType.Except, operand2);
+            return source1;
+        }
 
         protected override ShapedQueryExpression TranslateFirstOrDefault(ShapedQueryExpression source, LambdaExpression predicate, Type returnType, bool returnDefault)
         {
@@ -279,7 +323,14 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline
             throw new NotImplementedException();
         }
 
-        protected override ShapedQueryExpression TranslateIntersect(ShapedQueryExpression source1, ShapedQueryExpression source2) => throw new NotImplementedException();
+        protected override ShapedQueryExpression TranslateIntersect(ShapedQueryExpression source1, ShapedQueryExpression source2)
+        {
+            // TODO: Make sure we're doing the operation over entity types from the same hierarchy
+            var operand1 = (SelectExpression)source1.QueryExpression;
+            var operand2 = (SelectExpression)source2.QueryExpression;
+            operand1.ApplySetOperation(SetOperationType.Intersect, operand2);
+            return source1;
+        }
 
         protected override ShapedQueryExpression TranslateJoin(
             ShapedQueryExpression outer,
@@ -730,7 +781,14 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline
             throw new InvalidOperationException();
         }
 
-        protected override ShapedQueryExpression TranslateUnion(ShapedQueryExpression source1, ShapedQueryExpression source2) => throw new NotImplementedException();
+        protected override ShapedQueryExpression TranslateUnion(ShapedQueryExpression source1, ShapedQueryExpression source2)
+        {
+            // TODO: Make sure we're doing the operation over entity types from the same hierarchy
+            var operand1 = (SelectExpression)source1.QueryExpression;
+            var operand2 = (SelectExpression)source2.QueryExpression;
+            operand1.ApplySetOperation(SetOperationType.Union, operand2);
+            return source1;
+        }
 
         protected override ShapedQueryExpression TranslateWhere(ShapedQueryExpression source, LambdaExpression predicate)
         {

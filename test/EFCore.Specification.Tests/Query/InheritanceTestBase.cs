@@ -477,54 +477,11 @@ namespace Microsoft.EntityFrameworkCore.Query
         {
         }
 
-        [ConditionalFact(Skip = "Issue #14935. Cannot eval 'Concat({value(Microsoft.EntityFrameworkCore.Query.Internal.EntityQueryable`1[Microsoft.EntityFrameworkCore.TestModels.Inheritance.Eagle])})'")]
-        public virtual void Can_concat_kiwis_and_eagles_as_birds()
-        {
-            using (var context = CreateContext())
-            {
-                var kiwis = context.Set<Kiwi>();
-
-                var eagles = context.Set<Eagle>();
-
-                var concat = kiwis.Cast<Bird>().Concat(eagles).ToList();
-
-                Assert.Equal(2, concat.Count);
-            }
-        }
-
-        [ConditionalFact(Skip = "Issue #14935. Cannot eval 'Except({value(Microsoft.EntityFrameworkCore.Query.Internal.EntityQueryable`1[Microsoft.EntityFrameworkCore.TestModels.Inheritance.Eagle])})'")]
-        public virtual void Can_except_kiwis_and_eagles_as_birds()
-        {
-            using (var context = CreateContext())
-            {
-                var kiwis = context.Set<Kiwi>();
-
-                var eagles = context.Set<Eagle>();
-
-                var concat = kiwis.Cast<Bird>().Except(eagles).ToList();
-
-                Assert.Equal(1, concat.Count);
-            }
-        }
-
-        [ConditionalFact(Skip = "Issue #14935. Cannot eval 'Intersect({value(Microsoft.EntityFrameworkCore.Query.Internal.EntityQueryable`1[Microsoft.EntityFrameworkCore.TestModels.Inheritance.Eagle])})'")]
-        public virtual void Can_intersect_kiwis_and_eagles_as_birds()
-        {
-            using (var context = CreateContext())
-            {
-                var kiwis = context.Set<Kiwi>();
-
-                var eagles = context.Set<Eagle>();
-
-                var concat = kiwis.Cast<Bird>().Intersect(eagles).ToList();
-
-                Assert.Equal(0, concat.Count);
-            }
-        }
-
-        [ConditionalFact(Skip = "Issue #14935. Cannot eval 'Union({value(Microsoft.EntityFrameworkCore.Query.Internal.EntityQueryable`1[Microsoft.EntityFrameworkCore.TestModels.Inheritance.Eagle])})'")]
+        [ConditionalFact]
         public virtual void Can_union_kiwis_and_eagles_as_birds()
         {
+            // Each Union operand has a different type in the hierarchy, so we generate NULL constant projections for
+            // the appropriate missing properties on each side
             using (var context = CreateContext())
             {
                 var kiwis = context.Set<Kiwi>();
@@ -534,6 +491,50 @@ namespace Microsoft.EntityFrameworkCore.Query
                 var concat = kiwis.Cast<Bird>().Union(eagles).ToList();
 
                 Assert.Equal(2, concat.Count);
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void OfType_Union_subquery()
+        {
+            using (var context = CreateContext())
+            {
+                context.Set<Animal>()
+                    .OfType<Kiwi>()
+                    .Union(context.Set<Animal>()
+                        .OfType<Kiwi>())
+                    .Where(o => o.FoundOn == Island.North)
+                    .ToList();
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Union_different_types_in_hierarchy_in_subquery()
+        {
+            // TODO: This may be a (partial) dup of Can_union_kiwis_and_eagles_as_birds above
+            // A UNION of birds and kiwis. The query selecting birds will get eagle's Group property, and the
+            // one selecting kiwis should have a null constant in that position.
+            using (var context = CreateContext())
+            {
+                context.Set<Bird>()
+                    .Where(b => b.Name == "Great spotted kiwi")
+                    .OfType<Kiwi>()
+                    .Union(context.Set<Bird>()
+                        .Where(b => b.Name == "American golden eagle"))
+                    .Where(b => b.IsFlightless)
+                    .ToList();
+            }
+        }
+
+        [ConditionalFact]
+        public virtual void Union_entity_equality()
+        {
+            using (var context = CreateContext())
+            {
+                context.Set<Kiwi>()
+                    .Union(context.Set<Eagle>().Cast<Bird>())
+                    .Where(b => b == null)
+                    .ToList();
             }
         }
 

@@ -65,5 +65,4 @@ namespace Microsoft.EntityFrameworkCore.Query.Pipeline
         SingleWithDefault
 #pragma warning restore SA1602 // Enumeration items should be documented
     }
-
 }

@@ -92,20 +92,25 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline
         public override Type Type => EntityType.ClrType;
 
         public ColumnExpression GetProperty(IProperty property)
-        {
-            if (!EntityType.GetTypesInHierarchy().Contains(property.DeclaringEntityType))
-            {
-                throw new InvalidOperationException(
+            => TryGetProperty(property, out var expression)
+                ? expression
+                : throw new InvalidOperationException(
                     $"Called EntityProjectionExpression.GetProperty() with incorrect IProperty. EntityType:{EntityType.DisplayName()}, Property:{property.Name}");
-            }
 
-            if (!_propertyExpressionsCache.TryGetValue(property, out var expression))
+        public bool TryGetProperty(IProperty property, out ColumnExpression columnExpression)
+        {
+            if (!_propertyExpressionsCache.TryGetValue(property, out columnExpression))
             {
-                expression = new ColumnExpression(property, _innerTable, _nullable);
-                _propertyExpressionsCache[property] = expression;
+                if (!EntityType.GetTypesInHierarchy().Contains(property.DeclaringEntityType))
+                {
+                    return false;
+                }
+
+                columnExpression = new ColumnExpression(property, _innerTable, _nullable);
+                _propertyExpressionsCache[property] = columnExpression;
             }
 
-            return expression;
+            return true;
         }
     }
 }
