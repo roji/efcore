@@ -177,12 +177,15 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline.SqlExpressions
             return AddToProjection(sqlExpression, null);
         }
 
-        private int AddToProjection(SqlExpression sqlExpression, string alias)
+        private int AddToProjection(SqlExpression sqlExpression, string alias, bool deduplicate = true)
         {
-            var existingIndex = _projection.FindIndex(pe => pe.Expression.Equals(sqlExpression));
-            if (existingIndex != -1)
+            if (deduplicate)
             {
-                return existingIndex;
+                var existingIndex = _projection.FindIndex(pe => pe.Expression.Equals(sqlExpression));
+                if (existingIndex != -1)
+                {
+                    return existingIndex;
+                }
             }
 
             var baseAlias = alias ?? (sqlExpression as ColumnExpression)?.Name ?? (Alias != null ? "c" : null);
@@ -390,101 +393,70 @@ namespace Microsoft.EntityFrameworkCore.Relational.Query.Pipeline.SqlExpressions
                     if (joinedMapping.Value1 is EntityProjectionExpression entityProjection1
                         && joinedMapping.Value2 is EntityProjectionExpression entityProjection2)
                     {
-                        var sameEntityType = entityProjection1.EntityType == entityProjection2.EntityType;
-                        var properties1 = GetAllPropertiesInHierarchy(entityProjection1.EntityType).ToArray();
-                        var properties2 = sameEntityType
-                            ? null
-                            : GetAllPropertiesInHierarchy(entityProjection2.EntityType).ToArray();
+                         // The operand entity types may be different. Since both sides of the set operations must
+                         // produce the same result shape, find the closest common ancestor and load all the columns for
+                         // that. Add null projections where necessary.
+                         var commonParentEntityType = entityProjection1.EntityType.GetClosestCommonParent(entityProjection2.EntityType);
 
-                        var propertyExpressions = new Dictionary<IProperty, ColumnExpression>();
+                         var propertyExpressions = new Dictionary<IProperty, ColumnExpression>();
+                         foreach (var property in GetAllPropertiesInHierarchy(commonParentEntityType))
+                         {
+                             var col1 = entityProjection1.TryGetProperty(property, out var col) ? col : null;
+                             var col2 = entityProjection2.TryGetProperty(property, out col) ? col : null;
+                             var colName = col1?.Name ?? col2?.Name ?? property.Name;
 
-                        // Properties that are on both sides (or if we simply doing a set operation on the same entity type)
-                        // Note that the set operation's projection mapping will be ColumnExpressions pointing to the
-                        // first operand's projections.
-                        foreach (var property in sameEntityType ? properties1 : properties1.Intersect(properties2))
-                        {
-                            var index = select1.AddToProjection(entityProjection1.GetProperty(property));
-                            var projectionExpression1 = select1._projection[index];
-                            var outerColumn = new ColumnExpression(projectionExpression1, select1, IsNullableProjection(projectionExpression1));
-                            propertyExpressions[property] = outerColumn;
+                             int projectionIndex;
 
-                            select2.AddToProjection(entityProjection2.GetProperty(property));
-                        }
+                             if (col1 == null)
+                             {
+                                 projectionIndex = select1.AddToProjection(
+                                     new SqlConstantExpression(Constant(null), RelationalTypeMapping.NullMapping),
+                                     colName, false);
+                             }
+                             else
+                             {
+                                 projectionIndex = select1.AddToProjection(col1);
+                             }
+                             // For the outer column, just point to the first select's projection
+                             var projectionExpression1 = select1._projection[projectionIndex];
+                             var outerColumn = new ColumnExpression(projectionExpression1, select1, IsNullableProjection(projectionExpression1));
+                             propertyExpressions[property] = outerColumn;
 
-                        // For properties that are only on one side, place a null constant projection on the other
-                        if (!sameEntityType)
-                        {
-                            foreach (var property in properties1.Except(properties2))
-                            {
-                                var column = entityProjection1.GetProperty(property);
-                                var index = select1.AddToProjection(column);
-                                var projectionExpression = select1._projection[index];
-                                var outerColumn = new ColumnExpression(projectionExpression, select1, IsNullableProjection(projectionExpression));
-                                propertyExpressions[property] = outerColumn;
+                             if (col2 == null)
+                             {
+                                 projectionIndex = select2.AddToProjection(
+                                     new SqlConstantExpression(Constant(null), RelationalTypeMapping.NullMapping),
+                                     colName, false);
+                             }
+                             else
+                             {
+                                 projectionIndex = select2.AddToProjection(col2);
+                             }
 
-                                select2.AddToProjection(
-                                    new SqlConstantExpression(Constant(null), RelationalTypeMapping.NullMapping),
-                                    column.Name);
-                            }
+                             // if (col1 == null)
+                             // {
+                             //     Debug.Assert(col2 != null);
+                             //     select2.AddToProjection(col2);
+                             //     projectionIndex = select1.AddToProjection(
+                             //         new SqlConstantExpression(Constant(null), RelationalTypeMapping.NullMapping),
+                             //         col2.Name);
+                             // }
+                             // else if (col2 == null)
+                             // {
+                             //     Debug.Assert(col1 != null);
+                             //     projectionIndex = select1.AddToProjection(col1);
+                             //     select2.AddToProjection(
+                             //         new SqlConstantExpression(Constant(null), RelationalTypeMapping.NullMapping),
+                             //         col1.Name);
+                             // }
+                             // else
+                             // {
+                             //     projectionIndex = select1.AddToProjection(col1);
+                             //     select2.AddToProjection(col2);
+                             // }
+                         }
 
-                            foreach (var property in properties2.Except(properties1))
-                            {
-                                var column = entityProjection2.GetProperty(property);
-                                select2.AddToProjection(column);
-
-                                var index = select1.AddToProjection(
-                                    new SqlConstantExpression(Constant(null), RelationalTypeMapping.NullMapping),
-                                    column.Name);
-                                var projectionExpression = select1._projection[index];
-                                var outerColumn = new ColumnExpression(projectionExpression, select1, IsNullableProjection(projectionExpression));
-                                propertyExpressions[property] = outerColumn;
-                            }
-                        }
-
-                        // // The operand entity types may be different. Since both sides of the set operations must
-                        // // produce the same result shape, find the closest common ancestor and load all the columns for
-                        // // that. Add null projections where necessary.
-                        // var commonParentEntityType = entityProjection1.EntityType.GetClosestCommonParent(entityProjection2.EntityType);
-                        //
-                        // var propertyExpressions = new Dictionary<IProperty, ColumnExpression>();
-                        // foreach (var property in GetAllPropertiesInHierarchy(commonParentEntityType))
-                        // {
-                        //     var col1 = entityProjection1.TryGetProperty(property, out var col) ? col : null;
-                        //     var col2 = entityProjection2.TryGetProperty(property, out col) ? col : null;
-                        //
-                        //     int projectionIndex;
-                        //
-                        //     if (col1 == null)
-                        //     {
-                        //         Debug.Assert(col2 != null);
-                        //         select2.AddToProjection(col2);
-                        //         projectionIndex = select1.AddToProjection(
-                        //             new SqlConstantExpression(Constant(null), RelationalTypeMapping.NullMapping),
-                        //             col2.Name);
-                        //     }
-                        //     else if (col2 == null)
-                        //     {
-                        //         Debug.Assert(col1 != null);
-                        //         projectionIndex = select1.AddToProjection(col1);
-                        //         select2.AddToProjection(
-                        //             new SqlConstantExpression(Constant(null), RelationalTypeMapping.NullMapping),
-                        //             col1.Name);
-                        //
-                        //     }
-                        //     else
-                        //     {
-                        //         projectionIndex = select1.AddToProjection(col1);
-                        //         select2.AddToProjection(col2);
-                        //     }
-                        //
-                        //     // For the outer column, just point to the first select's projection
-                        //     var projectionExpression1 = select1._projection[projectionIndex];
-                        //     var outerColumn = new ColumnExpression(projectionExpression1, select1, IsNullableProjection(projectionExpression1));
-                        //     propertyExpressions[property] = outerColumn;
-                        //}
-
-                        var commonParentEntityType = entityProjection1.EntityType.GetClosestCommonParent(entityProjection2.EntityType);
-                        _projectionMapping[joinedMapping.Key] = new EntityProjectionExpression(commonParentEntityType, propertyExpressions);
+                         _projectionMapping[joinedMapping.Key] = new EntityProjectionExpression(commonParentEntityType, propertyExpressions);
                         continue;
                     }
 
