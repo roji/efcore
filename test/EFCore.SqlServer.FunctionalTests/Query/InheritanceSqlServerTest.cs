@@ -469,11 +469,11 @@ WHERE ([t].[FoundOn] = CAST(0 AS tinyint)) AND [t].[FoundOn] IS NOT NULL");
             AssertSql(
                 @"SELECT [t].[Species], [t].[CountryId], [t].[Discriminator], [t].[Name], [t].[EagleId], [t].[IsFlightless], [t].[Group], [t].[FoundOn]
 FROM (
-        SELECT [a].[Species], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[EagleId], [a].[IsFlightless], NULL AS [Group], [a].[FoundOn]
+        SELECT [a].[Species], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn], NULL AS [Group]
         FROM [Animal] AS [a]
         WHERE ([a].[Discriminator] IN (N'Eagle', N'Kiwi') AND (([a].[Name] = N'Great spotted kiwi') AND [a].[Name] IS NOT NULL)) AND ([a].[Discriminator] = N'Kiwi')
     UNION
-        SELECT [a0].[Species], [a0].[CountryId], [a0].[Discriminator], [a0].[Name], [a0].[EagleId], [a0].[IsFlightless], [a0].[Group], [a0].[FoundOn]
+        SELECT [a0].[Species], [a0].[CountryId], [a0].[Discriminator], [a0].[Name], [a0].[EagleId], [a0].[IsFlightless], [a0].[FoundOn], [a0].[Group]
         FROM [Animal] AS [a0]
         WHERE [a0].[Discriminator] IN (N'Eagle', N'Kiwi') AND (([a0].[Name] = N'American golden eagle') AND [a0].[Name] IS NOT NULL)
 ) AS [t]
@@ -487,11 +487,11 @@ WHERE [t].[IsFlightless] = CAST(1 AS bit)");
             AssertSql(
                 @"SELECT [t].[Species], [t].[CountryId], [t].[Discriminator], [t].[Name], [t].[EagleId], [t].[IsFlightless], [t].[Group], [t].[FoundOn]
 FROM (
-        SELECT [a].[Species], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[EagleId], [a].[IsFlightless], NULL AS [Group], [a].[FoundOn]
+        SELECT [a].[Species], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn], NULL AS [Group]
         FROM [Animal] AS [a]
         WHERE [a].[Discriminator] = N'Kiwi'
     UNION
-        SELECT [a0].[Species], [a0].[CountryId], [a0].[Discriminator], [a0].[Name], [a0].[EagleId], [a0].[IsFlightless], [a0].[Group], NULL AS [FoundOn]
+        SELECT [a0].[Species], [a0].[CountryId], [a0].[Discriminator], [a0].[Name], [a0].[EagleId], [a0].[IsFlightless], NULL AS [FoundOn], [a0].[Group]
         FROM [Animal] AS [a0]
         WHERE [a0].[Discriminator] = N'Eagle'
 ) AS [t]

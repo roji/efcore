@@ -7,5 +7,6 @@ namespace Microsoft.EntityFrameworkCore.TestModels.Inheritance
     {
         public bool HasMilk { get; set; }
         public int CaffeineGrams { get; set; }
+        public int Type { get; set; }
     }
 }

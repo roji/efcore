@@ -481,14 +481,15 @@ namespace Microsoft.EntityFrameworkCore.Query
         public virtual void Can_union_kiwis_and_eagles_as_birds()
         {
             // Each Union operand has a different type in the hierarchy, so we generate NULL constant projections for
-            // the appropriate missing properties on each side
+            // the appropriate missing properties on each side. Note also that Tea and Lilt have a different number
+            // of extra properties - to make sure we generate the appropriate number of NULLs.
             using (var context = CreateContext())
             {
-                var kiwis = context.Set<Kiwi>();
+                var teas = context.Set<Tea>();
 
-                var eagles = context.Set<Eagle>();
+                var lilts = context.Set<Lilt>();
 
-                var concat = kiwis.Cast<Bird>().Union(eagles).ToList();
+                var concat = teas.Cast<Drink>().Union(lilts).ToList();
 
                 Assert.Equal(2, concat.Count);
             }
