@@ -49,6 +49,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions
         private readonly List<TableReferenceExpression> _tableReferences = new();
         private readonly List<SqlExpression> _groupBy = new();
         private readonly List<OrderingExpression> _orderings = new();
+        private IReadOnlyList<OrderingExpression>? _pendingOrderings;
         private HashSet<string> _usedAliases = new();
 
         private readonly List<(ColumnExpression Column, ValueComparer Comparer)> _identifier = new();
@@ -728,12 +729,15 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions
                                         .Except(innerSelectExpression._childIdentifiers, _identifierComparer)
                                         .Select(e => (e.Column.MakeNullable(), e.Comparer)));
 
+
+                                var innerIdentifierOrderings = new List<OrderingExpression>();
                                 foreach (var identifier in innerSelectExpression._identifier)
                                 {
                                     var updatedColumn = identifier.Column.MakeNullable();
                                     _childIdentifiers.Add((updatedColumn, identifier.Comparer));
-                                    AppendOrdering(new OrderingExpression(updatedColumn, ascending: true));
+                                    innerIdentifierOrderings.Add(new OrderingExpression(updatedColumn, ascending: true));
                                 }
+                                AppendPendingOrderings(innerIdentifierOrderings);
 
                                 var result = new SingleCollectionInfo(
                                     parentIdentifier, outerIdentifier, selfIdentifier,
@@ -1209,9 +1213,39 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions
         {
             Check.NotNull(orderingExpression, nameof(orderingExpression));
 
+            if (_pendingOrderings is not null && _pendingOrderings.Any(o => o.Expression.Equals(orderingExpression.Expression)))
+            {
+                ApplyPendingOrderings();
+                return;
+            }
+
             if (_orderings.FirstOrDefault(o => o.Expression.Equals(orderingExpression.Expression)) == null)
             {
+                ApplyPendingOrderings();
+
                 _orderings.Add(orderingExpression.Update(AssignUniqueAliases(orderingExpression.Expression)));
+            }
+        }
+
+        private void AppendPendingOrderings(IReadOnlyList<OrderingExpression> orderingExpressions)
+        {
+            Check.NotNull(orderingExpressions, nameof(orderingExpressions));
+
+            ApplyPendingOrderings();
+
+            _pendingOrderings = orderingExpressions;
+        }
+
+        private void ApplyPendingOrderings()
+        {
+            if (_pendingOrderings != null)
+            {
+                var pendingOrderings = _pendingOrderings;
+                _pendingOrderings = null;
+                foreach (var ordering in pendingOrderings)
+                {
+                    AppendOrdering(ordering);
+                }
             }
         }
 
