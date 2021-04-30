@@ -369,13 +369,6 @@ namespace Microsoft.Extensions.DependencyInjection
             where TContext : DbContext
             => AddDbContext<TContext, TContext>(serviceCollection, contextLifetime, optionsLifetime);
 
-        // public static IServiceCollection AddDbContext<TContext>(
-        //     this IServiceCollection serviceCollection,
-        //     ServiceLifetime contextLifetime,
-        //     ServiceLifetime optionsLifetime = ServiceLifetime.Scoped)
-        //     where TContext : DbContext
-        //     => AddDbContext<TContext, TContext>(serviceCollection, contextLifetime, optionsLifetime);
-
         /// <summary>
         ///     <para>
         ///         Registers the given context as a service in the <see cref="IServiceCollection" />.
