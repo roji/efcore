@@ -18,7 +18,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public class FromSqlExpression : RootReferenceExpression, ICloneable, IPrintableExpression
+    public class FromSqlExpression : RootReferenceExpression, IPrintableExpression
     {
         /// <summary>
         ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -80,9 +80,6 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
         /// <inheritdoc />
         public override Type Type
             => typeof(object);
-
-        /// <inheritdoc />
-        public virtual object Clone() => new FromSqlExpression(EntityType, Alias, Sql, Arguments);
 
         /// <inheritdoc />
         void IPrintableExpression.Print(ExpressionPrinter expressionPrinter)

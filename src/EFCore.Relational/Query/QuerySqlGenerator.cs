@@ -396,14 +396,14 @@ namespace Microsoft.EntityFrameworkCore.Query
 
                     break;
                 }
+
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
 
-            if (substitutions != null)
-            {
-                // ReSharper disable once CoVariantArrayConversion
-                // InvariantCulture not needed since substitutions are all strings
-                sql = string.Format(sql, substitutions);
-            }
+            // ReSharper disable once CoVariantArrayConversion
+            // InvariantCulture not needed since substitutions are all strings
+            sql = string.Format(sql, substitutions);
 
             _relationalCommandBuilder.AppendLines(sql);
         }

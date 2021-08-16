@@ -137,7 +137,7 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""
 
             Assert.Equal(14, actual.Length);
 
-AssertSql(
+            AssertSql(
                 @"SELECT c
 FROM (
 

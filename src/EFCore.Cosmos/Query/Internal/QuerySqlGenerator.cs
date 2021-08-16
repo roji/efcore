@@ -550,9 +550,6 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
 
             public string GenerateNext()
                 => "@p" + _count++;
-
-            public void Reset()
-                => _count = 0;
         }
     }
 }
