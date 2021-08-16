@@ -225,11 +225,9 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""
             }
 
             AssertSql(
-                @"@p0='CONSH'
-
-SELECT c
+                @"SELECT c
 FROM (
-    SELECT * FROM root c WHERE c[""CustomerID""] = @p0
+    SELECT * FROM root c WHERE c[""CustomerID""] = ""CONSH""
 ) c
 WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""z""))");
         }

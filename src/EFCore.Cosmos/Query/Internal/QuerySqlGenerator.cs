@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
 using Microsoft.EntityFrameworkCore.Cosmos.Internal;
 using Microsoft.EntityFrameworkCore.Cosmos.Storage.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -26,6 +25,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
     /// </summary>
     public class QuerySqlGenerator : SqlExpressionVisitor
     {
+        private readonly ITypeMappingSource _typeMappingSource;
         private readonly IndentedStringBuilder _sqlBuilder = new();
         private IReadOnlyDictionary<string, object> _parameterValues;
         private List<SqlParameter> _sqlParameters;
@@ -65,6 +65,15 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
             { ExpressionType.Negate, "-" },
             { ExpressionType.Not, "~" }
         };
+
+        /// <summary>
+        ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+        ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+        ///     any release. You should only use it directly in your code with extreme caution and knowing that
+        ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+        /// </summary>
+        public QuerySqlGenerator(ITypeMappingSource typeMappingSource)
+            => _typeMappingSource = typeMappingSource;
 
         /// <summary>
         ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -289,29 +298,44 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
 
             var sql = fromSqlExpression.Sql;
 
-            var arguments = fromSqlExpression.Arguments switch
-            {
-                ConstantExpression { Value : object[] constantValues }
-                    => constantValues,
-                ParameterExpression { Name : not null } parameterExpression
-                    when _parameterValues.TryGetValue(parameterExpression.Name, out var parameterValue)
-                    && parameterValue is object[] parameterValues
-                    => parameterValues,
-                _ => null
-            };
+            string[] substitutions;
 
-            if (arguments is not null)
+            switch (fromSqlExpression.Arguments)
             {
-                var substitutions = new string[arguments.Length];
-                for (var i = 0; i < arguments.Length; i++)
+                case ParameterExpression { Name : not null } parameterExpression
+                    when _parameterValues.TryGetValue(parameterExpression.Name, out var parameterValue)
+                    && parameterValue is object[] parameterValues:
                 {
-                    var parameterName = _parameterNameGenerator.GenerateNext();
-                    _sqlParameters.Add(new SqlParameter(parameterName, arguments[i]));
-                    substitutions[i] = parameterName;
+                    substitutions = new string[parameterValues.Length];
+                    for (var i = 0; i < parameterValues.Length; i++)
+                    {
+                        var parameterName = _parameterNameGenerator.GenerateNext();
+                        _sqlParameters.Add(new SqlParameter(parameterName, parameterValues[i]));
+                        substitutions[i] = parameterName;
+                    }
+
+                    break;
                 }
 
-                sql = string.Format(sql, substitutions);
+                case ConstantExpression { Value : object[] constantValues }:
+                {
+                    substitutions = new string[constantValues.Length];
+                    for (var i = 0; i < constantValues.Length; i++)
+                    {
+                        var value = constantValues[i];
+                        substitutions[i] = GenerateConstant(value, _typeMappingSource.FindMapping(value.GetType()));
+                    }
+
+                    break;
+                }
+
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
+
+            // ReSharper disable once CoVariantArrayConversion
+            // InvariantCulture not needed since substitutions are all strings
+            sql = string.Format(sql, substitutions);
 
             _sqlBuilder.AppendLine("(");
 
@@ -430,11 +454,16 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
         {
             Check.NotNull(sqlConstantExpression, nameof(sqlConstantExpression));
 
-            var jToken = GenerateJToken(sqlConstantExpression.Value, sqlConstantExpression.TypeMapping);
-
-            _sqlBuilder.Append(jToken == null ? "null" : jToken.ToString(Formatting.None));
+            _sqlBuilder.Append(GenerateConstant(sqlConstantExpression.Value, sqlConstantExpression.TypeMapping));
 
             return sqlConstantExpression;
+        }
+
+        private string GenerateConstant(object value, CoreTypeMapping typeMapping)
+        {
+            var jToken = GenerateJToken(value, typeMapping);
+
+            return jToken is null ? "null" : jToken.ToString(Formatting.None);
         }
 
         private JToken GenerateJToken(object value, CoreTypeMapping typeMapping)
