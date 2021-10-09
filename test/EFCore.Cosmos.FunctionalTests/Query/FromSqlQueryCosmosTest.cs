@@ -34,7 +34,7 @@ namespace Microsoft.EntityFrameworkCore.Query
         {
             using var context = CreateContext();
             var query = context.Set<Customer>()
-                .FromSqlRaw(@"SELECT * FROM root c WHERE c[""ContactName""] LIKE '%z%'");
+                .FromSqlRaw(@"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""ContactName""] LIKE '%z%'");
 
             var actual = async
                 ? await query.ToArrayAsync()
@@ -46,9 +46,8 @@ namespace Microsoft.EntityFrameworkCore.Query
             AssertSql(
                 @"SELECT c
 FROM (
-    SELECT * FROM root c WHERE c[""ContactName""] LIKE '%z%'
-) c
-WHERE (c[""Discriminator""] = ""Customer"")");
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""ContactName""] LIKE '%z%'
+) c");
         }
 
         [ConditionalTheory]
@@ -57,7 +56,7 @@ WHERE (c[""Discriminator""] = ""Customer"")");
         {
             using var context = CreateContext();
             var query = context.Set<Customer>().FromSqlRaw(
-                @"SELECT c[""id""], c[""Discriminator""], c[""Region""], c[""PostalCode""], c[""Phone""], c[""Fax""], c[""CustomerID""], c[""Country""], c[""ContactTitle""], c[""ContactName""], c[""CompanyName""], c[""City""], c[""Address""] FROM root c");
+                @"SELECT c[""id""], c[""Discriminator""], c[""Region""], c[""PostalCode""], c[""Phone""], c[""Fax""], c[""CustomerID""], c[""Country""], c[""ContactTitle""], c[""ContactName""], c[""CompanyName""], c[""City""], c[""Address""] FROM root c WHERE c[""Discriminator""] = ""Customer""");
 
             var actual = async
                 ? await query.ToArrayAsync()
@@ -69,9 +68,8 @@ WHERE (c[""Discriminator""] = ""Customer"")");
             AssertSql(
                 @"SELECT c
 FROM (
-    SELECT c[""id""], c[""Discriminator""], c[""Region""], c[""PostalCode""], c[""Phone""], c[""Fax""], c[""CustomerID""], c[""Country""], c[""ContactTitle""], c[""ContactName""], c[""CompanyName""], c[""City""], c[""Address""] FROM root c
-) c
-WHERE (c[""Discriminator""] = ""Customer"")");
+    SELECT c[""id""], c[""Discriminator""], c[""Region""], c[""PostalCode""], c[""Phone""], c[""Fax""], c[""CustomerID""], c[""Country""], c[""ContactTitle""], c[""ContactName""], c[""CompanyName""], c[""City""], c[""Address""] FROM root c WHERE c[""Discriminator""] = ""Customer""
+) c");
         }
 
         [ConditionalTheory]
@@ -80,7 +78,7 @@ WHERE (c[""Discriminator""] = ""Customer"")");
         {
             using var context = CreateContext();
             var query = context.Set<Customer>().FromSqlRaw(
-                @"SELECT c[""id""], c[""Discriminator""], c[""Region""], c[""PostalCode""], c[""PostalCode""] AS Foo, c[""Phone""], c[""Fax""], c[""CustomerID""], c[""Country""], c[""ContactTitle""], c[""ContactName""], c[""CompanyName""], c[""City""], c[""Address""] FROM root c");
+                @"SELECT c[""id""], c[""Discriminator""], c[""Region""], c[""PostalCode""], c[""PostalCode""] AS Foo, c[""Phone""], c[""Fax""], c[""CustomerID""], c[""Country""], c[""ContactTitle""], c[""ContactName""], c[""CompanyName""], c[""City""], c[""Address""] FROM root c WHERE c[""Discriminator""] = ""Customer""");
 
             var actual = async
                 ? await query.ToArrayAsync()
@@ -92,9 +90,8 @@ WHERE (c[""Discriminator""] = ""Customer"")");
             AssertSql(
                 @"SELECT c
 FROM (
-    SELECT c[""id""], c[""Discriminator""], c[""Region""], c[""PostalCode""], c[""PostalCode""] AS Foo, c[""Phone""], c[""Fax""], c[""CustomerID""], c[""Country""], c[""ContactTitle""], c[""ContactName""], c[""CompanyName""], c[""City""], c[""Address""] FROM root c
-) c
-WHERE (c[""Discriminator""] = ""Customer"")");
+    SELECT c[""id""], c[""Discriminator""], c[""Region""], c[""PostalCode""], c[""PostalCode""] AS Foo, c[""Phone""], c[""Fax""], c[""CustomerID""], c[""Country""], c[""ContactTitle""], c[""ContactName""], c[""CompanyName""], c[""City""], c[""Address""] FROM root c WHERE c[""Discriminator""] = ""Customer""
+) c");
         }
 
         [ConditionalTheory]
@@ -103,7 +100,7 @@ WHERE (c[""Discriminator""] = ""Customer"")");
         {
             using var context = CreateContext();
             var query = context.Set<Customer>().FromSqlRaw(
-                @"SELECT * FROM root c").Where(c => c.ContactName.Contains("z"));
+                @"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer""").Where(c => c.ContactName.Contains("z"));
 
             var sql = query.ToQueryString();
 
@@ -117,9 +114,9 @@ WHERE (c[""Discriminator""] = ""Customer"")");
             AssertSql(
                 @"SELECT c
 FROM (
-    SELECT * FROM root c
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer""
 ) c
-WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""z""))");
+WHERE CONTAINS(c[""ContactName""], ""z"")");
         }
 
         [ConditionalTheory]
@@ -128,7 +125,7 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""
         {
             using var context = CreateContext();
             var query = context.Set<Customer>().FromSqlRaw(
-                    _eol + "    " + _eol + _eol + _eol + "SELECT" + _eol + "* FROM root c")
+                    _eol + "    " + _eol + _eol + _eol + "SELECT" + _eol + @"* FROM root c WHERE c[""Discriminator""] = ""Customer""")
                 .Where(c => c.ContactName.Contains("z"));
 
             var actual = async
@@ -141,13 +138,13 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""
                 @"SELECT c
 FROM (
 
-        
+
 
 
     SELECT
-    * FROM root c
+    * FROM root c WHERE c[""Discriminator""] = ""Customer""
 ) c
-WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""z""))");
+WHERE CONTAINS(c[""ContactName""], ""z"")");
         }
 
         [ConditionalTheory]
@@ -158,7 +155,7 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""
             {
                 var query = EF.CompileAsyncQuery(
                     (NorthwindContext context) => context.Set<Customer>()
-                        .FromSqlRaw(@"SELECT * FROM root c")
+                        .FromSqlRaw(@"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer""")
                         .Where(c => c.ContactName.Contains("z")));
 
                 using (var context = CreateContext())
@@ -172,7 +169,7 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""
             {
                 var query = EF.CompileQuery(
                     (NorthwindContext context) => context.Set<Customer>()
-                        .FromSqlRaw(@"SELECT * FROM root c")
+                        .FromSqlRaw(@"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer""")
                         .Where(c => c.ContactName.Contains("z")));
 
                 using (var context = CreateContext())
@@ -186,9 +183,9 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""
             AssertSql(
                 @"SELECT c
 FROM (
-    SELECT * FROM root c
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer""
 ) c
-WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""z""))");
+WHERE CONTAINS(c[""ContactName""], ""z"")");
         }
 
         [ConditionalTheory]
@@ -199,7 +196,7 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""
             {
                 var query = EF.CompileAsyncQuery(
                     (NorthwindContext context) => context.Set<Customer>()
-                        .FromSqlRaw(@"SELECT * FROM root c WHERE c[""CustomerID""] = {0}", "CONSH")
+                        .FromSqlRaw(@"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""CustomerID""] = {0}", "CONSH")
                         .Where(c => c.ContactName.Contains("z")));
 
                 using (var context = CreateContext())
@@ -213,7 +210,7 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""
             {
                 var query = EF.CompileQuery(
                     (NorthwindContext context) => context.Set<Customer>()
-                        .FromSqlRaw(@"SELECT * FROM root c WHERE c[""CustomerID""] = {0}", "CONSH")
+                        .FromSqlRaw(@"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""CustomerID""] = {0}", "CONSH")
                         .Where(c => c.ContactName.Contains("z")));
 
                 using (var context = CreateContext())
@@ -227,9 +224,9 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""
             AssertSql(
                 @"SELECT c
 FROM (
-    SELECT * FROM root c WHERE c[""CustomerID""] = ""CONSH""
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""CustomerID""] = ""CONSH""
 ) c
-WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""z""))");
+WHERE CONTAINS(c[""ContactName""], ""z"")");
         }
 
         [ConditionalTheory]
@@ -240,7 +237,7 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND CONTAINS(c[""ContactName""], ""
             var query = context.Set<Customer>().FromSqlRaw(
                 @"SELECT *
 FROM root c
-WHERE c[""City""] = 'London'");
+WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = 'London'");
 
             var actual = async
                 ? await query.ToArrayAsync()
@@ -254,9 +251,8 @@ WHERE c[""City""] = 'London'");
 FROM (
     SELECT *
     FROM root c
-    WHERE c[""City""] = 'London'
-) c
-WHERE (c[""Discriminator""] = ""Customer"")");
+    WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = 'London'
+) c");
         }
 
         [ConditionalTheory]
@@ -266,7 +262,8 @@ WHERE (c[""Discriminator""] = ""Customer"")");
             using var context = CreateContext();
             var query = context.Set<Customer>().FromSqlRaw(
                     @"SELECT *
-FROM root c")
+FROM root c
+WHERE c[""Discriminator""] = ""Customer""")
                 .Where(c => c.City == "London");
 
             var actual = async
@@ -281,8 +278,9 @@ FROM root c")
 FROM (
     SELECT *
     FROM root c
+    WHERE c[""Discriminator""] = ""Customer""
 ) c
-WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""City""] = ""London""))");
+WHERE (c[""City""] = ""London"")");
         }
 
         [ConditionalTheory]
@@ -294,7 +292,7 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""City""] = ""London""))");
 
             using var context = CreateContext();
             var query = context.Set<Customer>().FromSqlRaw(
-                    @"SELECT * FROM root c WHERE c[""City""] = {0} AND c[""ContactTitle""] = {1}", city,
+                    @"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = {0} AND c[""ContactTitle""] = {1}", city,
                     contactTitle);
 
             var actual = async
@@ -311,9 +309,8 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""City""] = ""London""))");
 
 SELECT c
 FROM (
-    SELECT * FROM root c WHERE c[""City""] = @p0 AND c[""ContactTitle""] = @p1
-) c
-WHERE (c[""Discriminator""] = ""Customer"")");
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = @p0 AND c[""ContactTitle""] = @p1
+) c");
         }
 
         [ConditionalTheory]
@@ -322,7 +319,7 @@ WHERE (c[""Discriminator""] = ""Customer"")");
         {
             using var context = CreateContext();
             var query = context.Set<Customer>().FromSqlRaw(
-                    @"SELECT * FROM root c WHERE c[""City""] = {0} AND c[""ContactTitle""] = {1}", "London",
+                    @"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = {0} AND c[""ContactTitle""] = {1}", "London",
                     "Sales Representative");
 
             var actual = async
@@ -339,9 +336,8 @@ WHERE (c[""Discriminator""] = ""Customer"")");
 
 SELECT c
 FROM (
-    SELECT * FROM root c WHERE c[""City""] = @p0 AND c[""ContactTitle""] = @p1
-) c
-WHERE (c[""Discriminator""] = ""Customer"")");
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = @p0 AND c[""ContactTitle""] = @p1
+) c");
         }
 
         [ConditionalTheory]
@@ -352,7 +348,7 @@ WHERE (c[""Discriminator""] = ""Customer"")");
 
             using var context = CreateContext();
             var query = context.Set<Employee>().FromSqlRaw(
-                    @"SELECT * FROM root c WHERE c[""ReportsTo""] = {0} OR (IS_NULL(c[""ReportsTo""]) AND IS_NULL({0}))", reportsTo);
+                    @"SELECT * FROM root c WHERE c[""Discriminator""] = ""Employee"" AND c[""ReportsTo""] = {0} OR (IS_NULL(c[""ReportsTo""]) AND IS_NULL({0}))", reportsTo);
 
             var actual = async
                 ? await query.ToArrayAsync()
@@ -365,9 +361,8 @@ WHERE (c[""Discriminator""] = ""Customer"")");
 
 SELECT c
 FROM (
-    SELECT * FROM root c WHERE c[""ReportsTo""] = @p0 OR (IS_NULL(c[""ReportsTo""]) AND IS_NULL(@p0))
-) c
-WHERE (c[""Discriminator""] = ""Employee"")");
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Employee"" AND c[""ReportsTo""] = @p0 OR (IS_NULL(c[""ReportsTo""]) AND IS_NULL(@p0))
+) c");
         }
 
         [ConditionalTheory]
@@ -379,7 +374,7 @@ WHERE (c[""Discriminator""] = ""Employee"")");
 
             using var context = CreateContext();
             var query = context.Set<Customer>().FromSqlRaw(
-                    @"SELECT * FROM root c WHERE c[""City""] = {0}", city)
+                    @"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = {0}", city)
                 .Where(c => c.ContactTitle == contactTitle);
             var queryString = query.ToQueryString();
 
@@ -397,9 +392,9 @@ WHERE (c[""Discriminator""] = ""Employee"")");
 
 SELECT c
 FROM (
-    SELECT * FROM root c WHERE c[""City""] = @p0
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = @p0
 ) c
-WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""ContactTitle""] = @__contactTitle_1))");
+WHERE (c[""ContactTitle""] = @__contactTitle_1)");
         }
 
         [ConditionalTheory]
@@ -408,7 +403,7 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""ContactTitle""] = @__conta
         {
             using var context = CreateContext();
             var query = context.Set<Customer>()
-                .FromSqlRaw(@"SELECT * FROM root c WHERE c[""City""] = 'London'");
+                .FromSqlRaw(@"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = 'London'");
 
             var actual = async
                 ? await query.ToArrayAsync()
@@ -418,7 +413,7 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""ContactTitle""] = @__conta
             Assert.True(actual.All(c => c.City == "London"));
 
             query = context.Set<Customer>()
-                .FromSqlRaw(@"SELECT * FROM root c WHERE c[""City""] = 'Seattle'");
+                .FromSqlRaw(@"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = 'Seattle'");
 
             actual = async
                 ? await query.ToArrayAsync()
@@ -430,15 +425,13 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""ContactTitle""] = @__conta
             AssertSql(
                 @"SELECT c
 FROM (
-    SELECT * FROM root c WHERE c[""City""] = 'London'
-) c
-WHERE (c[""Discriminator""] = ""Customer"")",
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = 'London'
+) c",
                 //
                 @"SELECT c
 FROM (
-    SELECT * FROM root c WHERE c[""City""] = 'Seattle'
-) c
-WHERE (c[""Discriminator""] = ""Customer"")");
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = 'Seattle'
+) c");
         }
 
         [ConditionalTheory]
@@ -447,7 +440,7 @@ WHERE (c[""Discriminator""] = ""Customer"")");
         {
             var city = "London";
             var contactTitle = "Sales Representative";
-            var sql = @"SELECT * FROM root c WHERE c[""City""] = {0} AND c[""ContactTitle""] = {1}";
+            var sql = @"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = {0} AND c[""ContactTitle""] = {1}";
 
             using var context = CreateContext();
             var query = context.Set<Customer>().FromSqlRaw(sql, city, contactTitle);
@@ -479,18 +472,16 @@ WHERE (c[""Discriminator""] = ""Customer"")");
 
 SELECT c
 FROM (
-    SELECT * FROM root c WHERE c[""City""] = @p0 AND c[""ContactTitle""] = @p1
-) c
-WHERE (c[""Discriminator""] = ""Customer"")",
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = @p0 AND c[""ContactTitle""] = @p1
+) c",
                 //
                 @"@p0='Madrid'
 @p1='Accounting Manager'
 
 SELECT c
 FROM (
-    SELECT * FROM root c WHERE c[""City""] = @p0 AND c[""ContactTitle""] = @p1
-) c
-WHERE (c[""Discriminator""] = ""Customer"")");
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""City""] = @p0 AND c[""ContactTitle""] = @p1
+) c");
         }
 
         [ConditionalTheory]
@@ -498,7 +489,7 @@ WHERE (c[""Discriminator""] = ""Customer"")");
         public virtual async Task FromSqlRaw_queryable_simple_as_no_tracking_not_composed(bool async)
         {
             using var context = CreateContext();
-            var query = context.Set<Customer>().FromSqlRaw(@"SELECT * FROM root c")
+            var query = context.Set<Customer>().FromSqlRaw(@"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer""")
                 .AsNoTracking();
 
             var actual = async
@@ -511,9 +502,8 @@ WHERE (c[""Discriminator""] = ""Customer"")");
             AssertSql(
                 @"SELECT c
 FROM (
-    SELECT * FROM root c
-) c
-WHERE (c[""Discriminator""] = ""Customer"")");
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer""
+) c");
         }
 
         [ConditionalTheory]
@@ -524,7 +514,7 @@ WHERE (c[""Discriminator""] = ""Customer"")");
             var query = context.Set<Product>().FromSqlRaw(
                     @"SELECT *
 FROM root c
-WHERE NOT c[""Discontinued""] AND ((c[""UnitsInStock""] + c[""UnitsOnOrder""]) < c[""ReorderLevel""])")
+WHERE c[""Discriminator""] = ""Customer"" AND NOT c[""Discontinued""] AND ((c[""UnitsInStock""] + c[""UnitsOnOrder""]) < c[""ReorderLevel""])")
                 .Select(p => p.ProductName);
 
             var actual = async
@@ -538,9 +528,8 @@ WHERE NOT c[""Discontinued""] AND ((c[""UnitsInStock""] + c[""UnitsOnOrder""]) <
 FROM (
     SELECT *
     FROM root c
-    WHERE NOT c[""Discontinued""] AND ((c[""UnitsInStock""] + c[""UnitsOnOrder""]) < c[""ReorderLevel""])
-) c
-WHERE (c[""Discriminator""] = ""Product"")");
+    WHERE c[""Discriminator""] = ""Customer"" AND NOT c[""Discontinued""] AND ((c[""UnitsInStock""] + c[""UnitsOnOrder""]) < c[""ReorderLevel""])
+) c");
         }
 
         [ConditionalTheory]
@@ -548,7 +537,7 @@ WHERE (c[""Discriminator""] = ""Product"")");
         public virtual async Task FromSqlRaw_composed_with_nullable_predicate(bool async)
         {
             using var context = CreateContext();
-            var query = context.Set<Customer>().FromSqlRaw(@"SELECT * FROM root c")
+            var query = context.Set<Customer>().FromSqlRaw(@"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer""")
                 .Where(c => c.ContactName == c.CompanyName);
 
             var actual = async
@@ -560,9 +549,9 @@ WHERE (c[""Discriminator""] = ""Product"")");
             AssertSql(
                 @"SELECT c
 FROM (
-    SELECT * FROM root c
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer""
 ) c
-WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""ContactName""] = c[""CompanyName""]))");
+WHERE (c[""ContactName""] = c[""CompanyName""])");
         }
 
         [ConditionalTheory]
@@ -572,7 +561,7 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""ContactName""] = c[""Compa
             using var context = CreateContext();
             var propertyName = "OrderID";
             var max = 10250;
-            var query = context.Orders.FromSqlRaw($@"SELECT * FROM root c WHERE c[""{propertyName}""] < {{0}}", max);
+            var query = context.Orders.FromSqlRaw($@"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer"" AND c[""{propertyName}""] < {{0}}", max);
 
             var actual = async
                 ? await query.ToListAsync()
@@ -586,7 +575,7 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""ContactName""] = c[""Compa
         public virtual async Task FromSqlRaw_queryable_simple_projection_not_composed(bool async)
         {
             using var context = CreateContext();
-            var query = context.Set<Customer>().FromSqlRaw(@"SELECT * FROM root c")
+            var query = context.Set<Customer>().FromSqlRaw(@"SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer""")
                 .Select(
                     c => new { c.CustomerID, c.City })
                 .AsNoTracking();
@@ -601,9 +590,8 @@ WHERE ((c[""Discriminator""] = ""Customer"") AND (c[""ContactName""] = c[""Compa
             AssertSql(
                 @"SELECT c[""CustomerID""], c[""City""]
 FROM (
-    SELECT * FROM root c
-) c
-WHERE (c[""Discriminator""] = ""Customer"")");
+    SELECT * FROM root c WHERE c[""Discriminator""] = ""Customer""
+) c");
         }
 
         private void AssertSql(params string[] expected)
