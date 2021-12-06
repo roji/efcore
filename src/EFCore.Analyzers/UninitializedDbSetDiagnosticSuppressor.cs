@@ -28,6 +28,8 @@ public sealed class UninitializedDbSetDiagnosticSuppressor : DiagnosticSuppresso
 
         foreach (var diagnostic in context.ReportedDiagnostics)
         {
+            context.ReportSuppression(Suppression.Create(SupportedSuppressions[0], diagnostic));
+
             // We have an warning about an uninitialized non-nullable property.
             // Get the node, and make sure it's a property who's type syntactically contains DbSet (fast check before getting the
             // semantic model, which is heavier).

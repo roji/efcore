@@ -1,8 +1,10 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Microsoft.EntityFrameworkCore.TestUtilities;
 
@@ -76,11 +78,15 @@ public class BuildSource
             references.AddRange(reference.References);
         }
 
-        var compilation = CSharpCompilation.Create(
+        var compilationWithAnalyzers = CSharpCompilation.Create(
             projectName,
             Sources.Select(s => SyntaxFactory.ParseSyntaxTree(s.Value).WithFilePath(s.Key)),
             references,
-            CreateOptions());
+            CreateOptions())
+            .WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new UninitializedDbSetDiagnosticSuppressor()));
+
+        var diagnostics = compilationWithAnalyzers.GetAllDiagnosticsAsync().Result;
+        var compilation = compilationWithAnalyzers.Compilation;
 
         Assembly assembly;
         using (var stream = new MemoryStream())

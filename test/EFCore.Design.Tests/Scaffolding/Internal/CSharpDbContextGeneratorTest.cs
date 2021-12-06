@@ -181,7 +181,7 @@ namespace TestNamespace
                 },
                 code =>
                 {
-                    Assert.Contains("DbSet<Entity> Entity { get; set; } = null!;", code.ContextFile.Code);
+                    Assert.Contains("DbSet<Entity> Entity { get; set; }", code.ContextFile.Code);
                 },
                 null);
 

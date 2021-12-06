@@ -44,6 +44,7 @@ public abstract class ModelCodeGeneratorTestBase
             References =
             {
                 BuildReference.ByName("Microsoft.EntityFrameworkCore.Abstractions"),
+                BuildReference.ByName("Microsoft.EntityFrameworkCore.Analyzers"),
                 BuildReference.ByName("Microsoft.EntityFrameworkCore"),
                 BuildReference.ByName("Microsoft.EntityFrameworkCore.Relational"),
                 BuildReference.ByName("Microsoft.EntityFrameworkCore.SqlServer")

@@ -189,14 +189,8 @@ public class CSharpDbContextGenerator : ICSharpDbContextGenerator
                 continue;
             }
 
-            _builder.Append($"public virtual DbSet<{entityType.Name}> {entityType.GetDbSetName()} {{ get; set; }}");
+            _builder.AppendLine($"public virtual DbSet<{entityType.Name}> {entityType.GetDbSetName()} {{ get; set; }}");
 
-            if (_useNullableReferenceTypes)
-            {
-                _builder.Append(" = null!;");
-            }
-
-            _builder.AppendLine();
             generated = true;
         }
 

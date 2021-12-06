@@ -32,6 +32,30 @@ public class Blog
     }
 
     [ConditionalFact]
+    public async Task DbSet_property_on_DbContext_with_ctor_is_suppressed()
+    {
+        var source = @"
+public class MyDbContext : Microsoft.EntityFrameworkCore.DbContext
+{
+    public Microsoft.EntityFrameworkCore.DbSet<Blog> Blogs { get; set; }
+
+    public MyDbContext()
+    {
+    }
+}
+
+public class Blog
+{
+    public int Id { get; set; }
+}";
+
+        var diagnostic = Assert.Single(await GetDiagnosticsFullSourceAsync(source));
+
+        Assert.Equal("CS8618", diagnostic.Id);
+        Assert.True(diagnostic.IsSuppressed);
+    }
+
+    [ConditionalFact]
     public async Task Non_public_DbSet_property_on_DbContext_is_suppressed()
     {
         var source = @"
