@@ -152,6 +152,7 @@ public class RelationalModel : Annotatable, IRelationalModel
         {
             PopulateRowInternalForeignKeys(table);
             PopulateConstraints(table, designTime);
+            PopulateTriggers(table);
 
             if (relationalAnnotationProvider != null)
             {
@@ -179,9 +180,13 @@ public class RelationalModel : Annotatable, IRelationalModel
                 {
                     foreach (var checkConstraint in table.CheckConstraints.Values)
                     {
-                        checkConstraint.AddAnnotations(
-                            relationalAnnotationProvider.For(checkConstraint, designTime));
+                        checkConstraint.AddAnnotations(relationalAnnotationProvider.For(checkConstraint, designTime));
                     }
+                }
+
+                foreach (var trigger in table.Triggers.Values)
+                {
+                    ((AnnotatableBase)trigger).AddAnnotations(relationalAnnotationProvider.For(trigger, designTime));
                 }
 
                 table.AddAnnotations(relationalAnnotationProvider.For(table, designTime));
@@ -982,6 +987,35 @@ public class RelationalModel : Annotatable, IRelationalModel
                     {
                         table.CheckConstraints.Add(name, (CheckConstraint)checkConstraint);
                     }
+                }
+            }
+        }
+    }
+
+    private static void PopulateTriggers(Table table)
+    {
+        var storeObject = StoreObjectIdentifier.Table(table.Name, table.Schema);
+        foreach (var entityTypeMapping in ((ITable)table).EntityTypeMappings)
+        {
+            if (!entityTypeMapping.IncludesDerivedTypes
+                && entityTypeMapping.EntityType.GetTableMappings().Any(m => m.IncludesDerivedTypes))
+            {
+                continue;
+            }
+
+            var entityType = entityTypeMapping.EntityType;
+
+            foreach (var trigger in entityType.GetTriggers())
+            {
+                var name = trigger.GetName(storeObject);
+                if (name == null)
+                {
+                    continue;
+                }
+
+                if (!table.Triggers.ContainsKey(name))
+                {
+                    table.Triggers.Add(name, trigger);
                 }
             }
         }

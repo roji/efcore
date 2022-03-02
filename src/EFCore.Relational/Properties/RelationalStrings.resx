@@ -127,6 +127,9 @@
   <data name="CannotChangeWhenOpen" xml:space="preserve">
     <value>The instance of DbConnection is currently in use. The connection can only be changed when the existing connection is not being used.</value>
   </data>
+  <data name="CannotDefineTriggerWithoutTableName" xml:space="preserve">
+    <value>Cannot define a trigger without specifying the table name on which it should be defined.</value>
+  </data>
   <data name="ClientGroupByNotSupported" xml:space="preserve">
     <value>Unable to translate the given 'GroupBy' pattern. Call 'AsEnumerable' before 'GroupBy' to evaluate it client-side.</value>
   </data>
@@ -312,6 +315,9 @@
   </data>
   <data name="DuplicateKeyTableMismatch" xml:space="preserve">
     <value>The keys {keyProperties1} on '{entityType1}' and {keyProperties2} on '{entityType2}' are both mapped to '{keyName}', but on different tables ('{table1}' and '{table2}').</value>
+  </data>
+  <data name="DuplicateTrigger" xml:space="preserve">
+    <value>The trigger '{trigger}' cannot be added to the entity type '{entityType}' because another trigger with the same name already exists on entity type '{conflictingEntityType}'.</value>
   </data>
   <data name="EitherOfTwoValuesMustBeNull" xml:space="preserve">
     <value>Either {param1} or {param2} must be null.</value>

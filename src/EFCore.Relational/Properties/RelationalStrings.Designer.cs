@@ -46,6 +46,12 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
             => GetString("CannotChangeWhenOpen");
 
         /// <summary>
+        ///     Cannot define a trigger without specifying the table name on which it should be defined.
+        /// </summary>
+        public static string CannotDefineTriggerWithoutTableName
+            => GetString("CannotDefineTriggerWithoutTableName");
+
+        /// <summary>
         ///     Unable to translate the given 'GroupBy' pattern. Call 'AsEnumerable' before 'GroupBy' to evaluate it client-side.
         /// </summary>
         public static string ClientGroupByNotSupported
@@ -532,6 +538,14 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
             => string.Format(
                 GetString("DuplicateKeyTableMismatch", nameof(keyProperties1), nameof(entityType1), nameof(keyProperties2), nameof(entityType2), nameof(keyName), nameof(table1), nameof(table2)),
                 keyProperties1, entityType1, keyProperties2, entityType2, keyName, table1, table2);
+
+        /// <summary>
+        ///     The trigger '{trigger}' cannot be added to the entity type '{entityType}' because another trigger with the same name already exists on entity type '{conflictingEntityType}'.
+        /// </summary>
+        public static string DuplicateTrigger(object? trigger, object? entityType, object? conflictingEntityType)
+            => string.Format(
+                GetString("DuplicateTrigger", nameof(trigger), nameof(entityType), nameof(conflictingEntityType)),
+                trigger, entityType, conflictingEntityType);
 
         /// <summary>
         ///     Either {param1} or {param2} must be null.

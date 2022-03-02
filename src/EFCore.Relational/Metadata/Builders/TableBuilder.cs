@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.ComponentModel;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -58,6 +59,33 @@ public class TableBuilder
         Metadata.SetIsTableExcludedFromMigrations(excluded);
 
         return this;
+    }
+
+    /// <summary>
+    ///     Configures a database trigger on the table.
+    /// </summary>
+    /// <param name="name">The name of the trigger.</param>
+    /// <returns>A builder that can be used to configure the database trigger.</returns>
+    public virtual TriggerBuilder HasTrigger(string name)
+        => new(HasTrigger(Metadata, name, ConfigurationSource.Explicit));
+
+    private Trigger HasTrigger(IMutableEntityType entityType, string name, ConfigurationSource configurationSource)
+    {
+        Check.NotEmpty(name, nameof(name));
+
+        if (Name is null)
+        {
+            throw new InvalidOperationException(RelationalStrings.CannotDefineTriggerWithoutTableName);
+        }
+
+        var trigger = (Trigger?)Trigger.FindTrigger(entityType, name);
+        if (trigger != null)
+        {
+            trigger.UpdateConfigurationSource(configurationSource);
+            return trigger;
+        }
+
+        return new Trigger(entityType, name, Name, Schema, configurationSource);
     }
 
     #region Hidden System.Object members
