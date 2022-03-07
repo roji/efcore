@@ -41,6 +41,6 @@ public class SingularModificationCommandBatch : AffectedCountModificationCommand
     /// <returns>
     ///     <see langword="true" />
     /// </returns>
-    protected override bool IsCommandTextValid()
+    protected override bool IsBatchValid()
         => true;
 }

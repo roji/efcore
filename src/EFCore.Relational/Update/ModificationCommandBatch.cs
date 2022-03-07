@@ -31,7 +31,7 @@ public abstract class ModificationCommandBatch
     ///     <see langword="true" /> if the command was successfully added; <see langword="false" /> if there was no
     ///     room in the current batch to add the command and it must instead be added to a new batch.
     /// </returns>
-    public abstract bool AddCommand(IReadOnlyModificationCommand modificationCommand);
+    public abstract bool TryAddCommand(IReadOnlyModificationCommand modificationCommand);
 
     /// <summary>
     ///     Indicates that no more commands will be added to this batch, and prepares it for execution.

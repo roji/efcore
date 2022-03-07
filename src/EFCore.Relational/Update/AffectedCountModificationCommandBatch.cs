@@ -180,7 +180,7 @@ public abstract class AffectedCountModificationCommandBatch : ReaderModification
             }
 
             var tableModification = ModificationCommands[
-                ResultsPositionalMappingEnabled?[resultSetIndex] == true
+                ResultsPositionalMappingEnabled?.Length > resultSetIndex && ResultsPositionalMappingEnabled[resultSetIndex]
                     ? startResultSetIndex + reader.DbDataReader.GetInt32(reader.DbDataReader.FieldCount - 1)
                     : resultSetIndex];
 
@@ -231,7 +231,7 @@ public abstract class AffectedCountModificationCommandBatch : ReaderModification
             }
 
             var tableModification = ModificationCommands[
-                ResultsPositionalMappingEnabled?[resultSetIndex] == true
+                ResultsPositionalMappingEnabled?.Length > resultSetIndex && ResultsPositionalMappingEnabled[resultSetIndex]
                     ? startResultSetIndex + reader.DbDataReader.GetInt32(reader.DbDataReader.FieldCount - 1)
                     : resultSetIndex];
 

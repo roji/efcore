@@ -20,16 +20,15 @@ public class ReaderModificationCommandBatchTest
         var command = CreateModificationCommand("T1", null, true, columnModifications: null);
 
         var batch = new ModificationCommandBatchFake();
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.ShouldAddCommand = true;
-        batch.ShouldValidateSql = true;
 
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.Complete();
 
         Assert.Equal(2, batch.ModificationCommands.Count);
         Assert.Same(command, batch.ModificationCommands[0]);
-        Assert.Equal("..", batch.CommandText);
+        Assert.Equal(2, batch.FakeSqlGenerator.AppendUpdateOperationCalls);
     }
 
     [ConditionalFact]
@@ -38,15 +37,14 @@ public class ReaderModificationCommandBatchTest
         var command = CreateModificationCommand("T1", null, true, columnModifications: null);
 
         var batch = new ModificationCommandBatchFake();
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.ShouldAddCommand = false;
-        batch.ShouldValidateSql = true;
 
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.Complete();
 
         Assert.Equal(1, batch.ModificationCommands.Count);
-        Assert.Equal(".", batch.CommandText);
+        Assert.Equal(1, batch.FakeSqlGenerator.AppendUpdateOperationCalls);
     }
 
     [ConditionalFact]
@@ -55,15 +53,20 @@ public class ReaderModificationCommandBatchTest
         var command = CreateModificationCommand("T1", null, true, columnModifications: null);
 
         var batch = new ModificationCommandBatchFake();
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.ShouldAddCommand = true;
-        batch.ShouldValidateSql = false;
+        batch.MaxValidSql = batch.CommandText.Length;
 
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.Complete();
 
         Assert.Equal(1, batch.ModificationCommands.Count);
-        Assert.Equal(".", batch.CommandText);
+        Assert.Equal(@"UPDATE ""T1"" SET ;
+SELECT provider_specific_rowcount();
+
+",
+            batch.CommandText,
+            ignoreLineEndingDifferences: true);
     }
 
     [ConditionalFact]
@@ -74,16 +77,12 @@ public class ReaderModificationCommandBatchTest
         var command = CreateModificationCommand("T1", null, new ParameterNameGenerator().GenerateNext, true, null);
         command.AddEntry(entry, true);
 
-        var fakeSqlGenerator = new FakeSqlGenerator(
-            RelationalTestHelpers.Instance.CreateContextServices().GetRequiredService<UpdateSqlGeneratorDependencies>());
-        var batch = new ModificationCommandBatchFake(fakeSqlGenerator);
-        batch.AddCommand(command);
+        var batch = new ModificationCommandBatchFake();
+        batch.TryAddCommand(command);
         batch.Complete();
 
-        batch.UpdateCachedCommandTextBase(0);
-
-        Assert.Equal(1, fakeSqlGenerator.AppendBatchHeaderCalls);
-        Assert.Equal(1, fakeSqlGenerator.AppendInsertOperationCalls);
+        Assert.Equal(1, batch.FakeSqlGenerator.AppendBatchHeaderCalls);
+        Assert.Equal(1, batch.FakeSqlGenerator.AppendInsertOperationCalls);
     }
 
     [ConditionalFact]
@@ -94,16 +93,12 @@ public class ReaderModificationCommandBatchTest
         var command = CreateModificationCommand("T1", null, new ParameterNameGenerator().GenerateNext, true, null);
         command.AddEntry(entry, true);
 
-        var fakeSqlGenerator = new FakeSqlGenerator(
-            RelationalTestHelpers.Instance.CreateContextServices().GetRequiredService<UpdateSqlGeneratorDependencies>());
-        var batch = new ModificationCommandBatchFake(fakeSqlGenerator);
-        batch.AddCommand(command);
-
-        batch.UpdateCachedCommandTextBase(0);
+        var batch = new ModificationCommandBatchFake();
+        batch.TryAddCommand(command);
         batch.Complete();
 
-        Assert.Equal(1, fakeSqlGenerator.AppendBatchHeaderCalls);
-        Assert.Equal(1, fakeSqlGenerator.AppendUpdateOperationCalls);
+        Assert.Equal(1, batch.FakeSqlGenerator.AppendBatchHeaderCalls);
+        Assert.Equal(1, batch.FakeSqlGenerator.AppendUpdateOperationCalls);
     }
 
     [ConditionalFact]
@@ -114,16 +109,12 @@ public class ReaderModificationCommandBatchTest
         var command = CreateModificationCommand("T1", null, new ParameterNameGenerator().GenerateNext, true, null);
         command.AddEntry(entry, true);
 
-        var fakeSqlGenerator = new FakeSqlGenerator(
-            RelationalTestHelpers.Instance.CreateContextServices().GetRequiredService<UpdateSqlGeneratorDependencies>());
-        var batch = new ModificationCommandBatchFake(fakeSqlGenerator);
-        batch.AddCommand(command);
-
-        batch.UpdateCachedCommandTextBase(0);
+        var batch = new ModificationCommandBatchFake();
+        batch.TryAddCommand(command);
         batch.Complete();
 
-        Assert.Equal(1, fakeSqlGenerator.AppendBatchHeaderCalls);
-        Assert.Equal(1, fakeSqlGenerator.AppendDeleteOperationCalls);
+        Assert.Equal(1, batch.FakeSqlGenerator.AppendBatchHeaderCalls);
+        Assert.Equal(1, batch.FakeSqlGenerator.AppendDeleteOperationCalls);
     }
 
     [ConditionalFact]
@@ -131,25 +122,25 @@ public class ReaderModificationCommandBatchTest
     {
         var entry = CreateEntry(EntityState.Added);
 
-        var command = CreateModificationCommand("T1", null, new ParameterNameGenerator().GenerateNext, true, null);
-        command.AddEntry(entry, true);
+        var parameterNameGenerator = new ParameterNameGenerator();
+        var command1 = CreateModificationCommand("T1", null, parameterNameGenerator.GenerateNext, true, null);
+        command1.AddEntry(entry, true);
+        var command2 = CreateModificationCommand("T1", null, parameterNameGenerator.GenerateNext, true, null);
+        command2.AddEntry(entry, true);
 
-        var fakeSqlGenerator = new FakeSqlGenerator(
-            RelationalTestHelpers.Instance.CreateContextServices().GetRequiredService<UpdateSqlGeneratorDependencies>());
-        var batch = new ModificationCommandBatchFake(fakeSqlGenerator);
-        batch.AddCommand(command);
-        batch.AddCommand(command);
+        var batch = new ModificationCommandBatchFake();
+        batch.TryAddCommand(command1);
+        batch.TryAddCommand(command2);
         batch.Complete();
 
-        Assert.Equal("..", batch.CommandText);
-
-        Assert.Equal(1, fakeSqlGenerator.AppendBatchHeaderCalls);
+        Assert.Equal(1, batch.FakeSqlGenerator.AppendBatchHeaderCalls);
+        Assert.Equal(2, batch.FakeSqlGenerator.AppendInsertOperationCalls);
     }
 
     [ConditionalFact]
     public async Task ExecuteAsync_executes_batch_commands_and_consumes_reader()
     {
-        var entry = CreateEntry(EntityState.Added);
+        var entry = CreateEntry(EntityState.Added, generateKeyValues: true);
 
         var command = CreateModificationCommand("T1", null, new ParameterNameGenerator().GenerateNext, true, null);
         command.AddEntry(entry, true);
@@ -159,7 +150,7 @@ public class ReaderModificationCommandBatchTest
         var connection = CreateConnection(dbDataReader);
 
         var batch = new ModificationCommandBatchFake();
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.Complete();
 
         await batch.ExecuteAsync(connection);
@@ -182,7 +173,7 @@ public class ReaderModificationCommandBatchTest
                 new[] { "Col1" }, new List<object[]> { new object[] { 42 } }));
 
         var batch = new ModificationCommandBatchFake();
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.Complete();
 
         await batch.ExecuteAsync(connection);
@@ -206,7 +197,7 @@ public class ReaderModificationCommandBatchTest
                 new[] { "Col1", "Col2" }, new List<object[]> { new object[] { 42, "FortyTwo" } }));
 
         var batch = new ModificationCommandBatchFake();
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.Complete();
 
         await batch.ExecuteAsync(connection);
@@ -219,7 +210,7 @@ public class ReaderModificationCommandBatchTest
     public async Task ExecuteAsync_saves_store_generated_values_when_updating()
     {
         var entry = CreateEntry(
-            EntityState.Modified, generateKeyValues: true, computeNonKeyValue: true);
+            EntityState.Modified, generateKeyValues: true, overrideKeyValues: true, computeNonKeyValue: true);
 
         var command = CreateModificationCommand("T1", null, new ParameterNameGenerator().GenerateNext, true, null);
         command.AddEntry(entry, true);
@@ -229,7 +220,7 @@ public class ReaderModificationCommandBatchTest
                 new[] { "Col2" }, new List<object[]> { new object[] { "FortyTwo" } }));
 
         var batch = new ModificationCommandBatchFake();
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.Complete();
 
         await batch.ExecuteAsync(connection);
@@ -253,7 +244,7 @@ public class ReaderModificationCommandBatchTest
                 new List<object[]> { new object[] { 42 }, new object[] { 43 } }));
 
         var batch = new ModificationCommandBatchFake();
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.Complete();
 
         await batch.ExecuteAsync(connection);
@@ -266,7 +257,7 @@ public class ReaderModificationCommandBatchTest
     [InlineData(true)]
     public async Task Exception_thrown_if_rows_returned_for_command_without_store_generated_values_is_not_1(bool async)
     {
-        var entry = CreateEntry(EntityState.Added);
+        var entry = CreateEntry(EntityState.Modified);
 
         var command = CreateModificationCommand("T1", null, new ParameterNameGenerator().GenerateNext, true, null);
         command.AddEntry(entry, true);
@@ -276,7 +267,7 @@ public class ReaderModificationCommandBatchTest
                 new[] { "Col1" }, new List<object[]> { new object[] { 42 } }));
 
         var batch = new ModificationCommandBatchFake();
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.Complete();
 
         var exception = async
@@ -301,7 +292,7 @@ public class ReaderModificationCommandBatchTest
             CreateFakeDataReader(new[] { "Col1" }, new List<object[]>()));
 
         var batch = new ModificationCommandBatchFake();
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.Complete();
 
         var exception = async
@@ -329,7 +320,7 @@ public class ReaderModificationCommandBatchTest
                 executeReader: (c, b) => throw originalException));
 
         var batch = new ModificationCommandBatchFake();
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.Complete();
 
         var actualException = async
@@ -357,7 +348,7 @@ public class ReaderModificationCommandBatchTest
                 executeReader: (c, b) => throw originalException));
 
         var batch = new ModificationCommandBatchFake();
-        batch.AddCommand(command);
+        batch.TryAddCommand(command);
         batch.Complete();
 
         var actualException = async
@@ -377,7 +368,7 @@ public class ReaderModificationCommandBatchTest
         var batch = new ModificationCommandBatchFake();
         var parameterNameGenerator = new ParameterNameGenerator();
 
-        batch.AddCommand(
+        batch.TryAddCommand(
             CreateModificationCommand(
                 "T1",
                 null,
@@ -393,7 +384,7 @@ public class ReaderModificationCommandBatchTest
                         false, true, false, false, true)
                 }));
 
-        batch.AddCommand(
+        batch.TryAddCommand(
             CreateModificationCommand(
                 "T1",
                 null,
@@ -411,7 +402,7 @@ public class ReaderModificationCommandBatchTest
 
         batch.Complete();
 
-        var storeCommand = batch.CreateStoreCommandBase();
+        var storeCommand = batch.StoreCommand;
 
         Assert.Equal(2, storeCommand.RelationalCommand.Parameters.Count);
         Assert.Equal("p0", storeCommand.RelationalCommand.Parameters[0].InvariantName);
@@ -431,7 +422,7 @@ public class ReaderModificationCommandBatchTest
 
         var batch = new ModificationCommandBatchFake();
         var parameterNameGenerator = new ParameterNameGenerator();
-        batch.AddCommand(
+        batch.TryAddCommand(
             CreateModificationCommand(
                 "T1",
                 null,
@@ -450,7 +441,7 @@ public class ReaderModificationCommandBatchTest
 
         batch.Complete();
 
-        var storeCommand = batch.CreateStoreCommandBase();
+        var storeCommand = batch.StoreCommand;
 
         Assert.Equal(1, storeCommand.RelationalCommand.Parameters.Count);
         Assert.Equal("p0", storeCommand.RelationalCommand.Parameters[0].InvariantName);
@@ -468,7 +459,7 @@ public class ReaderModificationCommandBatchTest
 
         var batch = new ModificationCommandBatchFake();
         var parameterNameGenerator = new ParameterNameGenerator();
-        batch.AddCommand(
+        batch.TryAddCommand(
             CreateModificationCommand(
                 "T1",
                 null,
@@ -487,7 +478,7 @@ public class ReaderModificationCommandBatchTest
 
         batch.Complete();
 
-        var storeCommand = batch.CreateStoreCommandBase();
+        var storeCommand = batch.StoreCommand;
 
         Assert.Equal(1, storeCommand.RelationalCommand.Parameters.Count);
         Assert.Equal("p0", storeCommand.RelationalCommand.Parameters[0].InvariantName);
@@ -505,7 +496,7 @@ public class ReaderModificationCommandBatchTest
 
         var batch = new ModificationCommandBatchFake();
         var parameterNameGenerator = new ParameterNameGenerator();
-        batch.AddCommand(
+        batch.TryAddCommand(
             CreateModificationCommand(
                 "T1",
                 null,
@@ -524,7 +515,7 @@ public class ReaderModificationCommandBatchTest
 
         batch.Complete();
 
-        var storeCommand = batch.CreateStoreCommandBase();
+        var storeCommand = batch.StoreCommand;
 
         Assert.Equal(2, storeCommand.RelationalCommand.Parameters.Count);
         Assert.Equal("p0", storeCommand.RelationalCommand.Parameters[0].InvariantName);
@@ -544,7 +535,7 @@ public class ReaderModificationCommandBatchTest
 
         var batch = new ModificationCommandBatchFake();
         var parameterNameGenerator = new ParameterNameGenerator();
-        batch.AddCommand(
+        batch.TryAddCommand(
             CreateModificationCommand(
                 "T1",
                 null,
@@ -563,7 +554,7 @@ public class ReaderModificationCommandBatchTest
 
         batch.Complete();
 
-        var storeCommand = batch.CreateStoreCommandBase();
+        var storeCommand = batch.StoreCommand;
 
         Assert.Equal(0, storeCommand.RelationalCommand.Parameters.Count);
     }
@@ -597,12 +588,17 @@ public class ReaderModificationCommandBatchTest
     private static InternalEntityEntry CreateEntry(
         EntityState entityState,
         bool generateKeyValues = false,
+        bool overrideKeyValues = false,
         bool computeNonKeyValue = false)
     {
         var model = BuildModel(generateKeyValues, computeNonKeyValue);
 
         return RelationalTestHelpers.Instance.CreateInternalEntry(
-            model, entityState, new T1 { Id = 1, Name = computeNonKeyValue ? null : "Test" });
+            model, entityState, new T1
+            {
+                Id = overrideKeyValues ? 1 : default,
+                Name = computeNonKeyValue ? null : "Test"
+            });
     }
 
     private static FakeDbDataReader CreateFakeDataReader(string[] columnNames = null, IList<object[]> results = null)
@@ -615,12 +611,15 @@ public class ReaderModificationCommandBatchTest
 
     private class ModificationCommandBatchFake : AffectedCountModificationCommandBatch
     {
-        public ModificationCommandBatchFake(
-            IUpdateSqlGenerator sqlGenerator = null)
+        private readonly FakeSqlGenerator _fakeSqlGenerator;
+
+        public ModificationCommandBatchFake(IUpdateSqlGenerator sqlGenerator = null)
             : base(CreateDependencies(sqlGenerator))
         {
             ShouldAddCommand = true;
-            ShouldValidateSql = true;
+            MaxValidSql = int.MaxValue;
+
+            _fakeSqlGenerator = Dependencies.UpdateSqlGenerator as FakeSqlGenerator;
         }
 
         private static ModificationCommandBatchFactoryDependencies CreateDependencies(
@@ -632,6 +631,10 @@ public class ReaderModificationCommandBatchTest
 
             var logger = new FakeRelationalCommandDiagnosticsLogger();
 
+            sqlGenerator ??= new FakeSqlGenerator(
+                RelationalTestHelpers.Instance.CreateContextServices()
+                    .GetRequiredService<UpdateSqlGeneratorDependencies>());
+
             return new ModificationCommandBatchFactoryDependencies(
                 new RelationalCommandBuilderFactory(
                     new RelationalCommandBuilderDependencies(
@@ -639,10 +642,7 @@ public class ReaderModificationCommandBatchTest
                         new ExceptionDetector())),
                 new RelationalSqlGenerationHelper(
                     new RelationalSqlGenerationHelperDependencies()),
-                sqlGenerator
-                ?? new FakeSqlGenerator(
-                    RelationalTestHelpers.Instance.CreateContextServices()
-                        .GetRequiredService<UpdateSqlGeneratorDependencies>()),
+                sqlGenerator,
                 new TypedRelationalValueBufferFactoryFactory(
                     new RelationalValueBufferFactoryDependencies(
                         typeMappingSource,
@@ -651,27 +651,25 @@ public class ReaderModificationCommandBatchTest
                 logger);
         }
 
+
         public string CommandText
-            => CachedCommandText.ToString();
+            => SqlBuilder.ToString();
 
         public bool ShouldAddCommand { get; set; }
 
         protected override bool CanAddCommand(IReadOnlyModificationCommand modificationCommand)
             => ShouldAddCommand;
 
-        public bool ShouldValidateSql { get; set; }
+        public int MaxValidSql { get; set; }
 
-        protected override bool IsCommandTextValid()
-            => ShouldValidateSql;
+        protected override bool IsBatchValid()
+            => SqlBuilder.Length <= MaxValidSql;
 
-        protected override void UpdateCachedCommandText(int commandIndex)
-            => CachedCommandText.Append(".");
+        public new RawSqlCommand StoreCommand
+            => base.StoreCommand;
 
-        public void UpdateCachedCommandTextBase(int commandIndex)
-            => base.UpdateCachedCommandText(commandIndex);
-
-        public RawSqlCommand CreateStoreCommandBase()
-            => CreateStoreCommand();
+        public FakeSqlGenerator FakeSqlGenerator
+            => _fakeSqlGenerator ?? throw new InvalidOperationException("Not using FakeSqlGenerator");
     }
 
     private class FakeDbContext : DbContext
