@@ -29,7 +29,7 @@ public interface IReadOnlyTrigger : IReadOnlyAnnotatable
     /// <summary>
     ///     Gets the name of the table on which this trigger is defined.
     /// </summary>
-    string TableName { get; }
+    string? TableName { get; }
 
     /// <summary>
     ///     Gets the schema of the table on which this trigger is defined.

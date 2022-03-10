@@ -46,12 +46,6 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
             => GetString("CannotChangeWhenOpen");
 
         /// <summary>
-        ///     Cannot define a trigger without specifying the table name on which it should be defined.
-        /// </summary>
-        public static string CannotDefineTriggerWithoutTableName
-            => GetString("CannotDefineTriggerWithoutTableName");
-
-        /// <summary>
         ///     Unable to translate the given 'GroupBy' pattern. Call 'AsEnumerable' before 'GroupBy' to evaluate it client-side.
         /// </summary>
         public static string ClientGroupByNotSupported
@@ -1148,6 +1142,14 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         /// </summary>
         public static string TransactionSuppressedMigrationInUserTransaction
             => GetString("TransactionSuppressedMigrationInUserTransaction");
+
+        /// <summary>
+        ///     Trigger '{trigger}' must have an explicit table name since its entity type '{entityType}' is mapped to multiple tables.
+        /// </summary>
+        public static string TriggerWithoutExplicitTableName(object? trigger, object? entityType)
+            => string.Format(
+                GetString("TriggerWithoutExplicitTableName", nameof(trigger), nameof(entityType)),
+                trigger, entityType);
 
         /// <summary>
         ///     Unable to bind '{memberType}.{member}' to an entity projection of '{entityType}'.

@@ -127,9 +127,6 @@
   <data name="CannotChangeWhenOpen" xml:space="preserve">
     <value>The instance of DbConnection is currently in use. The connection can only be changed when the existing connection is not being used.</value>
   </data>
-  <data name="CannotDefineTriggerWithoutTableName" xml:space="preserve">
-    <value>Cannot define a trigger without specifying the table name on which it should be defined.</value>
-  </data>
   <data name="ClientGroupByNotSupported" xml:space="preserve">
     <value>Unable to translate the given 'GroupBy' pattern. Call 'AsEnumerable' before 'GroupBy' to evaluate it client-side.</value>
   </data>
@@ -797,6 +794,9 @@
   </data>
   <data name="TransactionSuppressedMigrationInUserTransaction" xml:space="preserve">
     <value>User transaction is not supported with a TransactionSuppressed migrations.</value>
+  </data>
+  <data name="TriggerWithoutExplicitTableName" xml:space="preserve">
+    <value>Trigger '{trigger}' must have an explicit table name since its entity type '{entityType}' is mapped to multiple tables.</value>
   </data>
   <data name="UnableToBindMemberToEntityProjection" xml:space="preserve">
     <value>Unable to bind '{memberType}.{member}' to an entity projection of '{entityType}'.</value>

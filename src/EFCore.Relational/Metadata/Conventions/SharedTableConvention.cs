@@ -622,10 +622,10 @@ public class SharedTableConvention : IModelFinalizingConvention
                 continue;
             }
 
-            var newConstraintName = TryUniquify(trigger, triggerName, triggers, maxLength);
-            if (newConstraintName != null)
+            var newTriggerName = TryUniquify(trigger, triggerName, triggers, maxLength);
+            if (newTriggerName != null)
             {
-                triggers[newConstraintName] = trigger;
+                triggers[newTriggerName] = trigger;
                 continue;
             }
 

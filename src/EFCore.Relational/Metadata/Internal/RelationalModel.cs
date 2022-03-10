@@ -151,8 +151,7 @@ public class RelationalModel : Annotatable, IRelationalModel
         foreach (var table in databaseModel.Tables.Values)
         {
             PopulateRowInternalForeignKeys(table);
-            PopulateConstraints(table, designTime);
-            PopulateTriggers(table);
+            PopulateTableConfiguration(table, designTime);
 
             if (relationalAnnotationProvider != null)
             {
@@ -756,7 +755,7 @@ public class RelationalModel : Annotatable, IRelationalModel
         return storeFunction;
     }
 
-    private static void PopulateConstraints(Table table, bool designTime)
+    private static void PopulateTableConfiguration(Table table, bool designTime)
     {
         var storeObject = StoreObjectIdentifier.Table(table.Name, table.Schema);
         foreach (var entityTypeMapping in ((ITable)table).EntityTypeMappings)
@@ -989,21 +988,6 @@ public class RelationalModel : Annotatable, IRelationalModel
                     }
                 }
             }
-        }
-    }
-
-    private static void PopulateTriggers(Table table)
-    {
-        var storeObject = StoreObjectIdentifier.Table(table.Name, table.Schema);
-        foreach (var entityTypeMapping in ((ITable)table).EntityTypeMappings)
-        {
-            if (!entityTypeMapping.IncludesDerivedTypes
-                && entityTypeMapping.EntityType.GetTableMappings().Any(m => m.IncludesDerivedTypes))
-            {
-                continue;
-            }
-
-            var entityType = entityTypeMapping.EntityType;
 
             foreach (var trigger in entityType.GetTriggers())
             {
@@ -1011,6 +995,12 @@ public class RelationalModel : Annotatable, IRelationalModel
                 if (name == null)
                 {
                     continue;
+                }
+
+                // Make sure the trigger either has an explicit table name, or that its entity type is mapped to only one, default table.
+                if (trigger.TableName is null && ((ITable)table).EntityTypeMappings.Select(m => m.Table).Distinct().Count() > 1)
+                {
+                    throw new InvalidOperationException(RelationalStrings.TriggerWithoutExplicitTableName(name, entityType.DisplayName()));
                 }
 
                 if (!table.Triggers.ContainsKey(name))

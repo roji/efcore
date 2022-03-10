@@ -73,11 +73,6 @@ public class TableBuilder
     {
         Check.NotEmpty(name, nameof(name));
 
-        if (Name is null)
-        {
-            throw new InvalidOperationException(RelationalStrings.CannotDefineTriggerWithoutTableName);
-        }
-
         var trigger = (Trigger?)Trigger.FindTrigger(entityType, name);
         if (trigger != null)
         {

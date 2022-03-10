@@ -22,7 +22,7 @@ public class RuntimeTrigger : AnnotatableBase, ITrigger
         RuntimeEntityType entityType,
         string modelName,
         string? name,
-        string tableName,
+        string? tableName,
         string? tableSchema)
     {
         EntityType = entityType;
@@ -45,7 +45,7 @@ public class RuntimeTrigger : AnnotatableBase, ITrigger
         => Name;
 
     /// <inheritdoc />
-    public virtual string TableName { get; }
+    public virtual string? TableName { get; }
 
     /// <inheritdoc />
     public virtual string? TableSchema { get; }

@@ -1025,14 +1025,29 @@ public static class RelationalEntityTypeExtensions
         => (ITrigger?)((IReadOnlyEntityType)entityType).FindTrigger(name);
 
     /// <summary>
-    ///     Either returns the existing <see cref="IMutableTrigger" /> with the given name or creates a new trigger with the given name.
+    ///     Creates a new trigger with the given name on entity type. Throws an exception if a trigger with the same name exists on the same
+    ///     entity type.
+    /// </summary>
+    /// <param name="entityType">The entity type to add the trigger to.</param>
+    /// <param name="name">The trigger name.</param>
+    /// <returns>The trigger.</returns>
+    public static IMutableTrigger AddTrigger(this IMutableEntityType entityType, string name)
+    {
+        Check.NotEmpty(name, nameof(name));
+
+        return new Trigger(entityType, name, tableName: null, tableSchema: null, ConfigurationSource.Explicit);
+    }
+
+    /// <summary>
+    ///     Creates a new trigger with the given name on entity type. Throws an exception if a trigger with the same name exists on the same
+    ///     entity type.
     /// </summary>
     /// <param name="entityType">The entity type to add the trigger to.</param>
     /// <param name="name">The trigger name.</param>
     /// <param name="tableName">The name of the table on which this trigger is defined.</param>
     /// <param name="tableSchema">The schema of the table on which this trigger is defined.</param>
     /// <returns>The trigger.</returns>
-    public static IMutableTrigger AddTrigger(this IMutableEntityType entityType, string? name, string tableName, string? tableSchema)
+    public static IMutableTrigger AddTrigger(this IMutableEntityType entityType, string name, string tableName, string? tableSchema = null)
     {
         Check.NotEmpty(name, nameof(name));
 
@@ -1040,7 +1055,28 @@ public static class RelationalEntityTypeExtensions
     }
 
     /// <summary>
-    ///     Either returns the existing <see cref="IMutableTrigger" /> with the given name or creates a new trigger with the given name.
+    ///     Creates a new trigger with the given name on entity type. Throws an exception if a trigger with the same name exists on the same
+    ///     entity type.
+    /// </summary>
+    /// <param name="entityType">The entityType to add the trigger to.</param>
+    /// <param name="name">The trigger name.</param>
+    /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
+    /// <returns>The trigger.</returns>
+    public static IConventionTrigger AddTrigger(
+        this IConventionEntityType entityType,
+        string name,
+        bool fromDataAnnotation = false)
+    {
+        Check.NotEmpty(name, nameof(name));
+
+        return new Trigger(
+            (IMutableEntityType)entityType, name, tableName: null, tableSchema: null,
+            fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+    }
+
+    /// <summary>
+    ///     Creates a new trigger with the given name on entity type. Throws an exception if a trigger with the same name exists on the same
+    ///     entity type.
     /// </summary>
     /// <param name="entityType">The entityType to add the trigger to.</param>
     /// <param name="name">The trigger name.</param>
