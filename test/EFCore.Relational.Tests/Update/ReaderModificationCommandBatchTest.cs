@@ -15,52 +15,47 @@ namespace Microsoft.EntityFrameworkCore.Update;
 public class ReaderModificationCommandBatchTest
 {
     [ConditionalFact]
-    public void AddCommand_adds_command_if_possible()
+    public void AddCommand_adds_command_if_batch_is_valid()
     {
-        var command = CreateModificationCommand("T1", null, true, columnModifications: null);
+        var command1 = CreateModificationCommand("T1", null, true, columnModifications: null);
+        var command2 = CreateModificationCommand("T2", null, true, columnModifications: null);
 
         var batch = new ModificationCommandBatchFake();
-        batch.TryAddCommand(command);
-        batch.ShouldAddCommand = true;
-
-        batch.TryAddCommand(command);
+        batch.ShouldBeValid = true;
+        Assert.True(batch.TryAddCommand(command1));
+        Assert.True(batch.TryAddCommand(command2));
         batch.Complete();
 
-        Assert.Equal(2, batch.ModificationCommands.Count);
-        Assert.Same(command, batch.ModificationCommands[0]);
-        Assert.Equal(2, batch.FakeSqlGenerator.AppendUpdateOperationCalls);
+        Assert.Collection(batch.ModificationCommands,
+            m => Assert.Same(command1, m),
+            m => Assert.Same(command2, m));
+
+        Assert.Equal(@"UPDATE ""T1"" SET ;
+SELECT provider_specific_rowcount();
+
+UPDATE ""T2"" SET ;
+SELECT provider_specific_rowcount();
+
+",
+            batch.CommandText,
+            ignoreLineEndingDifferences: true);
     }
 
     [ConditionalFact]
-    public void AddCommand_does_not_add_command_if_not_possible()
+    public void AddCommand_does_not_add_command_batch_is_invalid()
     {
-        var command = CreateModificationCommand("T1", null, true, columnModifications: null);
+        var command1 = CreateModificationCommand("T1", null, true, columnModifications: null);
+        var command2 = CreateModificationCommand("T2", null, true, columnModifications: null);
 
         var batch = new ModificationCommandBatchFake();
-        batch.TryAddCommand(command);
-        batch.ShouldAddCommand = false;
+        Assert.True(batch.TryAddCommand(command1));
+        batch.ShouldBeValid = false;
 
-        batch.TryAddCommand(command);
+        Assert.False(batch.TryAddCommand(command2));
         batch.Complete();
 
-        Assert.Equal(1, batch.ModificationCommands.Count);
-        Assert.Equal(1, batch.FakeSqlGenerator.AppendUpdateOperationCalls);
-    }
+        Assert.Same(command1, Assert.Single(batch.ModificationCommands));
 
-    [ConditionalFact]
-    public void AddCommand_does_not_add_command_if_resulting_sql_is_invalid()
-    {
-        var command = CreateModificationCommand("T1", null, true, columnModifications: null);
-
-        var batch = new ModificationCommandBatchFake();
-        batch.TryAddCommand(command);
-        batch.ShouldAddCommand = true;
-        batch.MaxValidSql = batch.CommandText.Length;
-
-        batch.TryAddCommand(command);
-        batch.Complete();
-
-        Assert.Equal(1, batch.ModificationCommands.Count);
         Assert.Equal(@"UPDATE ""T1"" SET ;
 SELECT provider_specific_rowcount();
 
@@ -616,8 +611,7 @@ SELECT provider_specific_rowcount();
         public ModificationCommandBatchFake(IUpdateSqlGenerator sqlGenerator = null)
             : base(CreateDependencies(sqlGenerator))
         {
-            ShouldAddCommand = true;
-            MaxValidSql = int.MaxValue;
+            ShouldBeValid = true;
 
             _fakeSqlGenerator = Dependencies.UpdateSqlGenerator as FakeSqlGenerator;
         }
@@ -655,15 +649,10 @@ SELECT provider_specific_rowcount();
         public string CommandText
             => SqlBuilder.ToString();
 
-        public bool ShouldAddCommand { get; set; }
+        public bool ShouldBeValid { get; set; }
 
-        protected override bool CanAddCommand(IReadOnlyModificationCommand modificationCommand)
-            => ShouldAddCommand;
-
-        public int MaxValidSql { get; set; }
-
-        protected override bool IsBatchValid()
-            => SqlBuilder.Length <= MaxValidSql;
+        protected override bool IsValid()
+            => ShouldBeValid;
 
         public new RawSqlCommand StoreCommand
             => base.StoreCommand;

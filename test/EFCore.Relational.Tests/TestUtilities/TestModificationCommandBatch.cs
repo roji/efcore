@@ -15,6 +15,6 @@ public class TestModificationCommandBatch : SingularModificationCommandBatch
         _maxBatchSize = maxBatchSize ?? 1;
     }
 
-    protected override bool CanAddCommand(IReadOnlyModificationCommand modificationCommand)
+    protected override bool IsValid()
         => ModificationCommands.Count < _maxBatchSize;
 }

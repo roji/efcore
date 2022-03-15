@@ -53,7 +53,7 @@ public abstract class ReaderModificationCommandBatch : ModificationCommandBatch
     protected virtual IUpdateSqlGenerator UpdateSqlGenerator { get; }
 
     /// <summary>
-    ///     Gets or sets the relational command builder for the commands in the batch.
+    ///     Gets the relational command builder for the commands in the batch.
     /// </summary>
     protected virtual IRelationalCommandBuilder RelationalCommandBuilder { get; }
 
@@ -105,11 +105,6 @@ public abstract class ReaderModificationCommandBatch : ModificationCommandBatch
             throw new InvalidOperationException(RelationalStrings.ModificationCommandBatchAlreadyComplete);
         }
 
-        if (!CanAddCommand(modificationCommand))
-        {
-            return false;
-        }
-
         _sqlBuilderPosition = SqlBuilder.Length;
         _commandResultSetCount = CommandResultSet.Count;
         _pendingParameterNames.Clear();
@@ -120,7 +115,7 @@ public abstract class ReaderModificationCommandBatch : ModificationCommandBatch
         // Check if the batch is still valid after having added the command (e.g. have we bypassed a maximum CommandText size?)
         // A batch with only one command is always considered valid (otherwise we'd get an endless loop); allow the batch to fail
         // server-side.
-        if (IsBatchValid() || _modificationCommands.Count == 0)
+        if (IsValid() || _modificationCommands.Count == 0)
         {
             _modificationCommands.Add(modificationCommand);
 
@@ -128,6 +123,12 @@ public abstract class ReaderModificationCommandBatch : ModificationCommandBatch
         }
 
         RollbackLastCommand();
+
+        // The command's column modifications had their parameter names generated, that needs to be rolled back as well.
+        foreach (var columnModification in modificationCommand.ColumnModifications)
+        {
+            columnModification.ResetParameterNames();
+        }
 
         return false;
     }
@@ -175,17 +176,10 @@ public abstract class ReaderModificationCommandBatch : ModificationCommandBatch
         => _requiresTransaction = requiresTransaction;
 
     /// <summary>
-    ///     Checks whether a new command can be added to the batch.
-    /// </summary>
-    /// <param name="modificationCommand">The command to potentially add.</param>
-    /// <returns><see langword="true" /> if the command can be added; <see langword="false" /> otherwise.</returns>
-    protected abstract bool CanAddCommand(IReadOnlyModificationCommand modificationCommand);
-
-    /// <summary>
     ///     Checks whether the command text is valid.
     /// </summary>
     /// <returns><see langword="true" /> if the command text is valid; <see langword="false" /> otherwise.</returns>
-    protected abstract bool IsBatchValid();
+    protected abstract bool IsValid();
 
     /// <summary>
     ///     Adds Updates the command text for the command at the given position in the <see cref="ModificationCommands" /> list.

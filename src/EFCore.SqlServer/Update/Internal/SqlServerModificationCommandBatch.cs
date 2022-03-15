@@ -56,15 +56,6 @@ public class SqlServerModificationCommandBatch : AffectedCountModificationComman
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    protected override bool CanAddCommand(IReadOnlyModificationCommand modificationCommand)
-        => ModificationCommands.Count < _maxBatchSize;
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
     protected override void RollbackLastCommand()
     {
         if (_pendingBulkInsertCommands.Count > 0)
@@ -82,8 +73,9 @@ public class SqlServerModificationCommandBatch : AffectedCountModificationComman
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    protected override bool IsBatchValid()
-        => SqlBuilder.Length < MaxScriptLength
+    protected override bool IsValid()
+        => ModificationCommands.Count < _maxBatchSize
+            && SqlBuilder.Length < MaxScriptLength
             // A single implicit parameter for the command text itself
             && ParameterValues.Count + 1 < MaxParameterCount;
 
