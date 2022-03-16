@@ -23,10 +23,16 @@ public class BatchExecutor : IBatchExecutor
     /// </summary>
     public BatchExecutor(
         ICurrentDbContext currentContext,
-        IDiagnosticsLogger<DbLoggerCategory.Update> updateLogger)
+        ISqlGenerationHelper sqlGenerationHelper,
+        IRawSqlCommandBuilder rawSqlCommandBuilder,
+        IDiagnosticsLogger<DbLoggerCategory.Update> updateLogger,
+        IRelationalCommandDiagnosticsLogger commandLogger)
     {
         CurrentContext = currentContext;
+        SqlGenerationHelper = sqlGenerationHelper;
+        RawSqlCommandBuilder = rawSqlCommandBuilder;
         UpdateLogger = updateLogger;
+        CommandLogger = commandLogger;
     }
 
     /// <summary>
@@ -38,9 +44,36 @@ public class BatchExecutor : IBatchExecutor
     public virtual ICurrentDbContext CurrentContext { get; }
 
     /// <summary>
-    ///     The logger.
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual ISqlGenerationHelper SqlGenerationHelper { get; }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual IRawSqlCommandBuilder RawSqlCommandBuilder { get; }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     protected virtual IDiagnosticsLogger<DbLoggerCategory.Update> UpdateLogger { get; }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    protected virtual IRelationalCommandDiagnosticsLogger CommandLogger { get; }
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -63,7 +96,9 @@ public class BatchExecutor : IBatchExecutor
 
         var rowsAffected = 0;
         var transaction = connection.CurrentTransaction;
+        var usingRawSqlForTransactions = true; // TODO: Opt-out
         var beganTransaction = false;
+        var beganApiTransaction = false;
         var createdSavepoint = false;
         try
         {
@@ -71,12 +106,33 @@ public class BatchExecutor : IBatchExecutor
             if (transaction == null
                 && transactionEnlistManager?.EnlistedTransaction is null
                 && transactionEnlistManager?.CurrentAmbientTransaction is null
-                && CurrentContext.Context.Database.AutoTransactionsEnabled
-                // Don't start a transaction if we have a single batch which doesn't require a transaction (single command), for perf.
-                && (hasMoreBatches || batch.RequiresTransaction))
+                && CurrentContext.Context.Database.AutoTransactionsEnabled)
             {
-                transaction = connection.BeginTransaction();
-                beganTransaction = true;
+                // Don't start a transaction if we have a single batch which doesn't require a transaction (single command), for perf.
+                if (hasMoreBatches || batch.RequiresTransaction)
+                {
+                    // We default to starting (and committing) the transaction by prepending BEGIN to the first batch and appending COMMIT
+                    // to the last: this saves database roundtrips compared to doing it via the ADO.NET API.
+                    if (usingRawSqlForTransactions)
+                    {
+                        batch.AddPrependedSql(SqlGenerationHelper.StartTransactionStatement);
+                    }
+                    else
+                    {
+                        transaction = connection.BeginTransaction();
+                    }
+
+                    beganTransaction = true;
+                }
+                else
+                {
+                    // We don't need to start a transaction, but make sure auto-commit mode is enabled, so that an implicit transaction
+                    // doesn't get started
+                    if (SqlGenerationHelper.EnsureAutocommitStatement is { } ensureAutocommitStatement)
+                    {
+                        batch.AddPrependedSql(ensureAutocommitStatement);
+                    }
+                }
             }
             else
             {
@@ -90,30 +146,62 @@ public class BatchExecutor : IBatchExecutor
                 }
             }
 
+            batch.AddSaveChangesHeader();
+
             do
             {
-                batch = batchEnumerator.Current.Batch;
+                (batch, hasMoreBatches) = batchEnumerator.Current;
+
+                if (!hasMoreBatches && beganTransaction && usingRawSqlForTransactions)
+                {
+                    batch.AddAppendedSql(SqlGenerationHelper.CommitTransactionStatement);
+                }
+
                 batch.Execute(connection);
+
                 rowsAffected += batch.ModificationCommands.Count;
             }
             while (batchEnumerator.MoveNext());
 
-            if (beganTransaction)
+            if (beganApiTransaction)
             {
                 transaction!.Commit();
             }
         }
         catch
         {
-            if (createdSavepoint && connection.DbConnection.State == ConnectionState.Open)
+            if (connection.DbConnection.State == ConnectionState.Open)
             {
-                try
+                if (beganTransaction)
                 {
-                    transaction!.RollbackToSavepoint(SavepointName);
+                    if (usingRawSqlForTransactions)
+                    {
+                        try
+                        {
+                            RawSqlCommandBuilder
+                                .Build(SqlGenerationHelper.RollbackTransactionStatement)
+                                .ExecuteNonQuery(new(connection, null, null, CurrentContext.Context, CommandLogger));
+                        }
+                        catch (Exception)
+                        {
+                            // TODO: LOG?
+                        }
+                    }
+                    else
+                    {
+                        transaction!.Rollback();
+                    }
                 }
-                catch (Exception e)
+                else if (createdSavepoint)
                 {
-                    UpdateLogger.BatchExecutorFailedToRollbackToSavepoint(CurrentContext.GetType(), e);
+                    try
+                    {
+                        transaction!.RollbackToSavepoint(SavepointName);
+                    }
+                    catch (Exception e)
+                    {
+                        UpdateLogger.BatchExecutorFailedToRollbackToSavepoint(CurrentContext.GetType(), e);
+                    }
                 }
             }
 
@@ -121,7 +209,7 @@ public class BatchExecutor : IBatchExecutor
         }
         finally
         {
-            if (beganTransaction)
+            if (beganTransaction && !usingRawSqlForTransactions)
             {
                 transaction!.Dispose();
             }

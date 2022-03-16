@@ -95,6 +95,20 @@ public class IndentedStringBuilder
     }
 
     /// <summary>
+    ///     Appends the current indent and then the string representation of the given string builder the string being built.
+    /// </summary>
+    /// <param name="value">The string builder to append.</param>
+    /// <returns>This builder so that additional calls can be chained.</returns>
+    public virtual IndentedStringBuilder Append(StringBuilder value)
+    {
+        DoIndent();
+
+        _stringBuilder.Append(value);
+
+        return this;
+    }
+
+    /// <summary>
     ///     Appends a new line to the string being built.
     /// </summary>
     /// <returns>This builder so that additional calls can be chained.</returns>

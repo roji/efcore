@@ -24,7 +24,13 @@ public abstract class ModificationCommandBatch
     public abstract IReadOnlyList<IReadOnlyModificationCommand> ModificationCommands { get; }
 
     /// <summary>
-    ///     Adds the given insert/update/delete <see cref="ModificationCommands" /> to the batch.
+    ///     Adds SQL text that should appear once, at the very beginning of a batch of batches executed by
+    ///     <see cref="DbContext.SaveChanges()" />.
+    /// </summary>
+    public abstract void AddSaveChangesHeader();
+
+    /// <summary>
+    ///     Attempts to adds the given insert/update/delete <paramref name="modificationCommand" /> to the batch.
     /// </summary>
     /// <param name="modificationCommand">The command to add.</param>
     /// <returns>
@@ -42,6 +48,18 @@ public abstract class ModificationCommandBatch
     ///     Indicates whether the batch requires a transaction in order to execute correctly.
     /// </summary>
     public abstract bool RequiresTransaction { get; }
+
+    /// <summary>
+    ///     Adds arbitrary SQL at the start of the batch.
+    /// </summary>
+    /// <param name="sql">The SQL to be added at the start of the batch.</param>
+    public abstract void AddPrependedSql(string sql);
+
+    /// <summary>
+    ///     Adds arbitrary SQL at the end of the batch.
+    /// </summary>
+    /// <param name="sql">The SQL to be added at the end of the batch.</param>
+    public abstract void AddAppendedSql(string sql);
 
     /// <summary>
     ///     Sends insert/update/delete commands to the database.

@@ -64,6 +64,13 @@ public class TestRelationalCommandBuilderFactory : IRelationalCommandBuilderFact
             return this;
         }
 
+        public IRelationalCommandBuilder Append(StringBuilder value)
+        {
+            Instance.Append(value);
+
+            return this;
+        }
+
         public IRelationalCommandBuilder AppendLine()
         {
             Instance.AppendLine();

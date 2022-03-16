@@ -41,6 +41,8 @@ public class SqlServerSqlGenerationHelper : RelationalSqlGenerationHelper
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public override string StartTransactionStatement
+        // SQL Server allows turning off autocommit via the IMPLICIT_TRANSACTIONS setting (see
+        // https://docs.microsoft.com/sql/t-sql/statements/set-implicit-transactions-transact-sql).
         => "BEGIN TRANSACTION" + StatementTerminator;
 
     /// <summary>

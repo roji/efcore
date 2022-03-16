@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Text;
+
 namespace Microsoft.EntityFrameworkCore.Storage;
 
 /// <summary>
@@ -50,11 +52,18 @@ public interface IRelationalCommandBuilder
     IRelationalCommand Build();
 
     /// <summary>
-    ///     Appends an object to the command text.
+    ///     Appends the string representation of a specified string builder to the command text.
     /// </summary>
-    /// <param name="value">The object to be written.</param>
+    /// <param name="value">The string to be written.</param>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     IRelationalCommandBuilder Append(string value);
+
+    /// <summary>
+    ///     Appends a string to the command text.
+    /// </summary>
+    /// <param name="value">The string builder to be written.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    IRelationalCommandBuilder Append(StringBuilder value);
 
     /// <summary>
     ///     Appends a blank line to the command text.

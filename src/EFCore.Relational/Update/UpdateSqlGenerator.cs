@@ -557,15 +557,7 @@ public abstract class UpdateSqlGenerator : IUpdateSqlGenerator
     ///     Appends SQL text that defines the start of a batch.
     /// </summary>
     /// <param name="commandStringBuilder">The builder to which the SQL should be appended.</param>
-    public virtual void AppendBatchHeader(StringBuilder commandStringBuilder)
-    {
-    }
-
-    /// <summary>
-    ///     Prepends a SQL command for turning on autocommit mode in the database, in case it is off.
-    /// </summary>
-    /// <param name="commandStringBuilder">The builder to which the SQL should be prepended.</param>
-    public virtual void PrependEnsureAutocommit(StringBuilder commandStringBuilder)
+    public virtual void AppendSaveChangesHeader(StringBuilder commandStringBuilder)
     {
     }
 

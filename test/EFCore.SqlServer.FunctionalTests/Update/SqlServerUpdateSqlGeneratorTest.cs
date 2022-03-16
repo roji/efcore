@@ -26,7 +26,7 @@ public class SqlServerUpdateSqlGeneratorTest : UpdateSqlGeneratorTestBase
     {
         var sb = new StringBuilder();
 
-        CreateSqlGenerator().AppendBatchHeader(sb);
+        CreateSqlGenerator().AppendSaveChangesHeader(sb);
 
         Assert.Equal("SET NOCOUNT ON;" + Environment.NewLine, sb.ToString());
     }

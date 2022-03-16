@@ -88,7 +88,7 @@ public class SqlServerModificationCommandBatch : AffectedCountModificationComman
 
         var commandPosition = CommandResultSet.Count;
 
-        var wasCachedCommandTextEmpty = IsCommandTextEmpty;
+        var wasCachedCommandTextEmpty = SqlBuilder.Length == 0;
 
         var resultSetMapping = UpdateSqlGenerator.AppendBulkInsertOperation(
             SqlBuilder, _pendingBulkInsertCommands, commandPosition, out var resultsContainPositionMapping,

@@ -48,6 +48,19 @@ public interface ISqlGenerationHelper
     string CommitTransactionStatement { get; }
 
     /// <summary>
+    ///     Gets the SQL for a ROLLBACK statement.
+    /// </summary>
+    string RollbackTransactionStatement { get; }
+
+    /// <summary>
+    ///     Gets the SQL for ensuring that the database is in auto-commit mode.
+    /// </summary>
+    /// <remarks>
+    ///     <see langword="null" /> means that the database is always in auto-commit mode, and no SQL needs to be executed.
+    /// </remarks>
+    string? EnsureAutocommitStatement { get; }
+
+    /// <summary>
     ///     The default single-line comment prefix.
     /// </summary>
     string SingleLineCommentToken { get; }

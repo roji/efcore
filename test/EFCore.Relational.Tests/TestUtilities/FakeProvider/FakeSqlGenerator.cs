@@ -45,10 +45,10 @@ public class FakeSqlGenerator : UpdateSqlGenerator
     public int AppendUpdateOperationCalls { get; set; }
     public int AppendDeleteOperationCalls { get; set; }
 
-    public override void AppendBatchHeader(StringBuilder commandStringBuilder)
+    public override void AppendSaveChangesHeader(StringBuilder commandStringBuilder)
     {
         AppendBatchHeaderCalls++;
-        base.AppendBatchHeader(commandStringBuilder);
+        base.AppendSaveChangesHeader(commandStringBuilder);
     }
 
     protected override void AppendIdentityWhereCondition(StringBuilder commandStringBuilder, IColumnModification columnModification)

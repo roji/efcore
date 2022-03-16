@@ -48,17 +48,11 @@ public interface IUpdateSqlGenerator
         string? schema);
 
     /// <summary>
-    ///     Appends a SQL fragment for the start of a batch to
-    ///     the full command being built by the given <see cref="StringBuilder" />.
+    ///     Appends SQL text that should appear once, at the very beginning of a batch of batches executed by
+    ///     <see cref="DbContext.SaveChanges()" />.
     /// </summary>
     /// <param name="commandStringBuilder">The builder to which the SQL fragment should be appended.</param>
-    void AppendBatchHeader(StringBuilder commandStringBuilder);
-
-    /// <summary>
-    ///     Prepends a SQL command for turning on autocommit mode in the database, in case it is off.
-    /// </summary>
-    /// <param name="commandStringBuilder">The builder to which the SQL should be prepended.</param>
-    void PrependEnsureAutocommit(StringBuilder commandStringBuilder);
+    void AppendSaveChangesHeader(StringBuilder commandStringBuilder);
 
     /// <summary>
     ///     Appends a SQL command for deleting a row to the commands being built.

@@ -61,6 +61,14 @@ public class RelationalSqlGenerationHelper : ISqlGenerationHelper
     public virtual string CommitTransactionStatement
         => "COMMIT" + StatementTerminator;
 
+    /// <inheritdoc />
+    public virtual string RollbackTransactionStatement
+        => "ROLLBACK TRANSACTION" + StatementTerminator;
+
+    /// <inheritdoc />
+    public virtual string? EnsureAutocommitStatement
+        => "SET IMPLICIT_TRANSACTIONS OFF" + StatementTerminator;
+
     /// <summary>
     ///     The default single-line comment prefix.
     /// </summary>
