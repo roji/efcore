@@ -122,6 +122,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EFCore.AspNet.InMemory.Func
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EFCore.Trimming.Tests", "test\EFCore.Trimming.Tests\EFCore.Trimming.Tests.csproj", "{933C8662-817C-4F45-B98B-6557E28F7BB1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Foo", "Foo\Foo.csproj", "{8848844B-282C-4684-BB0A-051FBAE996EB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -324,6 +326,10 @@ Global
 		{933C8662-817C-4F45-B98B-6557E28F7BB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{933C8662-817C-4F45-B98B-6557E28F7BB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{933C8662-817C-4F45-B98B-6557E28F7BB1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8848844B-282C-4684-BB0A-051FBAE996EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8848844B-282C-4684-BB0A-051FBAE996EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8848844B-282C-4684-BB0A-051FBAE996EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8848844B-282C-4684-BB0A-051FBAE996EB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+      <OutputType>Exe</OutputType>
+      <TargetFramework>net6.0</TargetFramework>
+      <LangVersion>latest</LangVersion>
+    <NoWarn>SA1649;SA1600;SA1005;SA1515;SA1402;SA1516;SA1633;SA0001</NoWarn>
+
+<!--      <EfCoreVersion>3.1.9</EfCoreVersion>-->
+<!--      <MicrosoftExtensionsVersion>$(EfCoreVersion)</MicrosoftExtensionsVersion>-->
+<!--      <NpgsqlVersion>3.1.4</NpgsqlVersion>-->
+
+<!--      <EfCoreVersion>5.0.11</EfCoreVersion>-->
+<!--      <MicrosoftExtensionsVersion>5.0.0</MicrosoftExtensionsVersion>-->
+<!--      <NpgsqlVersion>5.0.10</NpgsqlVersion>-->
+
+      <EfCoreVersion>6.0.1</EfCoreVersion>
+      <MicrosoftExtensionsVersion>6.0.0</MicrosoftExtensionsVersion>
+      <NpgsqlVersion>6.0.2</NpgsqlVersion>
+
+  </PropertyGroup>
+
+  <!--
+  <Import Project="../efcore/eng/Versions.props" />
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="../src/EFCore.SqlServer/EFCore.SqlServer.csproj" />
+    <ProjectReference Include="../src/EFCore.Design/EFCore.Design.csproj" />
+
+<!--      <ProjectReference Include="../efcore.pg/src/EFCore.PG/EFCore.PG.csproj" />-->
+  </ItemGroup>
+
+  <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="$(MicrosoftExtensionsVersion)" />
+<!--      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="$(EfCoreVersion)" />-->
+<!--      <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="$(EfCoreVersion)" />-->
+<!--      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EfCoreVersion)" />-->
+<!--      <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(NpgsqlVersion)" />-->
+  </ItemGroup>
+
+<!--   <ItemGroup>-->
+<!--       <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="$(MicrosoftNetCompilersToolsetVersion)" />-->
+<!--   </ItemGroup>-->
+
+</Project>
