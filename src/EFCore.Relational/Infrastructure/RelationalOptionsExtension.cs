@@ -25,6 +25,7 @@ public abstract class RelationalOptionsExtension : IDbContextOptionsExtension
 
     private string? _connectionString;
     private DbConnection? _connection;
+    private DbDataSource? _dataSource;
     private int? _commandTimeout;
     private int? _maxBatchSize;
     private int? _minBatchSize;
@@ -73,8 +74,8 @@ public abstract class RelationalOptionsExtension : IDbContextOptionsExtension
     protected abstract RelationalOptionsExtension Clone();
 
     /// <summary>
-    ///     The connection string, or <see langword="null" /> if a <see cref="DbConnection" /> was used instead of
-    ///     a connection string.
+    ///     The connection string, or <see langword="null" /> if a <see cref="DbConnection" /> or <see cref="DbDataSource" /> was used
+    ///     instead of a connection string.
     /// </summary>
     public virtual string? ConnectionString
         => _connectionString;
@@ -95,8 +96,30 @@ public abstract class RelationalOptionsExtension : IDbContextOptionsExtension
     }
 
     /// <summary>
-    ///     The <see cref="DbConnection" />, or <see langword="null" /> if a connection string was used instead of
-    ///     the full connection object.
+    ///     The data source, or <see langword="null" /> if a connection string or <see cref="DbConnection" /> was used instead of a data
+    ///     source.
+    /// </summary>
+    public virtual DbDataSource? DataSource
+        => _dataSource;
+
+    /// <summary>
+    ///     Creates a new instance with all options the same as for this instance, but with the given option changed.
+    ///     It is unusual to call this method directly. Instead use <see cref="DbContextOptionsBuilder" />.
+    /// </summary>
+    /// <param name="dataSource">The option to change.</param>
+    /// <returns>A new instance with the option changed.</returns>
+    public virtual RelationalOptionsExtension WithDataSource(DbDataSource? dataSource)
+    {
+        var clone = Clone();
+
+        clone._dataSource = dataSource;
+
+        return clone;
+    }
+
+    /// <summary>
+    ///     The <see cref="DbConnection" />, or <see langword="null" /> if a connection string or data source was used instead of the full
+    ///     connection object.
     /// </summary>
     public virtual DbConnection? Connection
         => _connection;
