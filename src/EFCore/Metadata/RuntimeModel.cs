@@ -217,6 +217,8 @@ public class RuntimeModel : AnnotatableBase, IRuntimeModel
 
     /// <inheritdoc />
     [DebuggerStepThrough]
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072",
+        Justification = "Used on entity or entity property types, which are assumed to be handled (explicitly-referenced) by the user.")]
     bool IModel.IsIndexerMethod(MethodInfo methodInfo)
         => !methodInfo.IsStatic
             && methodInfo.IsSpecialName

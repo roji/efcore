@@ -91,6 +91,7 @@ public class ModelConfiguration
         return GetConfigurationType(type, null, ref configuredType);
     }
 
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     private TypeConfigurationType? GetConfigurationType(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type type,
         TypeConfigurationType? previousConfiguration,

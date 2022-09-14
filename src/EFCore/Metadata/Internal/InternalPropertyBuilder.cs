@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 /// <summary>
@@ -9,6 +11,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
 public class InternalPropertyBuilder : InternalPropertyBaseBuilder<Property>, IConventionPropertyBuilder
 {
     /// <summary>
@@ -360,7 +363,7 @@ public class InternalPropertyBuilder : InternalPropertyBaseBuilder<Property>, IC
             {
                 try
                 {
-                    return (ValueGenerator)Activator.CreateInstance(valueGeneratorType)!;
+                    return (ValueGenerator)SuppressedActivatorCreateInstance(valueGeneratorType)!;
                 }
                 catch (Exception e)
                 {
@@ -369,6 +372,11 @@ public class InternalPropertyBuilder : InternalPropertyBaseBuilder<Property>, IC
                             valueGeneratorType.ShortDisplayName(), nameof(PropertyBuilder.HasValueGenerator)), e);
                 }
             }, configurationSource);
+
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067",
+            Justification = "Compiler-generated method, https://github.com/dotnet/linker/issues/2001")]
+        static object? SuppressedActivatorCreateInstance(Type type)
+            => Activator.CreateInstance(type);
     }
 
     /// <summary>
@@ -398,7 +406,7 @@ public class InternalPropertyBuilder : InternalPropertyBaseBuilder<Property>, IC
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual InternalPropertyBuilder? HasValueGeneratorFactory(
-        [DynamicallyAccessedMembers(ValueGeneratorFactory.DynamicallyAccessedMemberTypes)]  Type? factory,
+        [DynamicallyAccessedMembers(ValueGeneratorFactory.DynamicallyAccessedMemberTypes)] Type? factory,
         ConfigurationSource configurationSource)
     {
         if (CanSetValueGeneratorFactory(factory, configurationSource))

@@ -46,10 +46,16 @@ public class Navigation : PropertyBase, IMutableNavigation, IConventionNavigatio
     /// </summary>
     [DynamicallyAccessedMembers(IEntityType.DynamicallyAccessedMemberTypes)]
     public override Type ClrType
-        => this.GetIdentifyingMemberInfo()?.GetMemberType()
+    {
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.Interfaces,
+            typeof(IEnumerable<>))]
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2073", Justification = "TODO")]
+        get => this.GetIdentifyingMemberInfo()?.GetMemberType()
             ?? (((IReadOnlyNavigation)this).IsCollection
                 ? typeof(IEnumerable<>).MakeGenericType(TargetEntityType.ClrType)
                 : TargetEntityType.ClrType);
+    }
+
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -182,6 +188,7 @@ public class Navigation : PropertyBase, IMutableNavigation, IConventionNavigatio
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     public static bool IsCompatible(
         string navigationName,
         MemberInfo navigationProperty,

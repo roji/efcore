@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
@@ -198,7 +199,7 @@ public class StateManager : IStateManager
             var entityType = _model.FindRuntimeEntityType(entity.GetType());
             if (entityType == null)
             {
-                if (_model.IsShared(entity.GetType()))
+                if (IsShared(entity.GetType()))
                 {
                     throw new InvalidOperationException(
                         CoreStrings.UntrackedDependentEntity(
@@ -221,6 +222,11 @@ public class StateManager : IStateManager
         }
 
         return entry;
+
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067",
+            Justification = "Only gets passed CLR types for entity types in the model")]
+        bool IsShared(Type entityType)
+            => _model.IsShared(entityType);
     }
 
     /// <summary>

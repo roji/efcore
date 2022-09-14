@@ -23,6 +23,9 @@ namespace Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 ///         See <see href="https://aka.ms/efcore-docs-value-converters">EF Core value converters</see> for more information and examples.
 ///     </para>
 /// </remarks>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2055", Justification = "TODO")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067", Justification = "TODO")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2111", Justification = "TODO")]
 public class ValueConverterSelector : IValueConverterSelector
 {
     private readonly ConcurrentDictionary<(Type ModelClrType, Type ProviderClrType), ValueConverterInfo> _converters = new();

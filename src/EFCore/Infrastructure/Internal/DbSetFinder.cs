@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Infrastructure.Internal;
@@ -12,6 +13,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
 public class DbSetFinder : IDbSetFinder
 {
     private readonly ConcurrentDictionary<Type, IReadOnlyList<DbSetProperty>> _cache = new();
@@ -25,6 +27,15 @@ public class DbSetFinder : IDbSetFinder
     public virtual IReadOnlyList<DbSetProperty> FindSets(Type contextType)
         => _cache.GetOrAdd(contextType, FindSetsNonCached);
 
+    [UnconditionalSuppressMessage(
+        "ReflectionAnalysis", "IL2067",
+        Justification =
+            "If any DbSet properties aren't referenced in the application, they get trimmed and we won't find them below. "
+            + "That's OK in this context (but may be problematic elsewhere as they're absent from the model)")]
+    [UnconditionalSuppressMessage(
+        "ReflectionAnalysis", "IL2072",
+        Justification =
+            "Any DbSet<T> properties we find below are guaranteed to have DynamicallyAccessedMemberTypes.All via the annotation on DbSet")]
     private static DbSetProperty[] FindSetsNonCached(Type contextType)
     {
         var factory = new ClrPropertySetterFactory();

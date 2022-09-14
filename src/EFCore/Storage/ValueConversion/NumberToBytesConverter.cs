@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 /// <summary>
@@ -101,12 +103,18 @@ public class NumberToBytesConverter<TNumber> : ValueConverter<TNumber, byte[]>
             output = Expression.Condition(
                 Expression.Property(
                     param,
-                    typeof(TNumber).GetProperty(nameof(Nullable<int>.HasValue))!),
+                    GetNullableHasValueProperty(typeof(TNumber))),
                 output,
                 Expression.Constant(null, typeof(byte[])));
         }
 
         return Expression.Lambda<Func<TNumber, byte[]>>(output, param);
+
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070",
+            Justification = "Requires only Nullable.HasValue, use [DynamicDependency] to preserve")]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(Nullable<>))]
+        static PropertyInfo GetNullableHasValueProperty(Type type)
+            => type.GetProperty(nameof(Nullable<int>.HasValue))!;
     }
 
     private static Expression<Func<byte[], TNumber>> ToNumber()

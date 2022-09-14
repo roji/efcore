@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
@@ -13,6 +14,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions;
 ///     See <see href="https://aka.ms/efcore-docs-conventions">Model building conventions</see> for more information and examples.
 /// </remarks>
 /// <typeparam name="TAttribute">The attribute type to look for.</typeparam>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067", Justification = "TODO")]
 public abstract class NavigationAttributeConventionBase<TAttribute>
     where TAttribute : Attribute
 {

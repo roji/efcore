@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -22,6 +23,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure;
 ///         for more information and examples.
 ///     </para>
 /// </remarks>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
 public class ModelValidator : IModelValidator
 {
     private static readonly IEnumerable<string> DictionaryProperties =

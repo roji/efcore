@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Microsoft.EntityFrameworkCore.Query.Internal;
 
 /// <summary>
@@ -9,6 +11,12 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060",
+    Justification = "TODO: Seems to be OK, mostly MakeGenericMethod over QueryableMethods and similar")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072",
+    Justification = "TODO: Seems to be OK, mostly MakeGenericMethod over QueryableMethods and similar")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2082",
+    Justification = "TODO: Seems to be OK, mostly MakeGenericMethod over QueryableMethods and similar")]
 public class SubqueryMemberPushdownExpressionVisitor : ExpressionVisitor
 {
     private static readonly List<MethodInfo> SupportedMethods = new()
@@ -108,7 +116,7 @@ public class SubqueryMemberPushdownExpressionVisitor : ExpressionVisitor
                         }
 
                         return Expression.Call(
-                            EF.PropertyMethod.MakeGenericMethod(propertyType),
+                            EF.MakePropertyMethod(propertyType),
                             target,
                             methodCallExpression.Arguments[1]);
                     },

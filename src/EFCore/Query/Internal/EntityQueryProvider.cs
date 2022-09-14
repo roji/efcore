@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Microsoft.EntityFrameworkCore.Query.Internal;
 
 /// <summary>
@@ -11,9 +13,10 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal;
 /// </summary>
 public class EntityQueryProvider : IAsyncQueryProvider
 {
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(EntityQueryProvider))]
     private static readonly MethodInfo GenericCreateQueryMethod
         = typeof(EntityQueryProvider).GetRuntimeMethods()
-            .Single(m => (m.Name == "CreateQuery") && m.IsGenericMethod);
+            .Single(m => (m.Name == nameof(CreateQuery)) && m.IsGenericMethod);
 
     private readonly MethodInfo _genericExecuteMethod;
 
@@ -25,6 +28,9 @@ public class EntityQueryProvider : IAsyncQueryProvider
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(QueryCompiler))]
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072",
+        Justification = "Can't verify PublicMethods on the given queryCompiler, taking DynamicDependency on QueryCompiler")]
     public EntityQueryProvider(IQueryCompiler queryCompiler)
     {
         _queryCompiler = queryCompiler;
@@ -48,6 +54,10 @@ public class EntityQueryProvider : IAsyncQueryProvider
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060",
+        Justification = "For MakeGenericMethod, https://github.com/dotnet/linker/issues/2482 (see [DynamicDependency] above)")]
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072",
+        Justification = "For GetSequenceType, assuming interfaces are preserved on expression.Type <VERIFY>")]
     public virtual IQueryable CreateQuery(Expression expression)
         => (IQueryable)GenericCreateQueryMethod
             .MakeGenericMethod(expression.Type.GetSequenceType())
@@ -68,6 +78,8 @@ public class EntityQueryProvider : IAsyncQueryProvider
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060",
+        Justification = "See DynamicDependency on constructor")]
     public virtual object Execute(Expression expression)
         => _genericExecuteMethod.MakeGenericMethod(expression.Type)
             .Invoke(_queryCompiler, new object[] { expression })!;

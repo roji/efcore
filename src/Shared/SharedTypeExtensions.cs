@@ -10,6 +10,8 @@ using System.Runtime.CompilerServices;
 namespace System;
 
 [DebuggerStepThrough]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2111", Justification = "TEMPORARY")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026", Justification = "TEMPORARY")]
 internal static class SharedTypeExtensions
 {
     private static readonly Dictionary<Type, string> BuiltInTypeNames = new()
@@ -189,16 +191,23 @@ internal static class SharedTypeExtensions
 
         return propertyElementType != null
             && fieldElementType != null
-            && IsCompatibleWith(propertyElementType, fieldElementType);
+            && IsElementCompatibleWith(propertyElementType, fieldElementType);
+
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067",
+            Justification = "IsCompatibleWith requires no code, only checks the types themselves.")]
+        static bool IsElementCompatibleWith(Type propertyElementType, Type fieldElementType)
+            => IsCompatibleWith(propertyElementType, fieldElementType);
     }
 
-    public static IEnumerable<Type> GetGenericTypeImplementations(this Type type, Type interfaceOrBaseType)
+    public static IEnumerable<Type> GetGenericTypeImplementations(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] this Type type,
+        Type interfaceOrBaseType)
     {
         var typeInfo = type.GetTypeInfo();
         if (!typeInfo.IsGenericTypeDefinition)
         {
             var baseTypes = interfaceOrBaseType.GetTypeInfo().IsInterface
-                ? typeInfo.ImplementedInterfaces
+                ? TypeImplementedInterfaces(typeInfo)
                 : type.GetBaseTypes();
             foreach (var baseType in baseTypes)
             {
@@ -215,6 +224,10 @@ internal static class SharedTypeExtensions
                 yield return type;
             }
         }
+
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070", Justification = "https://github.com/dotnet/runtime/issues/63264")]
+        static IEnumerable<Type> TypeImplementedInterfaces(TypeInfo typeInfo)
+            => typeInfo.ImplementedInterfaces;
     }
 
     public static IEnumerable<Type> GetBaseTypes(this Type type)
@@ -229,7 +242,10 @@ internal static class SharedTypeExtensions
         }
     }
 
-    public static List<Type> GetBaseTypesAndInterfacesInclusive(this Type type)
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072",
+        Justification = "All types handled within are base classes or interfaces of the type argument, so preserved")]
+    public static List<Type> GetBaseTypesAndInterfacesInclusive(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] this Type type)
     {
         var baseTypes = new List<Type>();
         var typesToProcess = new Queue<Type>();
@@ -311,13 +327,16 @@ internal static class SharedTypeExtensions
                     && c.GetParameters().Select(p => p.ParameterType).SequenceEqual(types))!;
     }
 
-    public static IEnumerable<PropertyInfo> GetPropertiesInHierarchy(this Type type, string name)
+    public static IEnumerable<PropertyInfo> GetPropertiesInHierarchy(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        this Type type,
+        string name)
     {
         var currentType = type;
         do
         {
             var typeInfo = currentType.GetTypeInfo();
-            foreach (var propertyInfo in typeInfo.DeclaredProperties)
+            foreach (var propertyInfo in TypeDeclaredProperties(typeInfo))
             {
                 if (propertyInfo.Name.Equals(name, StringComparison.Ordinal)
                     && !(propertyInfo.GetMethod ?? propertyInfo.SetMethod)!.IsStatic)
@@ -329,22 +348,32 @@ internal static class SharedTypeExtensions
             currentType = typeInfo.BaseType;
         }
         while (currentType != null);
+
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070", Justification = "https://github.com/dotnet/runtime/issues/63264")]
+        static IEnumerable<PropertyInfo> TypeDeclaredProperties(TypeInfo typeInfo)
+            => typeInfo.DeclaredProperties;
     }
 
     // Looking up the members through the whole hierarchy allows to find inherited private members.
-    public static IEnumerable<MemberInfo> GetMembersInHierarchy(this Type type)
+    public static IEnumerable<MemberInfo> GetMembersInHierarchy(
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicProperties
+            | DynamicallyAccessedMemberTypes.NonPublicProperties
+            | DynamicallyAccessedMemberTypes.PublicFields
+            | DynamicallyAccessedMemberTypes.NonPublicFields)]
+        this Type type)
     {
         var currentType = type;
 
         do
         {
             // Do the whole hierarchy for properties first since looking for fields is slower.
-            foreach (var propertyInfo in currentType.GetRuntimeProperties().Where(pi => !(pi.GetMethod ?? pi.SetMethod)!.IsStatic))
+            foreach (var propertyInfo in TypeGetRuntimeProperties(currentType).Where(pi => !(pi.GetMethod ?? pi.SetMethod)!.IsStatic))
             {
                 yield return propertyInfo;
             }
 
-            foreach (var fieldInfo in currentType.GetRuntimeFields().Where(f => !f.IsStatic))
+            foreach (var fieldInfo in TypeGetRuntimeFields(currentType).Where(f => !f.IsStatic))
             {
                 yield return fieldInfo;
             }
@@ -352,6 +381,15 @@ internal static class SharedTypeExtensions
             currentType = currentType.BaseType;
         }
         while (currentType != null);
+
+        // For this local wrapper, see https://github.com/dotnet/runtime/issues/63264#issuecomment-1003765842
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067", Justification = "https://github.com/dotnet/runtime/issues/63264")]
+        static IEnumerable<PropertyInfo> TypeGetRuntimeProperties(Type type)
+            => type.GetRuntimeProperties();
+
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067", Justification = "https://github.com/dotnet/runtime/issues/63264")]
+        static IEnumerable<FieldInfo> TypeGetRuntimeFields(Type type)
+            => type.GetRuntimeFields();
     }
 
     public static IEnumerable<MemberInfo> GetMembersInHierarchy(
@@ -493,12 +531,7 @@ internal static class SharedTypeExtensions
     }
 
     private static void ProcessGenericType(
-        StringBuilder builder,
-        Type type,
-        Type[] genericArguments,
-        int length,
-        bool fullName,
-        bool compilable)
+        StringBuilder builder, Type type, Type[] genericArguments, int length, bool fullName, bool compilable)
     {
         if (type.IsConstructedGenericType
             && type.GetGenericTypeDefinition() == typeof(Nullable<>))
@@ -599,13 +632,18 @@ internal static class SharedTypeExtensions
         }
     }
 
-    public static ConstantExpression GetDefaultValueConstant(this Type type)
-        => (ConstantExpression)GenerateDefaultValueConstantMethod
-            .MakeGenericMethod(type).Invoke(null, Array.Empty<object>())!;
+    // TODO: Needlessly preserves parameterless constructor of reference types
+    public static ConstantExpression GetDefaultValueConstant(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] this Type type)
+        => Expression.Constant(type.IsValueType ? Activator.CreateInstance(type) : null, type);
 
-    private static readonly MethodInfo GenerateDefaultValueConstantMethod =
-        typeof(SharedTypeExtensions).GetTypeInfo().GetDeclaredMethod(nameof(GenerateDefaultValueConstant))!;
-
-    private static ConstantExpression GenerateDefaultValueConstant<TDefault>()
-        => Expression.Constant(default(TDefault), typeof(TDefault));
+    // public static ConstantExpression GetDefaultValueConstant(this Type type)
+    //     => (ConstantExpression)GenerateDefaultValueConstantMethod
+    //         .MakeGenericMethod(type).Invoke(null, Array.Empty<object>())!;
+    //
+    // private static readonly MethodInfo GenerateDefaultValueConstantMethod =
+    //     typeof(SharedTypeExtensions).GetTypeInfo().GetDeclaredMethod(nameof(GenerateDefaultValueConstant))!;
+    //
+    // private static ConstantExpression GenerateDefaultValueConstant<TDefault>()
+    //     => Expression.Constant(default(TDefault), typeof(TDefault));
 }

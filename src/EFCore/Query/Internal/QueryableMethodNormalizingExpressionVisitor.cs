@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Query.Internal;
@@ -12,6 +13,10 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
+// TODO: I've already done some MakeGenericMethod wrappers below, verify those - maybe not necessary
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026", Justification = "<VERIFY>")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060", Justification = "<VERIFY>")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "<VERIFY>")]
 public class QueryableMethodNormalizingExpressionVisitor : ExpressionVisitor
 {
     private readonly QueryCompilationContext _queryCompilationContext;
@@ -299,7 +304,7 @@ public class QueryableMethodNormalizingExpressionVisitor : ExpressionVisitor
                 if (genericTypeArguments != null
                     && queryableMethod.GetGenericArguments().Length == genericTypeArguments.Length)
                 {
-                    queryableMethod = queryableMethod.MakeGenericMethod(genericTypeArguments);
+                    queryableMethod = SuppressedMakeGenericMethod(queryableMethod, genericTypeArguments);
                 }
                 else
                 {
@@ -354,7 +359,7 @@ public class QueryableMethodNormalizingExpressionVisitor : ExpressionVisitor
                         }
 
                         arguments[i] = Expression.Call(
-                            QueryableMethods.AsQueryable.MakeGenericMethod(genericType),
+                            SuppressedMakeGenericMethod(QueryableMethods.AsQueryable, genericType),
                             innerArgument);
                     }
 
@@ -395,9 +400,9 @@ public class QueryableMethodNormalizingExpressionVisitor : ExpressionVisitor
         var sourceType = methodCallExpression.Method.DeclaringType!.GetGenericArguments()[0];
 
         return Expression.Call(
-            QueryableMethods.Contains.MakeGenericMethod(sourceType),
+            SuppressedMakeGenericMethod(QueryableMethods.Contains, sourceType),
             Expression.Call(
-                QueryableMethods.AsQueryable.MakeGenericMethod(sourceType),
+                SuppressedMakeGenericMethod(QueryableMethods.AsQueryable, sourceType),
                 methodCallExpression.Object!),
             methodCallExpression.Arguments[0]);
     }
@@ -501,8 +506,9 @@ public class QueryableMethodNormalizingExpressionVisitor : ExpressionVisitor
                     genericArguments[^1] = resultSelector.ReturnType;
 
                     return Expression.Call(
-                        (defaultIfEmpty ? QueryableExtensions.LeftJoinMethodInfo : QueryableMethods.Join).MakeGenericMethod(
-                            genericArguments),
+                        SuppressedMakeGenericMethod(
+                                defaultIfEmpty ? QueryableExtensions.LeftJoinMethodInfo : QueryableMethods.Join,
+                                genericArguments),
                         outer, inner, outerKeySelector, innerKeySelector, resultSelector);
                 }
                 // TODO: Convert correlated patterns to SelectMany
@@ -591,9 +597,9 @@ public class QueryableMethodNormalizingExpressionVisitor : ExpressionVisitor
 
                     var genericArguments = groupJoinMethod.Method.GetGenericArguments();
                     genericArguments[^1] = resultSelector.ReturnType;
-
                     return Expression.Call(
-                        (defaultIfEmpty ? QueryableExtensions.LeftJoinMethodInfo : QueryableMethods.Join).MakeGenericMethod(
+                        SuppressedMakeGenericMethod(
+                            defaultIfEmpty ? QueryableExtensions.LeftJoinMethodInfo : QueryableMethods.Join,
                             genericArguments),
                         outer, inner, outerKeySelector, innerKeySelector, resultSelector);
                 }
@@ -791,4 +797,11 @@ public class QueryableMethodNormalizingExpressionVisitor : ExpressionVisitor
             return base.VisitParameter(parameterExpression);
         }
     }
+
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060",
+        Justification =
+            "Needed for MakeGenericMethod because of https://github.com/dotnet/linker/issues/2482. " +
+            "All methods used are on QueryableMethods (or are referenced from it via [DynamicDependency])")]
+    private static MethodInfo SuppressedMakeGenericMethod(MethodInfo methodInfo, params Type[] typeArguments)
+        => methodInfo.MakeGenericMethod(typeArguments);
 }

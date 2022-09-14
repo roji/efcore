@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 namespace Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
@@ -42,6 +43,7 @@ public class StringNumberConverter<TModel, TProvider, TNumber> : ValueConverter<
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2075", Justification = "TODO")]
     protected static Expression<Func<string, TNumber>> ToNumber()
     {
         var type = typeof(TNumber).UnwrapNullableType();
@@ -82,6 +84,7 @@ public class StringNumberConverter<TModel, TProvider, TNumber> : ValueConverter<
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2090", Justification = "TODO")]
     protected static new Expression<Func<TNumber, string>> ToString()
     {
         var type = typeof(TNumber).UnwrapNullableType();

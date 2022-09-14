@@ -1,6 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+using Microsoft.EntityFrameworkCore.Internal;
+
 namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
@@ -10,6 +13,12 @@ namespace Microsoft.EntityFrameworkCore.Query;
 ///     See <see href="https://aka.ms/efcore-docs-providers">Implementation of database providers and extensions</see>
 ///     and <see href="https://aka.ms/efcore-docs-how-query-works">How EF Core queries work</see> for more information and examples.
 /// </remarks>
+[UnconditionalSuppressMessage(
+    "ReflectionAnalysis",
+    "IL2026",
+    Justification =
+        "This type uses extended reflection over Queryable and IQueryable, which are preserved via [DynamicDependency] "
+        + "on the static constructor")]
 public static class QueryableMethods
 {
     //public static MethodInfo AggregateWithoutSeed { get; }
@@ -434,6 +443,11 @@ public static class QueryableMethods
     private static Dictionary<Type, MethodInfo> SumWithoutSelectorMethods { get; }
     private static Dictionary<Type, MethodInfo> SumWithSelectorMethods { get; }
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(IQueryable<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(Queryable))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(IEnumerable<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(Expression))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(QueryableExtensions))]
     static QueryableMethods()
     {
         var queryableMethodGroups = typeof(Queryable)

@@ -1,14 +1,14 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#nullable enable
+using System.Diagnostics.CodeAnalysis;
 
-using System.Linq;
+#nullable enable
 
 namespace System.Reflection;
 
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2075", Justification = "TODO")]
 internal static class EntityFrameworkMemberInfoExtensions
-
 {
     public static Type GetMemberType(this MemberInfo memberInfo)
         => (memberInfo as PropertyInfo)?.PropertyType ?? ((FieldInfo)memberInfo).FieldType;

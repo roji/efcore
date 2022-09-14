@@ -9,11 +9,14 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 
 namespace Microsoft.EntityFrameworkCore
 {
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060", Justification = "TODO")]
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2091", Justification = "TODO")]
     public static partial class EF
     {
         /// <summary>

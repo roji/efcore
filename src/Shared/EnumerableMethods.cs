@@ -1,12 +1,25 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Reflection;
+
 #nullable enable
 
 using System.Collections;
 
 namespace Microsoft.EntityFrameworkCore;
 
+[UnconditionalSuppressMessage(
+    "ReflectionAnalysis",
+    "IL2026",
+    Justification =
+        "This type uses extended reflection over Enumerable and IEnumerable, which are preserved via [DynamicDependency] "
+        + "on the static constructor")]
 internal static class EnumerableMethods
 {
     //public static MethodInfo AggregateWithoutSeed { get; }
@@ -258,6 +271,10 @@ internal static class EnumerableMethods
             ? method
             : MinWithSelector;
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(IQueryable<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(Queryable))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(IEnumerable<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(Expression))]
     static EnumerableMethods()
     {
         var queryableMethodGroups = typeof(Enumerable)

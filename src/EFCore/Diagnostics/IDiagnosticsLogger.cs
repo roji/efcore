@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace Microsoft.EntityFrameworkCore.Diagnostics;
@@ -83,6 +84,7 @@ public interface IDiagnosticsLogger
     /// <param name="eventData">The event data.</param>
     /// <param name="diagnosticSourceEnabled">True to dispatch to a <see cref="DiagnosticSource" />; <see langword="false" /> otherwise.</param>
     /// <param name="simpleLogEnabled">True to dispatch to a <see cref="IDbContextLogger" />; <see langword="false" /> otherwise.</param>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026", Justification = "TODO")]
     [MethodImpl(MethodImplOptions.AggressiveInlining)] // Because hot path for logging
     void DispatchEventData(
         EventDefinitionBase definition,

@@ -346,7 +346,7 @@ public interface IConventionPropertyBuilder : IConventionPropertyBaseBuilder
     ///     <see langword="true" /> if the <see cref="ValueGenerator" /> can be configured for this property.
     /// </returns>
     bool CanSetValueGeneratorFactory(
-        [DynamicallyAccessedMembers(ValueGeneratorFactory.DynamicallyAccessedMemberTypes)]  Type? valueGeneratorFactoryType,
+        [DynamicallyAccessedMembers(ValueGeneratorFactory.DynamicallyAccessedMemberTypes)] Type? valueGeneratorFactoryType,
         bool fromDataAnnotation = false);
 
     /// <summary>

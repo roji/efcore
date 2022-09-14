@@ -7,6 +7,10 @@ using ExpressionExtensions = Microsoft.EntityFrameworkCore.Infrastructure.Expres
 
 namespace Microsoft.EntityFrameworkCore.Query.Internal;
 
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026", Justification = "<VERIFY>")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060", Justification = "<VERIFY>")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "<VERIFY>")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2075", Justification = "<VERIFY>")]
 public partial class NavigationExpandingExpressionVisitor
 {
     /// <summary>

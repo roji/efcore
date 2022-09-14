@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 /// <summary>
@@ -753,7 +755,10 @@ public interface IConventionEntityTypeBuilder : IConventionAnnotatableBuilder
     /// <param name="type">The type of the navigation target.</param>
     /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
     /// <returns><see langword="true" /> if the skip navigation can be added.</returns>
-    bool CanHaveNavigation(string navigationName, Type? type, bool fromDataAnnotation = false);
+    bool CanHaveNavigation(
+        string navigationName,
+        [DynamicallyAccessedMembers(IEntityType.DynamicallyAccessedMemberTypes)] Type? type,
+        bool fromDataAnnotation = false);
 
     /// <summary>
     ///     Returns a value indicating whether the given navigation can be added to this entity type.
@@ -761,6 +766,7 @@ public interface IConventionEntityTypeBuilder : IConventionAnnotatableBuilder
     /// <param name="navigation">The navigation member.</param>
     /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
     /// <returns><see langword="true" /> if the configuration can be applied.</returns>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     bool CanHaveNavigation(MemberInfo navigation, bool fromDataAnnotation = false)
         => CanHaveNavigation(navigation.Name, navigation.GetMemberType(), fromDataAnnotation);
 

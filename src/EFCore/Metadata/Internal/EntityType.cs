@@ -2380,6 +2380,10 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067",
+        Justification = "TODO: If memberInfo is non-null, the property type could be taken from it")]
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072",
+        Justification = "TODO: If memberInfo is non-null, the property type could be taken from it")]
     public virtual Property? AddProperty(
         string name,
         [DynamicallyAccessedMembers(IProperty.DynamicallyAccessedMemberTypes)] Type propertyType,
@@ -3169,7 +3173,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
                     .Concat<IPropertyBase>(GetNavigations())
                     .Concat(GetSkipNavigations())
                     .ToDictionary(p => p.Name);
-                foreach (var memberInfo in type.GetMembersInHierarchy())
+                foreach (var memberInfo in SuppressedGetMembersInHierarchy(type))
                 {
                     if (!propertiesMap.TryGetValue(memberInfo.GetSimpleMemberName(), out var propertyBase))
                     {
@@ -3195,6 +3199,13 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
                         ? value
                         : valueConverter.ConvertToProvider(value);
                 }
+
+                [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067",
+                    Justification = "Anonymous types in seeding data - referenced from OnModelCreating etc.")]
+                [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072",
+                    Justification = "Anonymous types in seeding data - referenced from OnModelCreating etc.")]
+                static IEnumerable<MemberInfo> SuppressedGetMembersInHierarchy(Type type)
+                    => type.GetMembersInHierarchy();
             }
         }
 
@@ -4849,6 +4860,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     [DebuggerStepThrough]
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026", Justification = "TODO")]
     IMutableProperty IMutableEntityType.AddProperty(string name)
         => AddProperty(name, ConfigurationSource.Explicit)!;
 
@@ -4859,6 +4871,7 @@ public class EntityType : TypeBase, IMutableEntityType, IConventionEntityType, I
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     [DebuggerStepThrough]
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026", Justification = "TODO")]
     IConventionProperty? IConventionEntityType.AddProperty(string name, bool fromDataAnnotation)
         => AddProperty(
             name,

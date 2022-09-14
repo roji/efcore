@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Update.Internal;
@@ -14,6 +15,21 @@ namespace Microsoft.EntityFrameworkCore.Migrations.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
+[UnconditionalSuppressMessage(
+    "ReflectionAnalysis",
+    "IL2026",
+    Justification = "Migration generation currently isn't compatible with trimming. " +
+        "This is surfaced to users via [RequiresUnreferencedCode] on IMigrator.")]
+[UnconditionalSuppressMessage(
+    "ReflectionAnalysis",
+    "IL2072",
+    Justification = "Migration generation currently isn't compatible with trimming. " +
+        "This is surfaced to users via [RequiresUnreferencedCode] on IMigrator.")]
+[UnconditionalSuppressMessage(
+    "ReflectionAnalysis",
+    "IL2075",
+    Justification = "Migration generation currently isn't compatible with trimming. " +
+        "This is surfaced to users via [RequiresUnreferencedCode] on IMigrator.")]
 public class MigrationsModelDiffer : IMigrationsModelDiffer
 {
     private static readonly Type[] DropOperationTypes =

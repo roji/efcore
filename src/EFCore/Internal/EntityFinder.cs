@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Internal;
@@ -11,6 +12,7 @@ namespace Microsoft.EntityFrameworkCore.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2087", Justification = "TODO")]
 public class EntityFinder<TEntity> : IEntityFinder<TEntity>
     where TEntity : class
 {
@@ -349,13 +351,19 @@ public class EntityFinder<TEntity> : IEntityFinder<TEntity>
         var queryRoot = BuildQueryRoot(ownerEntityType);
         var collectionNavigation = ownerEntityType.FindNavigation(navigationName)!.IsCollection;
 
-        return (IQueryable)(collectionNavigation ? SelectManyMethod : SelectMethod)
-            .MakeGenericMethod(ownerEntityType.ClrType, entityType.ClrType)
+        return (IQueryable)(collectionNavigation
+            ? MakeSelectManyMethod(ownerEntityType.ClrType, entityType.ClrType)
+            : MakeSelectMethod(ownerEntityType.ClrType, entityType.ClrType))
             .Invoke(null, new object[] { queryRoot, navigationName })!;
     }
 
     private static readonly MethodInfo SelectMethod
         = typeof(EntityFinder<TEntity>).GetTypeInfo().GetDeclaredMethods(nameof(Select)).Single(mi => mi.IsGenericMethodDefinition);
+
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060",
+        Justification = "MakeGenericMethod wrapper, see https://github.com/dotnet/linker/issues/2482")]
+    private static MethodInfo MakeSelectMethod(Type sourceType, Type resultType)
+        => SelectMethod.MakeGenericMethod(sourceType, resultType);
 
     private static IQueryable<TResult> Select<TSource, TResult>(
         IQueryable<TSource> source,
@@ -372,6 +380,11 @@ public class EntityFinder<TEntity> : IEntityFinder<TEntity>
 
     private static readonly MethodInfo SelectManyMethod
         = typeof(EntityFinder<TEntity>).GetTypeInfo().GetDeclaredMethods(nameof(SelectMany)).Single(mi => mi.IsGenericMethodDefinition);
+
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060",
+        Justification = "MakeGenericMethod wrapper, see https://github.com/dotnet/linker/issues/2482")]
+    private static MethodInfo MakeSelectManyMethod(Type sourceType, Type resultType)
+        => SelectManyMethod.MakeGenericMethod(sourceType, resultType);
 
     private static IQueryable<TResult> SelectMany<TSource, TResult>(
         IQueryable<TSource> source,
@@ -397,7 +410,7 @@ public class EntityFinder<TEntity> : IEntityFinder<TEntity>
                 Expression.Convert(
                     Expression.Convert(
                         Expression.Call(
-                            EF.PropertyMethod.MakeGenericMethod(property.ClrType),
+                            EF.MakePropertyMethod(property.ClrType),
                             entityParameter,
                             Expression.Constant(property.Name, typeof(string))),
                         property.ClrType),

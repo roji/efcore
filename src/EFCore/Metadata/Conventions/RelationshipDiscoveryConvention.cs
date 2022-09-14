@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
@@ -673,6 +674,8 @@ public class RelationshipDiscoveryConvention :
         return filteredRelationshipCandidates;
     }
 
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072",
+        Justification = "Used on entity or entity property types, which are assumed to be handled (explicitly-referenced) by the user.")]
     private void CreateRelationships(
         IEnumerable<RelationshipCandidate> relationshipCandidates,
         IConventionEntityTypeBuilder entityTypeBuilder)
@@ -1124,6 +1127,7 @@ public class RelationshipDiscoveryConvention :
         }
     }
 
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     private static bool IsCandidateNavigationProperty(
         IConventionEntityType sourceEntityType,
         string navigationName,

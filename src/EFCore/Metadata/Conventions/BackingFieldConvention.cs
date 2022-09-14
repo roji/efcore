@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions;
@@ -23,6 +24,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions;
 ///         See <see href="https://aka.ms/efcore-docs-conventions">Model building conventions</see> for more information and examples.
 ///     </para>
 /// </remarks>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2077", Justification = "TODO")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
 public class BackingFieldConvention :
     IPropertyAddedConvention,
     INavigationAddedConvention,
@@ -132,6 +135,7 @@ public class BackingFieldConvention :
     private static FieldInfo? TryMatchFieldName(
         IConventionPropertyBase propertyBase,
         IConventionEntityType? entityType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)]
         Type entityClrType)
     {
         var propertyName = propertyBase.Name;

@@ -569,6 +569,8 @@ public class Property : PropertyBase, IMutableProperty, IConventionProperty, IPr
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072",
+        Justification = "SetValueGeneratorFactory preserves via DynamicallyAccessedMembers")]
     public virtual Func<IProperty, IEntityType, ValueGenerator>? GetValueGeneratorFactory()
     {
         var factory = (Func<IProperty, IEntityType, ValueGenerator>?)this[CoreAnnotationNames.ValueGeneratorFactory];
@@ -810,7 +812,11 @@ public class Property : PropertyBase, IMutableProperty, IConventionProperty, IPr
         }
 
         SetValueComparer(comparer, configurationSource);
-        return (Type?)SetOrRemoveAnnotation(CoreAnnotationNames.ValueComparerType, comparerType, configurationSource)?.Value;
+
+        return SuppressedSetOrRemove();
+
+        Type? SuppressedSetOrRemove()
+            => (Type?)SetOrRemoveAnnotation(CoreAnnotationNames.ValueComparerType, comparerType, configurationSource)?.Value;
     }
 
     /// <summary>
@@ -912,7 +918,11 @@ public class Property : PropertyBase, IMutableProperty, IConventionProperty, IPr
         }
 
         SetProviderValueComparer(comparer, configurationSource);
-        return (Type?)SetOrRemoveAnnotation(CoreAnnotationNames.ProviderValueComparerType, comparerType, configurationSource)?.Value;
+
+        return SuppressedSetOrRemove();
+
+        Type? SuppressedSetOrRemove()
+            => (Type?)SetOrRemoveAnnotation(CoreAnnotationNames.ProviderValueComparerType, comparerType, configurationSource)?.Value;
     }
 
     /// <summary>

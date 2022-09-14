@@ -967,13 +967,16 @@ public class Model : ConventionAnnotatable, IMutableModel, IConventionModel, IRu
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual PropertyInfo? FindIndexerPropertyInfo(Type type)
+    public virtual PropertyInfo? FindIndexerPropertyInfo(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        Type type)
         => _indexerPropertyInfoMap.GetOrAdd(type, type.FindIndexerProperty());
 
     /// <summary>
     ///     Gets a value indicating whether the given MethodInfo represents an indexer access.
     /// </summary>
     /// <param name="methodInfo">The MethodInfo to check for.</param>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     public virtual bool IsIndexerMethod(MethodInfo methodInfo)
         => !methodInfo.IsStatic
             && methodInfo.IsSpecialName

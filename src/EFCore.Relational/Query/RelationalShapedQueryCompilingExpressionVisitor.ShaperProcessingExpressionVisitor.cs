@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 namespace Microsoft.EntityFrameworkCore.Query;
 
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060", Justification = "TODO: Seems to be MakeGenericMethod wrappers only")]
 public partial class RelationalShapedQueryCompilingExpressionVisitor
 {
     private sealed partial class ShaperProcessingExpressionVisitor : ExpressionVisitor

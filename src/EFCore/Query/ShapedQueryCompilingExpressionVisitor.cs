@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -30,6 +31,8 @@ namespace Microsoft.EntityFrameworkCore.Query;
 ///         and <see href="https://aka.ms/efcore-docs-how-query-works">How EF Core queries work</see> for more information and examples.
 ///     </para>
 /// </remarks>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060", Justification = "<VERIFY>")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "<VERIFY>")]
 public abstract class ShapedQueryCompilingExpressionVisitor : ExpressionVisitor
 {
     private static readonly PropertyInfo CancellationTokenMemberInfo

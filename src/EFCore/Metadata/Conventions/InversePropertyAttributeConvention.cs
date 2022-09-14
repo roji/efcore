@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions;
@@ -13,6 +14,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions;
 /// <remarks>
 ///     See <see href="https://aka.ms/efcore-docs-conventions">Model building conventions</see> for more information and examples.
 /// </remarks>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067", Justification = "TODO")]
 public class InversePropertyAttributeConvention :
     NavigationAttributeConventionBase<InversePropertyAttribute>,
     IEntityTypeAddedConvention,

@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -163,11 +164,16 @@ public abstract class SnapshotFactoryFactory
                         Expression.Assign(
                             entityVariable,
                             Expression.Convert(
-                                Expression.Property(parameter, "Entity"),
+                                SuppressedExpressionProperty(parameter, "Entity"),
                                 entityType!)),
                         constructorExpression
                     })
                 : constructorExpression;
+
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026",
+            Justification = "Used on entity or entity property types, which are assumed to be handled (explicitly-referenced) by the user.")]
+        static MemberExpression SuppressedExpressionProperty(Expression expression, string propertyName)
+            => Expression.Property(expression, propertyName);
     }
 
     private Expression CreateSnapshotValueExpression(Expression expression, IPropertyBase propertyBase)

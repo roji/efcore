@@ -1068,7 +1068,8 @@ public static class EntityFrameworkServiceCollectionExtensions
         return builder.Options;
     }
 
-    private static void CheckContextConstructors<TContext>()
+    // TODO: Check whether we really need non-public constructors here (DI's ServiceDescriptor generally requires only public)
+    private static void CheckContextConstructors<[DynamicallyAccessedMembers(DbContext.DynamicallyAccessedMemberTypes)] TContext>()
         where TContext : DbContext
     {
         var declaredConstructors = typeof(TContext).GetTypeInfo().DeclaredConstructors.ToList();

@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata;
@@ -17,6 +18,12 @@ public class DependencyInjectionParameterBinding : ServiceParameterBinding
 {
     private static readonly MethodInfo GetServiceMethod
         = typeof(InfrastructureExtensions).GetMethod(nameof(InfrastructureExtensions.GetService))!;
+
+    [UnconditionalSuppressMessage(
+        "ReflectionAnalysis", "IL2060",
+        Justification = "MakeGenericMethod wrapper, see https://github.com/dotnet/linker/issues/2482")]
+    private static MethodInfo MakeGetServiceMethod(Type type)
+        => GetServiceMethod.MakeGenericMethod(type);
 
     /// <summary>
     ///     Creates a new <see cref="DependencyInjectionParameterBinding" /> instance for the given service type.
@@ -47,7 +54,7 @@ public class DependencyInjectionParameterBinding : ServiceParameterBinding
         Check.NotNull(entityTypeExpression, nameof(entityTypeExpression));
 
         return Expression.Call(
-            GetServiceMethod.MakeGenericMethod(ServiceType),
+            MakeGetServiceMethod(ServiceType),
             Expression.Convert(
                 Expression.Property(
                     materializationExpression,

@@ -13,6 +13,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067", Justification = "TODO")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2077", Justification = "TODO")]
 public class InternalEntityTypeBuilder : AnnotatableBuilder<EntityType, InternalModelBuilder>, IConventionEntityTypeBuilder
 {
     /// <summary>
@@ -706,6 +709,7 @@ public class InternalEntityTypeBuilder : AnnotatableBuilder<EntityType, Internal
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     public virtual bool CanHaveProperty(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type? propertyType,
         string propertyName,
@@ -1030,6 +1034,7 @@ public class InternalEntityTypeBuilder : AnnotatableBuilder<EntityType, Internal
             && CanAddServiceProperty(memberInfo, configurationSource.Value);
     }
 
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     private bool CanAddServiceProperty(MemberInfo memberInfo, ConfigurationSource configurationSource)
     {
         var propertyName = memberInfo.GetSimpleMemberName();
@@ -1099,7 +1104,10 @@ public class InternalEntityTypeBuilder : AnnotatableBuilder<EntityType, Internal
                     m => configurationSource.Overrides(m.GetConfigurationSource())
                         && m.GetConfigurationSource() != ConfigurationSource.Explicit);
 
-    private bool CanBeNavigation(Type type, ConfigurationSource configurationSource)
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
+    private bool CanBeNavigation(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type type,
+        ConfigurationSource configurationSource)
         => configurationSource == ConfigurationSource.Explicit
             || ModelBuilder.Metadata.Configuration?.GetConfigurationType(type).IsEntityType() != false
             && (type.TryGetSequenceType() is not Type sequenceType
@@ -3753,6 +3761,7 @@ public class InternalEntityTypeBuilder : AnnotatableBuilder<EntityType, Internal
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     public virtual InternalEntityTypeBuilder? GetTargetEntityTypeBuilder(
         TypeIdentity targetEntityType,
         MemberIdentity navigation,
@@ -4210,6 +4219,7 @@ public class InternalEntityTypeBuilder : AnnotatableBuilder<EntityType, Internal
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     public virtual InternalSkipNavigationBuilder? HasSkipNavigation(
         MemberIdentity navigationProperty,
         EntityType targetEntityType,
@@ -4488,6 +4498,7 @@ public class InternalEntityTypeBuilder : AnnotatableBuilder<EntityType, Internal
             isRequired,
             baseName).Item2;
 
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     private (bool, IReadOnlyList<Property>?) TryCreateUniqueProperties(
         int propertyCount,
         IReadOnlyList<Property>? currentProperties,
@@ -4700,6 +4711,7 @@ public class InternalEntityTypeBuilder : AnnotatableBuilder<EntityType, Internal
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     public virtual IReadOnlyList<Property>? GetActualProperties(
         IReadOnlyList<Property>? properties,
         ConfigurationSource? configurationSource)
@@ -5193,6 +5205,7 @@ public class InternalEntityTypeBuilder : AnnotatableBuilder<EntityType, Internal
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     [DebuggerStepThrough]
     bool IConventionEntityTypeBuilder.CanHaveProperty(MemberInfo memberInfo, bool fromDataAnnotation)
         => CanHaveProperty(

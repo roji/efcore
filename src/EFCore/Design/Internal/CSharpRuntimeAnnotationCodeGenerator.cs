@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Design.Internal;
@@ -8,6 +9,10 @@ namespace Microsoft.EntityFrameworkCore.Design.Internal;
 /// <summary>
 ///     Base class to be used by database providers when implementing an <see cref="ICSharpRuntimeAnnotationCodeGenerator" />
 /// </summary>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060", Justification = "Trimming not supported in design")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2062", Justification = "Trimming not supported in design")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067", Justification = "Trimming not supported in design")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "Trimming not supported in design")]
 public class CSharpRuntimeAnnotationCodeGenerator : ICSharpRuntimeAnnotationCodeGenerator
 {
     /// <summary>

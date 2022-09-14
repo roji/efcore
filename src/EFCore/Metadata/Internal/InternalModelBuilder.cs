@@ -64,6 +64,7 @@ public class InternalModelBuilder : AnnotatableBuilder<Model, InternalModelBuild
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO")]
     public virtual InternalEntityTypeBuilder? Entity(
         [DynamicallyAccessedMembers(IEntityType.DynamicallyAccessedMemberTypes)] Type type,
         ConfigurationSource configurationSource,
@@ -311,8 +312,8 @@ public class InternalModelBuilder : AnnotatableBuilder<Model, InternalModelBuild
         [DynamicallyAccessedMembers(IEntityType.DynamicallyAccessedMemberTypes)] Type type,
         ConfigurationSource configurationSource)
     {
-        if (IsIgnored(type, configurationSource)
-            || !CanBeConfigured(type, TypeConfigurationType.OwnedEntityType, configurationSource))
+        if (SuppressedIsIgnored(type, configurationSource)
+            || !SuppressedCanBeConfigured(type, TypeConfigurationType.OwnedEntityType, configurationSource))
         {
             return null;
         }
@@ -352,6 +353,16 @@ public class InternalModelBuilder : AnnotatableBuilder<Model, InternalModelBuild
         }
 
         return new InternalOwnedEntityTypeBuilder();
+
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067",
+            Justification = "Compiler-generated method, https://github.com/dotnet/linker/issues/2001")]
+        bool SuppressedIsIgnored(Type type, ConfigurationSource? configurationSource)
+            => IsIgnored(type, configurationSource);
+
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2067",
+            Justification = "Compiler-generated method, https://github.com/dotnet/linker/issues/2001")]
+        bool SuppressedCanBeConfigured(Type type, TypeConfigurationType configurationType, ConfigurationSource configurationSource)
+            => CanBeConfigured(type, configurationType, configurationSource);
     }
 
     private bool IsOwned(in TypeIdentity type)

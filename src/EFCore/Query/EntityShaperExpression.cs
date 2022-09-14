@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 
 namespace Microsoft.EntityFrameworkCore.Query;
@@ -18,6 +19,8 @@ namespace Microsoft.EntityFrameworkCore.Query;
 ///     See <see href="https://aka.ms/efcore-docs-providers">Implementation of database providers and extensions</see>
 ///     and <see href="https://aka.ms/efcore-docs-how-query-works">How EF Core queries work</see> for more information and examples.
 /// </remarks>
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026", Justification = "TODO")]
+[UnconditionalSuppressMessage("ReflectionAnalysis", "IL2111", Justification = "TODO")]
 public class EntityShaperExpression : Expression, IPrintableExpression
 {
     private static readonly MethodInfo CreateUnableToDiscriminateExceptionMethod

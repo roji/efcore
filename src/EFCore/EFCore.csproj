@@ -13,6 +13,14 @@ Microsoft.EntityFrameworkCore.DbSet
     <RootNamespace>Microsoft.EntityFrameworkCore</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <ImplicitUsings>true</ImplicitUsings>
+
+    <!-- Not sure we'll end up actually mark EF as trimmable for 7.0.
+         This doesn't matter for (default) console apps where libraries get trimmed regardless of this flag, but it does matter for
+         ASP.NET and where users explicitly opt into partial trimming mode. -->
+    <IsTrimmable>true</IsTrimmable>
+    <!-- Regardless of whether we mark EF as trimmable or not, this enable analyzer warnings -->
+<!--    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>-->
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
   </PropertyGroup>
 
   <ItemGroup>

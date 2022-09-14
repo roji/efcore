@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Internal;
@@ -21,6 +22,8 @@ public class PropertyAccessorsFactory
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060",
+        Justification = "CreateGeneric has no DynamicallyAccessedMembers annotations and is safe to construct.")]
     public virtual PropertyAccessors Create(IPropertyBase propertyBase)
         => (PropertyAccessors)GenericCreate
             .MakeGenericMethod(propertyBase.ClrType)
@@ -56,13 +59,13 @@ public class PropertyAccessorsFactory
         {
             currentValueExpression = Expression.Call(
                 entryParameter,
-                InternalEntityEntry.ReadShadowValueMethod.MakeGenericMethod(typeof(TProperty)),
+                InternalEntityEntry.MakeReadShadowValueMethod(typeof(TProperty)),
                 Expression.Constant(shadowIndex));
         }
         else
         {
             var convertedExpression = Expression.Convert(
-                Expression.Property(entryParameter, "Entity"),
+                SuppressedExpressionProperty(entryParameter, "Entity"),
                 entityClrType);
 
             var memberInfo = propertyBase.GetMemberInfo(forMaterialization: false, forSet: false);
@@ -93,7 +96,7 @@ public class PropertyAccessorsFactory
                         Expression.Constant(default(TProperty), typeof(TProperty))),
                     Expression.Call(
                         entryParameter,
-                        InternalEntityEntry.ReadStoreGeneratedValueMethod.MakeGenericMethod(typeof(TProperty)),
+                        InternalEntityEntry.MakeReadStoreGeneratedValueMethod(typeof(TProperty)),
                         Expression.Constant(storeGeneratedIndex)),
                     currentValueExpression);
             }
@@ -106,7 +109,7 @@ public class PropertyAccessorsFactory
                     Expression.Constant(default(TProperty), typeof(TProperty))),
                 Expression.Call(
                     entryParameter,
-                    InternalEntityEntry.ReadTemporaryValueMethod.MakeGenericMethod(typeof(TProperty)),
+                    InternalEntityEntry.MakeReadTemporaryValueMethod(typeof(TProperty)),
                     Expression.Constant(storeGeneratedIndex)),
                 currentValueExpression);
         }
@@ -115,6 +118,12 @@ public class PropertyAccessorsFactory
                 currentValueExpression,
                 updateParameter)
             .Compile();
+
+        // [DynamicDependency(Dyn)]
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026",
+            Justification = "Used on entity or entity property types, which are assumed to be handled (explicitly-referenced) by the user.")]
+        static MemberExpression SuppressedExpressionProperty(Expression expression, string propertyName)
+            => Expression.Property(expression, propertyName);
     }
 
     private static Func<IUpdateEntry, TProperty> CreateOriginalValueGetter<TProperty>(IProperty property)
@@ -127,7 +136,7 @@ public class PropertyAccessorsFactory
                 originalValuesIndex >= 0
                     ? Expression.Call(
                         entryParameter,
-                        InternalEntityEntry.ReadOriginalValueMethod.MakeGenericMethod(typeof(TProperty)),
+                        InternalEntityEntry.MakeReadOriginalValueMethod(typeof(TProperty)),
                         Expression.Constant(property),
                         Expression.Constant(originalValuesIndex))
                     : Expression.Block(
@@ -152,12 +161,12 @@ public class PropertyAccessorsFactory
                 relationshipIndex >= 0
                     ? Expression.Call(
                         entryParameter,
-                        InternalEntityEntry.ReadRelationshipSnapshotValueMethod.MakeGenericMethod(typeof(TProperty)),
+                        InternalEntityEntry.MakeReadRelationshipSnapshotValueMethod(typeof(TProperty)),
                         Expression.Constant(propertyBase),
                         Expression.Constant(relationshipIndex))
                     : Expression.Call(
                         entryParameter,
-                        InternalEntityEntry.GetCurrentValueMethod.MakeGenericMethod(typeof(TProperty)),
+                        InternalEntityEntry.MakeGetCurrentValueMethod(typeof(TProperty)),
                         Expression.Constant(propertyBase)),
                 updateParameter)
             .Compile();

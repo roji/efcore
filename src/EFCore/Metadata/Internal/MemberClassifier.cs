@@ -113,6 +113,7 @@ public class MemberClassifier : IMemberClassifier
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO: Data flow on entity type property")]
     public virtual Type? FindCandidateNavigationPropertyType(
         MemberInfo memberInfo,
         IConventionModel model,
@@ -167,6 +168,7 @@ public class MemberClassifier : IMemberClassifier
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO: Data flow on entity type property")]
     public virtual bool IsCandidatePrimitiveProperty(PropertyInfo propertyInfo, IConventionModel model)
     {
         if (!propertyInfo.IsCandidateProperty())
@@ -185,6 +187,7 @@ public class MemberClassifier : IMemberClassifier
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072", Justification = "TODO: Data flow on entity type property")]
     public virtual IParameterBindingFactory? FindServicePropertyCandidateBindingFactory(
         PropertyInfo propertyInfo,
         IConventionModel model)

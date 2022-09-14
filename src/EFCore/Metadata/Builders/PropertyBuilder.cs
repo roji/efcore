@@ -517,7 +517,6 @@ public class PropertyBuilder : IInfrastructure<IConventionPropertyBuilder>
         ValueComparer? valueComparer)
         => HasConversion(conversionType, valueComparer, null);
 
-    // DynamicallyAccessedMemberTypes.PublicParameterlessConstructor
     /// <summary>
     ///     Configures the property so that the property value is converted before
     ///     writing to the database and converted back when reading from the database.

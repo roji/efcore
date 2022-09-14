@@ -1,6 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
 /// <summary>
@@ -12,7 +14,15 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions;
 public class EntityTypeConfigurationEntityTypeAttributeConvention : EntityTypeAttributeConventionBase<EntityTypeConfigurationAttribute>
 {
     private static readonly MethodInfo ConfigureMethod
-        = typeof(EntityTypeConfigurationEntityTypeAttributeConvention).GetTypeInfo().GetDeclaredMethod(nameof(Configure))!;
+        = GetConfigureMethod();
+
+    [UnconditionalSuppressMessage(
+        "ReflectionAnalysis", "IL2111",
+        Justification =
+            "Trimmer can't verify that we pass PublicParameterlessConstructor entityTypeConfigurationType parameter, "
+            + "but we know that we do")]
+    private static MethodInfo GetConfigureMethod()
+        => typeof(EntityTypeConfigurationEntityTypeAttributeConvention).GetTypeInfo().GetDeclaredMethod(nameof(Configure))!;
 
     /// <summary>
     ///     Creates a new instance of <see cref="EntityTypeConfigurationEntityTypeAttributeConvention" />.
@@ -47,11 +57,20 @@ public class EntityTypeConfigurationEntityTypeAttributeConvention : EntityTypeAt
                     entityTypeConfigurationType.ShortDisplayName(), entityTypeBuilder.Metadata.ShortName()));
         }
 
-        ConfigureMethod.MakeGenericMethod(entityTypeBuilder.Metadata.ClrType)
+        SuppressedMakeGenericMethod(entityTypeBuilder.Metadata.ClrType)
             .Invoke(null, new object[] { entityTypeBuilder.Metadata, entityTypeConfigurationType });
+
+        [UnconditionalSuppressMessage(
+            "ReflectionAnalysis", "IL2060", Justification =
+                "Trimmer can't verify that we pass PublicParameterlessConstructor entityTypeConfigurationType parameter, "
+                + "but we know that we do")]
+        static MethodInfo SuppressedMakeGenericMethod(Type type)
+            => ConfigureMethod.MakeGenericMethod(type);
     }
 
-    private static void Configure<TEntity>(IConventionEntityType entityType, Type entityTypeConfigurationType)
+    private static void Configure<[DynamicallyAccessedMembers(IEntityType.DynamicallyAccessedMemberTypes)] TEntity>(
+        IConventionEntityType entityType,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type entityTypeConfigurationType)
         where TEntity : class
     {
         var entityTypeBuilder = new EntityTypeBuilder<TEntity>((IMutableEntityType)entityType);

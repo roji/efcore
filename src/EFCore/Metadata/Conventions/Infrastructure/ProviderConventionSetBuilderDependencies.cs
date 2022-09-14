@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
@@ -114,6 +115,7 @@ public sealed record ProviderConventionSetBuilderDependencies
     /// <summary>
     ///     The current context instance.
     /// </summary>
+    [DynamicallyAccessedMembers(DbContext.DynamicallyAccessedMemberTypes)]
     public Type ContextType
         => _currentContext.Context.GetType();
 

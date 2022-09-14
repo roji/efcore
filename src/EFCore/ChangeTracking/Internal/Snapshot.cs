@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 
 /// <summary>
@@ -58,6 +60,7 @@ public sealed class Snapshot : ISnapshot
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026", Justification = "TODO")]
     public static Delegate[] CreateReaders<TSnapshot>()
     {
         var genericArguments = typeof(TSnapshot).GenericTypeArguments;
@@ -82,6 +85,12 @@ public sealed class Snapshot : ISnapshot
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    [UnconditionalSuppressMessage(
+        "ReflectionAnalysis",
+        "IL2026",
+        Justification =
+            "The Snapshot types have no annotations or generic constraints on their generic arguments, and no members/methods are needed " +
+            "the type arguments, so MakeGenericType is safe.")]
     public static Type CreateSnapshotType(Type[] types)
         => types.Length switch
         {

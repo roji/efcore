@@ -2,7 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Internal;
 
@@ -14,9 +16,6 @@ namespace Microsoft.EntityFrameworkCore.Internal;
 /// </summary>
 public class DbSetSource : IDbSetSource
 {
-    private static readonly MethodInfo GenericCreateSet
-        = typeof(DbSetSource).GetTypeInfo().GetDeclaredMethod(nameof(CreateSetFactory))!;
-
     private readonly ConcurrentDictionary<(Type Type, string? Name), Func<DbContext, string?, object>> _cache = new();
 
     /// <summary>
@@ -25,8 +24,10 @@ public class DbSetSource : IDbSetSource
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual object Create(DbContext context, Type type)
-        => CreateCore(context, type, null, GenericCreateSet);
+    public virtual object Create(
+        DbContext context,
+        [DynamicallyAccessedMembers(IEntityType.DynamicallyAccessedMemberTypes)] Type type)
+        => CreateCore(context, type, null);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -34,19 +35,30 @@ public class DbSetSource : IDbSetSource
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual object Create(DbContext context, string name, Type type)
-        => CreateCore(context, type, name, GenericCreateSet);
+    public virtual object Create(
+        DbContext context,
+        string name,
+        [DynamicallyAccessedMembers(IEntityType.DynamicallyAccessedMemberTypes)] Type type)
+        => CreateCore(context, type, name);
 
-    private object CreateCore(DbContext context, Type type, string? name, MethodInfo createMethod)
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060", Justification =
+        "The trimmer can't see that the MakeGenericMethod here is safe, since we always pass in a type with the right "
+        + "DynamicallyAccessedMembers.")]
+    private object CreateCore(
+        DbContext context,
+        [DynamicallyAccessedMembers(IEntityType.DynamicallyAccessedMemberTypes)] Type type,
+        string? name)
         => _cache.GetOrAdd(
             (type, name),
-            static (t, createMethod) => (Func<DbContext, string?, object>)createMethod
-                .MakeGenericMethod(t.Type)
-                .Invoke(null, null)!,
-            createMethod)(context, name);
+            static t => (Func<DbContext, string?, object>)
+                typeof(DbSetSource).GetMethod(nameof(CreateSetFactory), BindingFlags.Static | BindingFlags.NonPublic)!
+                    .MakeGenericMethod(t.Type)
+                    .Invoke(null, null)!)(context, name);
 
     [UsedImplicitly]
-    private static Func<DbContext, string?, object> CreateSetFactory<TEntity>()
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2091", Justification = "Linker can't see inside the lambda")]
+    private static Func<DbContext, string?, object> CreateSetFactory<
+        [DynamicallyAccessedMembers(IEntityType.DynamicallyAccessedMemberTypes)] TEntity>()
         where TEntity : class
         => (c, name) => new InternalDbSet<TEntity>(c, name);
 }
