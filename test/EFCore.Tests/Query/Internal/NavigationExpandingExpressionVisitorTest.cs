@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Query.Internal;
 
-public class NavigationExpandingExpressionVisitorTests
+public class NavigationExpandingExpressionVisitorTest
 {
     private class TestInterceptors : IInterceptors
     {
@@ -19,22 +19,23 @@ public class NavigationExpandingExpressionVisitorTests
     {
         public TestNavigationExpandingExpressionVisitor()
             : base(
-                null,
+                queryTranslationPreprocessor: null!,
                 new QueryCompilationContext(
                     new QueryCompilationContextDependencies(
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
+                        model: null!,
+                        queryTranslationPreprocessorFactory: null!,
+                        queryableMethodTranslatingExpressionVisitorFactory: null!,
+                        queryTranslationPostprocessorFactory: null!,
+                        shapedQueryCompilingExpressionVisitorFactory: null!,
+                        liftableConstantProcessor: null!,
                         new ExecutionStrategyTest.TestExecutionStrategy(new MyDemoContext()),
                         new CurrentDbContext(new MyDemoContext()),
-                        null,
-                        null,
+                        contextOptions: null!,
+                        logger: null!,
                         new TestInterceptors()
                     ), false),
-                null,
-                null)
+                evaluatableExpressionFilter: null!,
+                extensibilityHelper: null!)
         {
         }
 
@@ -75,7 +76,7 @@ public class NavigationExpandingExpressionVisitorTests
     }
 
     [ConditionalFact]
-    public void Visits_extention_childrens()
+    public void Visits_extension_children()
     {
         var model = new Model();
         var e = model.AddEntityType(typeof(A), false, ConfigurationSource.Explicit);

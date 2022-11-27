@@ -279,27 +279,27 @@ public class SearchConditionConvertingExpressionVisitor : SqlExpressionVisitor
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    protected override Expression VisitSelect(SelectExpression selectExpression)
+    protected override Expression VisitSelect(SelectExpression select)
     {
         var parentSearchCondition = _isSearchCondition;
 
         _isSearchCondition = false;
 
-        var projections = this.VisitAndConvert(selectExpression.Projection);
-        var tables = this.VisitAndConvert(selectExpression.Tables);
-        var groupBy = this.VisitAndConvert(selectExpression.GroupBy);
-        var orderings = this.VisitAndConvert(selectExpression.Orderings);
-        var offset = (SqlExpression?)Visit(selectExpression.Offset);
-        var limit = (SqlExpression?)Visit(selectExpression.Limit);
+        var projections = this.VisitAndConvert(select.Projection);
+        var tables = this.VisitAndConvert(select.Tables);
+        var groupBy = this.VisitAndConvert(select.GroupBy);
+        var orderings = this.VisitAndConvert(select.Orderings);
+        var offset = (SqlExpression?)Visit(select.Offset);
+        var limit = (SqlExpression?)Visit(select.Limit);
 
         _isSearchCondition = true;
 
-        var predicate = (SqlExpression?)Visit(selectExpression.Predicate);
-        var havingExpression = (SqlExpression?)Visit(selectExpression.Having);
+        var predicate = (SqlExpression?)Visit(select.Predicate);
+        var havingExpression = (SqlExpression?)Visit(select.Having);
 
         _isSearchCondition = parentSearchCondition;
 
-        return selectExpression.Update(projections, tables, predicate, groupBy, havingExpression, orderings, limit, offset);
+        return select.Update(projections, tables, predicate, groupBy, havingExpression, orderings, limit, offset);
     }
 
     /// <summary>

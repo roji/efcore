@@ -220,64 +220,64 @@ public class QuerySqlGenerator : SqlExpressionVisitor
     }
 
     /// <inheritdoc />
-    protected override Expression VisitSelect(SelectExpression selectExpression)
+    protected override Expression VisitSelect(SelectExpression select)
     {
         IDisposable? subQueryIndent = null;
-        if (selectExpression.Alias != null)
+        if (select.Alias != null)
         {
             _relationalCommandBuilder.AppendLine("(");
             subQueryIndent = _relationalCommandBuilder.Indent();
         }
 
-        if (!TryGenerateWithoutWrappingSelect(selectExpression))
+        if (!TryGenerateWithoutWrappingSelect(select))
         {
             _relationalCommandBuilder.Append("SELECT ");
 
-            if (selectExpression.IsDistinct)
+            if (select.IsDistinct)
             {
                 _relationalCommandBuilder.Append("DISTINCT ");
             }
 
-            GenerateTop(selectExpression);
-            GenerateProjection(selectExpression);
-            GenerateTables(selectExpression);
+            GenerateTop(select);
+            GenerateProjection(select);
+            GenerateTables(select);
 
-            if (selectExpression.Predicate != null)
+            if (select.Predicate != null)
             {
                 _relationalCommandBuilder.AppendLine().Append("WHERE ");
 
-                Visit(selectExpression.Predicate);
+                Visit(select.Predicate);
             }
 
-            if (selectExpression.GroupBy.Count > 0)
+            if (select.GroupBy.Count > 0)
             {
                 _relationalCommandBuilder.AppendLine().Append("GROUP BY ");
 
-                GenerateList(selectExpression.GroupBy, e => Visit(e));
+                GenerateList(select.GroupBy, e => Visit(e));
             }
 
-            if (selectExpression.Having != null)
+            if (select.Having != null)
             {
                 _relationalCommandBuilder.AppendLine().Append("HAVING ");
 
-                Visit(selectExpression.Having);
+                Visit(select.Having);
             }
 
-            GenerateOrderings(selectExpression);
-            GenerateLimitOffset(selectExpression);
+            GenerateOrderings(select);
+            GenerateLimitOffset(select);
         }
 
-        if (selectExpression.Alias != null)
+        if (select.Alias != null)
         {
             subQueryIndent!.Dispose();
 
             _relationalCommandBuilder.AppendLine()
                 .Append(")")
                 .Append(AliasSeparator)
-                .Append(_sqlGenerationHelper.DelimitIdentifier(selectExpression.Alias));
+                .Append(_sqlGenerationHelper.DelimitIdentifier(select.Alias));
         }
 
-        return selectExpression;
+        return select;
     }
 
     /// <summary>

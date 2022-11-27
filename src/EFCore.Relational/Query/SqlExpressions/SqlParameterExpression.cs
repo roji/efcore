@@ -63,6 +63,7 @@ public sealed class SqlParameterExpression : SqlExpression
     protected override void Print(ExpressionPrinter expressionPrinter)
         => expressionPrinter.Append("@" + Name);
 
+
     /// <inheritdoc />
     public override bool Equals(object? obj)
         => obj != null

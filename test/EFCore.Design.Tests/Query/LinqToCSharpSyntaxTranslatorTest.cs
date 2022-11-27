@@ -16,8 +16,6 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 public class LinqToCSharpSyntaxTranslatorTest(ITestOutputHelper testOutputHelper)
 {
-    private readonly ITestOutputHelper _testOutputHelper = testOutputHelper;
-
     [Theory]
     [InlineData("hello", "\"hello\"")]
     [InlineData(1, "1")]
@@ -252,6 +250,17 @@ public class LinqToCSharpSyntaxTranslatorTest(ITestOutputHelper testOutputHelper
                 null,
                 typeof(DateTime).GetProperty(nameof(DateTime.Now))!),
             "DateTime.Now");
+
+    [Fact]
+    public void Indexer_property()
+        => AssertExpression(
+            Call(
+                New(typeof(List<int>)),
+                typeof(List<int>).GetProperties().Single(
+                        p => p.GetIndexParameters() is { Length: 1 } indexParameters && indexParameters[0].ParameterType == typeof(int))
+                    .GetMethod!,
+                Constant(1)),
+            "new List<int>()[1]");
 
     [Fact]
     public void Private_instance_field_read()
@@ -1916,8 +1925,8 @@ catch
 
         if (_outputExpressionTrees)
         {
-            _testOutputHelper.WriteLine("---- Input LINQ expression tree:");
-            _testOutputHelper.WriteLine(_expressionPrinter.PrintExpression(expression));
+            testOutputHelper.WriteLine("---- Input LINQ expression tree:");
+            testOutputHelper.WriteLine(_expressionPrinter.PrintExpression(expression));
         }
 
         // TODO: Actually compile the output C# code to make sure it's valid.
@@ -1929,14 +1938,14 @@ catch
 
             if (_outputExpressionTrees)
             {
-                _testOutputHelper.WriteLine("---- Output Roslyn syntax tree:");
-                _testOutputHelper.WriteLine(actual);
+                testOutputHelper.WriteLine("---- Output Roslyn syntax tree:");
+                testOutputHelper.WriteLine(actual);
             }
         }
         catch (EqualException)
         {
-            _testOutputHelper.WriteLine("---- Output Roslyn syntax tree:");
-            _testOutputHelper.WriteLine(actual);
+            testOutputHelper.WriteLine("---- Output Roslyn syntax tree:");
+            testOutputHelper.WriteLine(actual);
 
             throw;
         }

@@ -224,9 +224,9 @@ public abstract class SqlExpressionVisitor : ExpressionVisitor
     /// <summary>
     ///     Visits the children of the select expression.
     /// </summary>
-    /// <param name="selectExpression">The expression to visit.</param>
+    /// <param name="select">The expression to visit.</param>
     /// <returns>The modified expression, if it or any subexpression was modified; otherwise, returns the original expression.</returns>
-    protected abstract Expression VisitSelect(SelectExpression selectExpression);
+    protected abstract Expression VisitSelect(SelectExpression select);
 
     /// <summary>
     ///     Visits the children of the sql binary expression.
