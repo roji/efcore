@@ -69,17 +69,19 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor : ShapedQue
                 break;
         }
 
-        var relationalCommandCache = new RelationalCommandCache(
-            Dependencies.MemoryCache,
-            RelationalDependencies.QuerySqlGeneratorFactory,
-            RelationalDependencies.RelationalParameterBasedSqlProcessorFactory,
-            innerExpression,
-            _useRelationalNulls);
+        // var relationalCommandCache = new RelationalCommandCache(
+        //     Dependencies.MemoryCache,
+        //     RelationalDependencies.QuerySqlGeneratorFactory,
+        //     RelationalDependencies.RelationalParameterBasedSqlProcessorFactory,
+        //     innerExpression,
+        //     _useRelationalNulls);
+
+        var relationalCommandCache = CreateRelationalCommandCacheExpression(innerExpression);
 
         return Expression.Call(
             QueryCompilationContext.IsAsync ? NonQueryAsyncMethodInfo : NonQueryMethodInfo,
             Expression.Convert(QueryCompilationContext.QueryContextParameter, typeof(RelationalQueryContext)),
-            Expression.Constant(relationalCommandCache),
+            relationalCommandCache,
             Expression.Constant(_contextType),
             Expression.Constant(nonQueryExpression.CommandSource),
             Expression.Constant(_threadSafetyChecksEnabled));
@@ -95,7 +97,14 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor : ShapedQue
             .GetDeclaredMethods(nameof(NonQueryResultAsync))
             .Single(mi => mi.GetParameters().Length == 5);
 
-    private static int NonQueryResult(
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [EntityFrameworkInternal]
+    public static int NonQueryResult(
         RelationalQueryContext relationalQueryContext,
         RelationalCommandCache relationalCommandCache,
         Type contextType,
@@ -166,7 +175,14 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor : ShapedQue
         }
     }
 
-    private static Task<int> NonQueryResultAsync(
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [EntityFrameworkInternal]
+    public static Task<int> NonQueryResultAsync(
         RelationalQueryContext relationalQueryContext,
         RelationalCommandCache relationalCommandCache,
         Type contextType,
@@ -313,11 +329,11 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor : ShapedQue
         }
         else
         {
-
             var nonComposedFromSql = selectExpression.IsNonComposedFromSql();
-            var shaper = new ShaperProcessingExpressionVisitor(this, selectExpression, _tags, splitQuery, nonComposedFromSql).ProcessShaper(
-                shapedQueryExpression.ShaperExpression,
-                out var relationalCommandCache, out var readerColumns, out var relatedDataLoaders, ref collectionCount);
+            var shaper = new ShaperProcessingExpressionVisitor(this, selectExpression, _tags, splitQuery, nonComposedFromSql)
+                .ProcessShaper(
+                    shapedQueryExpression.ShaperExpression, out var relationalCommandCache, out var readerColumns,
+                    out var relatedDataLoaders, ref collectionCount);
 
             if (querySplittingBehavior == null
                 && collectionCount > 1)
@@ -331,7 +347,7 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor : ShapedQue
                     typeof(FromSqlQueryingEnumerable<>).MakeGenericType(shaper.ReturnType).GetConstructors()[0],
                     Expression.Convert(QueryCompilationContext.QueryContextParameter, typeof(RelationalQueryContext)),
                     Expression.Constant(relationalCommandCache),
-                    Expression.Constant(readerColumns, typeof(IReadOnlyList<ReaderColumn?>)),
+                    readerColumns(),
                     Expression.Constant(
                         selectExpression.Projection.Select(pe => ((ColumnExpression)pe.Expression).Name).ToList(),
                         typeof(IReadOnlyList<string>)),
@@ -345,20 +361,30 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor : ShapedQue
 
             if (splitQuery)
             {
-                var relatedDataLoadersParameter = Expression.Constant(
-                    QueryCompilationContext.IsAsync ? null : relatedDataLoaders?.Compile(),
-                    typeof(Action<QueryContext, IExecutionStrategy, SplitQueryResultCoordinator>));
+                var relatedDataLoadersParameter =
+                    QueryCompilationContext.IsAsync || relatedDataLoaders is null
+                        ? Expression.Constant(null, typeof(Action<QueryContext, IExecutionStrategy, SplitQueryResultCoordinator>))
+                        : (Expression)relatedDataLoaders;
 
-                var relatedDataLoadersAsyncParameter = Expression.Constant(
-                    QueryCompilationContext.IsAsync ? relatedDataLoaders?.Compile() : null,
-                    typeof(Func<QueryContext, IExecutionStrategy, SplitQueryResultCoordinator, Task>));
+                // var relatedDataLoadersParameter = Expression.Constant(
+                //     QueryCompilationContext.IsAsync ? null : relatedDataLoaders?.Compile(),
+                //     typeof(Action<QueryContext, IExecutionStrategy, SplitQueryResultCoordinator>));
+
+                var relatedDataLoadersAsyncParameter =
+                    QueryCompilationContext.IsAsync && relatedDataLoaders is not null
+                        ? (Expression)relatedDataLoaders
+                        : Expression.Constant(null, typeof(Func<QueryContext, IExecutionStrategy, SplitQueryResultCoordinator, Task>));
+
+                // var relatedDataLoadersAsyncParameter = Expression.Constant(
+                //     QueryCompilationContext.IsAsync ? relatedDataLoaders?.Compile() : null,
+                //     typeof(Func<QueryContext, IExecutionStrategy, SplitQueryResultCoordinator, Task>));
 
                 return Expression.New(
                     typeof(SplitQueryingEnumerable<>).MakeGenericType(shaper.ReturnType).GetConstructors().Single(),
                     Expression.Convert(QueryCompilationContext.QueryContextParameter, typeof(RelationalQueryContext)),
-                    Expression.Constant(relationalCommandCache),
-                    Expression.Constant(readerColumns, typeof(IReadOnlyList<ReaderColumn?>)),
-                    Expression.Constant(shaper.Compile()),
+                    relationalCommandCache,
+                    readerColumns(),
+                    shaper,
                     relatedDataLoadersParameter,
                     relatedDataLoadersAsyncParameter,
                     Expression.Constant(_contextType),
@@ -368,12 +394,15 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor : ShapedQue
                     Expression.Constant(_threadSafetyChecksEnabled));
             }
 
-            return Expression.New(
-                typeof(SingleQueryingEnumerable<>).MakeGenericType(shaper.ReturnType).GetConstructors()[0],
+            // TODO: Do the same for the other QueryingEnumerables
+            return Expression.Call(
+                typeof(SingleQueryingEnumerable).GetMethods()
+                    .Single(m => m.Name == nameof(SingleQueryingEnumerable.Create))
+                    .MakeGenericMethod(shaper.ReturnType),
                 Expression.Convert(QueryCompilationContext.QueryContextParameter, typeof(RelationalQueryContext)),
-                Expression.Constant(relationalCommandCache),
-                Expression.Constant(readerColumns, typeof(IReadOnlyList<ReaderColumn?>)),
-                Expression.Constant(shaper.Compile()),
+                relationalCommandCache,
+                readerColumns(),
+                shaper,
                 Expression.Constant(_contextType),
                 Expression.Constant(
                     QueryCompilationContext.QueryTrackingBehavior == QueryTrackingBehavior.NoTrackingWithIdentityResolution),
@@ -381,4 +410,15 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor : ShapedQue
                 Expression.Constant(_threadSafetyChecksEnabled));
         }
     }
+
+    private LiftableConstantExpression CreateRelationalCommandCacheExpression(Expression queryExpression)
+        => RelationalDependencies.RelationalLiftableConstantFactory.CreateLiftableConstant(
+            c => new RelationalCommandCache(
+                c.Dependencies.MemoryCache,
+                c.RelationalDependencies.QuerySqlGeneratorFactory,
+                c.RelationalDependencies.RelationalParameterBasedSqlProcessorFactory,
+                queryExpression,
+                _useRelationalNulls),
+            "relationalCommandCache",
+            typeof(RelationalCommandCache));
 }
