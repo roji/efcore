@@ -370,16 +370,16 @@ public class QuerySqlGenerator : SqlExpressionVisitor
     /// <inheritdoc />
     protected override Expression VisitTableValuedFunction(TableValuedFunctionExpression tableValuedFunctionExpression)
     {
-        if (!string.IsNullOrEmpty(tableValuedFunctionExpression.StoreFunction.Schema))
+        if (!string.IsNullOrEmpty(tableValuedFunctionExpression.Schema))
         {
             _relationalCommandBuilder
-                .Append(_sqlGenerationHelper.DelimitIdentifier(tableValuedFunctionExpression.StoreFunction.Schema))
+                .Append(_sqlGenerationHelper.DelimitIdentifier(tableValuedFunctionExpression.Schema))
                 .Append(".");
         }
 
-        var name = tableValuedFunctionExpression.StoreFunction.IsBuiltIn
-            ? tableValuedFunctionExpression.StoreFunction.Name
-            : _sqlGenerationHelper.DelimitIdentifier(tableValuedFunctionExpression.StoreFunction.Name);
+        var name = tableValuedFunctionExpression.IsBuiltIn
+            ? tableValuedFunctionExpression.Name
+            : _sqlGenerationHelper.DelimitIdentifier(tableValuedFunctionExpression.Name);
 
         _relationalCommandBuilder
             .Append(name)

@@ -112,14 +112,17 @@ public sealed partial class SelectExpression : TableExpressionBase
         }
     }
 
-    internal SelectExpression(Type type, RelationalTypeMapping typeMapping, FromSqlExpression fromSqlExpression)
+    public SelectExpression(Type type, RelationalTypeMapping typeMapping, TableExpressionBase tableExpression)
         : base(null)
     {
-        var tableReferenceExpression = new TableReferenceExpression(this, fromSqlExpression.Alias!);
-        AddTable(fromSqlExpression, tableReferenceExpression);
+        var tableReferenceExpression = new TableReferenceExpression(this, tableExpression.Alias!);
+        AddTable(tableExpression, tableReferenceExpression);
+
+        // var columnExpression = new ConcreteColumnExpression(
+        //     SqlQuerySingleColumnAlias, tableReferenceExpression, type, typeMapping, type.IsNullableType());
 
         var columnExpression = new ConcreteColumnExpression(
-            SqlQuerySingleColumnAlias, tableReferenceExpression, type, typeMapping, type.IsNullableType());
+            tableExpression.Alias!, tableReferenceExpression, type, typeMapping, type.IsNullableType());
 
         _projectionMapping[new ProjectionMember()] = columnExpression;
     }

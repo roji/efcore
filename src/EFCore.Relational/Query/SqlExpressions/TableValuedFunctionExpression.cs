@@ -35,9 +35,27 @@ public class TableValuedFunctionExpression : TableExpressionBase, ITableBasedExp
         IStoreFunction storeFunction,
         IReadOnlyList<SqlExpression> arguments,
         IEnumerable<IAnnotation>? annotations)
+        : this(alias, storeFunction.Name, storeFunction.Schema, storeFunction.IsBuiltIn, arguments, annotations)
+    {
+        _table = storeFunction;
+        Name = storeFunction.Name;
+        Schema = storeFunction.Schema;
+        IsBuiltIn = storeFunction.IsBuiltIn;
+        Arguments = arguments;
+    }
+
+    public TableValuedFunctionExpression(
+        string alias,
+        string name,
+        string? schema,
+        bool builtIn,
+        IReadOnlyList<SqlExpression> arguments,
+        IEnumerable<IAnnotation>? annotations)
         : base(alias, annotations)
     {
-        StoreFunction = storeFunction;
+        Name = name;
+        Schema = schema;
+        IsBuiltIn = builtIn;
         Arguments = arguments;
     }
 
@@ -52,18 +70,33 @@ public class TableValuedFunctionExpression : TableExpressionBase, ITableBasedExp
     }
 
     /// <summary>
-    ///     The store function.
+    ///     The name of the table or view.
     /// </summary>
-    public virtual IStoreFunction StoreFunction { get; }
+    public string Name { get; }
+
+    /// <summary>
+    ///     The schema of the table or view.
+    /// </summary>
+    public string? Schema { get; }
+
+    /// <summary>
+    ///     Gets the value indicating whether the database function is built-in.
+    /// </summary>
+    public bool IsBuiltIn { get; }
 
     /// <summary>
     ///     The list of arguments of this function.
     /// </summary>
     public virtual IReadOnlyList<SqlExpression> Arguments { get; }
 
+    // TODO. The Table is only actually needed when this is the first table in a SelectExpression for an entity type; this is never our case.
     /// <inheritdoc />
-    ITableBase ITableBasedExpression.Table
-        => StoreFunction;
+    ITableBase ITableBasedExpression.Table => _table!;
+
+    private readonly ITableBase? _table;
+
+    // ITableBase ITableBasedExpression.Table
+    //     => StoreFunction;
 
     /// <inheritdoc />
     protected override Expression VisitChildren(ExpressionVisitor visitor)
@@ -77,7 +110,7 @@ public class TableValuedFunctionExpression : TableExpressionBase, ITableBasedExp
         }
 
         return changed
-            ? new TableValuedFunctionExpression(Alias, StoreFunction, arguments, GetAnnotations())
+            ? new TableValuedFunctionExpression(Alias, Name, Schema, IsBuiltIn, arguments, GetAnnotations())
             : this;
     }
 
@@ -89,22 +122,22 @@ public class TableValuedFunctionExpression : TableExpressionBase, ITableBasedExp
     /// <returns>This expression if no children changed, or an expression with the updated children.</returns>
     public virtual TableValuedFunctionExpression Update(IReadOnlyList<SqlExpression> arguments)
         => !arguments.SequenceEqual(Arguments)
-            ? new TableValuedFunctionExpression(Alias, StoreFunction, arguments, GetAnnotations())
+            ? new TableValuedFunctionExpression(Alias, Name, Schema, IsBuiltIn, arguments, GetAnnotations())
             : this;
 
     /// <inheritdoc />
     protected override TableExpressionBase CreateWithAnnotations(IEnumerable<IAnnotation> annotations)
-        => new TableValuedFunctionExpression(Alias, StoreFunction, Arguments, annotations);
+        => new TableValuedFunctionExpression(Alias, Name, Schema, IsBuiltIn, Arguments, annotations);
 
     /// <inheritdoc />
     protected override void Print(ExpressionPrinter expressionPrinter)
     {
-        if (!string.IsNullOrEmpty(StoreFunction.Schema))
+        if (!string.IsNullOrEmpty(Schema))
         {
-            expressionPrinter.Append(StoreFunction.Schema).Append(".");
+            expressionPrinter.Append(Schema).Append(".");
         }
 
-        expressionPrinter.Append(StoreFunction.Name);
+        expressionPrinter.Append(Name);
         expressionPrinter.Append("(");
         expressionPrinter.VisitCollection(Arguments);
         expressionPrinter.Append(")");
@@ -122,15 +155,19 @@ public class TableValuedFunctionExpression : TableExpressionBase, ITableBasedExp
 
     private bool Equals(TableValuedFunctionExpression tableValuedFunctionExpression)
         => base.Equals(tableValuedFunctionExpression)
-            && StoreFunction == tableValuedFunctionExpression.StoreFunction
-            && Arguments.SequenceEqual(tableValuedFunctionExpression.Arguments);
+           && Name == tableValuedFunctionExpression.Name
+           && Schema == tableValuedFunctionExpression.Schema
+           && IsBuiltIn == tableValuedFunctionExpression.IsBuiltIn
+           && Arguments.SequenceEqual(tableValuedFunctionExpression.Arguments);
 
     /// <inheritdoc />
     public override int GetHashCode()
     {
         var hash = new HashCode();
         hash.Add(base.GetHashCode());
-        hash.Add(StoreFunction);
+        hash.Add(Name);
+        hash.Add(Schema);
+        hash.Add(IsBuiltIn);
         for (var i = 0; i < Arguments.Count; i++)
         {
             hash.Add(Arguments[i]);

@@ -715,7 +715,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
     /// <inheritdoc />
     protected override Expression VisitLambda<T>(Expression<T> lambdaExpression)
-        => throw new InvalidOperationException(CoreStrings.TranslationFailed(lambdaExpression.Print()));
+        => QueryCompilationContext.NotTranslatedExpression;
 
     /// <inheritdoc />
     protected override Expression VisitListInit(ListInitExpression listInitExpression)
@@ -1917,8 +1917,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     private sealed class SqlTypeMappingVerifyingExpressionVisitor : ExpressionVisitor
     {
         protected override Expression VisitExtension(Expression extensionExpression)
-            => extensionExpression is SqlExpression { TypeMapping: null } sqlExpression
-                && extensionExpression is not SqlFragmentExpression
+            => extensionExpression is SqlExpression { TypeMapping: null } sqlExpression and not SqlFragmentExpression
                 ? throw new InvalidOperationException(RelationalStrings.NullTypeMappingInSqlTree(sqlExpression.Print()))
                 : base.VisitExtension(extensionExpression);
     }

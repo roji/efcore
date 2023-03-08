@@ -251,12 +251,13 @@ public class QueryableMethodNormalizingExpressionVisitor : ExpressionVisitor
             return base.VisitMethodCall(methodCallExpression);
         }
 
-        if (methodCallExpression.Arguments.Count > 0
-            && ClientSource(methodCallExpression.Arguments[0]))
-        {
-            // this is methodCall over closure variable or constant
-            return base.VisitMethodCall(methodCallExpression);
-        }
+        // HACK
+        // if (methodCallExpression.Arguments.Count > 0
+        //     && ClientSource(methodCallExpression.Arguments[0]))
+        // {
+        //     // this is methodCall over closure variable or constant
+        //     return base.VisitMethodCall(methodCallExpression);
+        // }
 
         var arguments = VisitAndConvert(methodCallExpression.Arguments, nameof(VisitMethodCall)).ToArray();
 
@@ -403,11 +404,9 @@ public class QueryableMethodNormalizingExpressionVisitor : ExpressionVisitor
     }
 
     private static bool ClientSource(Expression? expression)
-        => expression is ConstantExpression
-            || expression is MemberInitExpression
-            || expression is NewExpression
-            || expression is ParameterExpression parameter
-            && parameter.Name?.StartsWith(QueryCompilationContext.QueryParameterPrefix, StringComparison.Ordinal) == true;
+        => expression is ConstantExpression or MemberInitExpression or NewExpression
+           || expression is ParameterExpression parameter
+           && parameter.Name?.StartsWith(QueryCompilationContext.QueryParameterPrefix, StringComparison.Ordinal) == true;
 
     private static bool CanConvertEnumerableToQueryable(Type enumerableType, Type queryableType)
     {

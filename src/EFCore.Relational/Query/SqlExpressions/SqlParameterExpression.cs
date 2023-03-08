@@ -17,7 +17,7 @@ public sealed class SqlParameterExpression : SqlExpression
     private readonly ParameterExpression _parameterExpression;
     private readonly string _name;
 
-    internal SqlParameterExpression(ParameterExpression parameterExpression, RelationalTypeMapping? typeMapping)
+    public SqlParameterExpression(ParameterExpression parameterExpression, RelationalTypeMapping? typeMapping)
         : base(parameterExpression.Type.UnwrapNullableType(), typeMapping)
     {
         Check.DebugAssert(parameterExpression.Name != null, "Parameter must have name.");

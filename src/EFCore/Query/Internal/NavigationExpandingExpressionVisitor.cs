@@ -759,8 +759,7 @@ public partial class NavigationExpandingExpressionVisitor : ExpressionVisitor
 
             if (genericMethod == QueryableMethods.AsQueryable)
             {
-                if (firstArgument is NavigationTreeExpression navigationTreeExpression
-                    && navigationTreeExpression.Type.IsGenericType
+                if (firstArgument is NavigationTreeExpression { Type.IsGenericType: true } navigationTreeExpression
                     && navigationTreeExpression.Type.GetGenericTypeDefinition() == typeof(IGrouping<,>))
                 {
                     // This is groupingElement.AsQueryable so we preserve it
@@ -769,6 +768,8 @@ public partial class NavigationExpandingExpressionVisitor : ExpressionVisitor
                         navigationTreeExpression);
                 }
 
+                // HACK
+                // return methodCallExpression;
                 return UnwrapCollectionMaterialization(firstArgument);
             }
 
