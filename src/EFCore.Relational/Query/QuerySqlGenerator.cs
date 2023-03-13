@@ -892,15 +892,18 @@ public class QuerySqlGenerator : SqlExpressionVisitor
     /// <inheritdoc />
     protected override Expression VisitIn(InExpression inExpression)
     {
-        if (inExpression.Values != null)
+        if (inExpression.Values is not null)
         {
+            // At this final point in the query pipeline, values should always contain a list of SqlExpressions.
+            if (inExpression.Values is not SqlConstantExpression { Value: IReadOnlyList<SqlExpression> values })
+            {
+                throw new InvalidOperationException(); // TODO
+            }
+
             Visit(inExpression.Item);
             _relationalCommandBuilder.Append(inExpression.IsNegated ? " NOT IN " : " IN ");
             _relationalCommandBuilder.Append("(");
-            var valuesConstant = (SqlConstantExpression)inExpression.Values;
-            var valuesList = ((IEnumerable<object?>)valuesConstant.Value!)
-                .Select(v => new SqlConstantExpression(Expression.Constant(v), valuesConstant.TypeMapping)).ToList();
-            GenerateList(valuesList, e => Visit(e));
+            GenerateList(values, e => Visit(e));
             _relationalCommandBuilder.Append(")");
         }
         else

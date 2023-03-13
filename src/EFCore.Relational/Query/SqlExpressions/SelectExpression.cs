@@ -1885,13 +1885,10 @@ public sealed partial class SelectExpression : TableExpressionBase
                     }
                 }
             }
-            else if (sqlExpression is InExpression inExpression
-                     && inExpression.Item is ColumnExpression itemColumn
-                     && itemColumn.Table is TpcTablesExpression itemTpc
+            else if (sqlExpression is InExpression { Item: ColumnExpression { Table: TpcTablesExpression itemTpc } itemColumn } inExpression
                      && _tpcDiscriminatorValues.TryGetValue(itemTpc, out var itemTuple)
                      && itemTuple.Item1.Equals(itemColumn)
-                     && inExpression.Values is SqlConstantExpression itemConstant
-                     && itemConstant.Value is List<string> values)
+                     && inExpression.Values is SqlConstantExpression { Value: List<string> values })
             {
                 var newList = itemTuple.Item2.Intersect(values).ToList();
                 if (newList.Count > 0)

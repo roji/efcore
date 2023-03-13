@@ -55,7 +55,7 @@ public class SqlNullabilityProcessor
     /// <summary>
     ///     Dictionary of current parameter values in use.
     /// </summary>
-    protected virtual IReadOnlyDictionary<string, object?> ParameterValues { get; private set; }
+    protected virtual IDictionary<string, object?> ParameterValues { get; private set; }
 
     /// <summary>
     ///     Processes a query expression to apply null semantics and optimize it.
@@ -66,7 +66,7 @@ public class SqlNullabilityProcessor
     /// <returns>An optimized query expression.</returns>
     public virtual Expression Process(
         Expression queryExpression,
-        IReadOnlyDictionary<string, object?> parameterValues,
+        IDictionary<string, object?> parameterValues,
         out bool canCache)
     {
         _canCache = true;
@@ -622,7 +622,7 @@ public class SqlNullabilityProcessor
     {
         var item = Visit(inExpression.Item, out var itemNullable);
 
-        if (inExpression.Subquery != null)
+        if (inExpression.Subquery is not null)
         {
             var subquery = Visit(inExpression.Subquery);
 
@@ -642,10 +642,12 @@ public class SqlNullabilityProcessor
             return inExpression.Update(item, values: null, subquery);
         }
 
+        Check.DebugAssert(inExpression.Values is not null, "InExpression with null Subquery and Values");
+
         // for relational null semantics we don't need to extract null values from the array
         if (UseRelationalNulls || inExpression.Values is not (SqlConstantExpression or SqlParameterExpression))
         {
-            var (valuesExpression, valuesList, _) = ProcessInExpressionValues(inExpression.Values!, extractNullValues: false);
+            var (valuesExpression, valuesList, _) = ProcessInExpressionValues(inExpression.Values, extractNullValues: false);
             nullable = false;
 
             return valuesList.Count == 0
@@ -714,41 +716,85 @@ public class SqlNullabilityProcessor
         (SqlConstantExpression ProcessedValuesExpression, List<object?> ProcessedValuesList, bool HasNullValue)
             ProcessInExpressionValues(SqlExpression valuesExpression, bool extractNullValues)
         {
-            var inValues = new List<object?>();
+            var expressions = new List<SqlExpression>();
+            var inValues = new List<object?>(); // TODO: Remove
             var hasNullValue = false;
             RelationalTypeMapping? typeMapping;
 
-            IEnumerable values;
             switch (valuesExpression)
             {
                 case SqlConstantExpression sqlConstant:
+                {
                     typeMapping = sqlConstant.TypeMapping;
-                    values = (IEnumerable)sqlConstant.Value!;
-                    break;
+                    var values = (IEnumerable)sqlConstant.Value!;
+                    foreach (var value in values)
+                    {
+                        if (value == null && extractNullValues)
+                        {
+                            hasNullValue = true;
+                            continue;
+                        }
 
-                case SqlParameterExpression sqlParameter:
-                    DoNotCache();
-                    typeMapping = sqlParameter.TypeMapping;
-                    values = (IEnumerable?)ParameterValues[sqlParameter.Name] ?? throw new NullReferenceException();
+                        inValues.Add(value); // TODO: Remove
+                        expressions.Add(_sqlExpressionFactory.Constant(value, typeMapping));
+                    }
+
                     break;
+                }
+
+                case SqlParameterExpression sqlEnumerableParameter:
+                {
+                    DoNotCache();
+                    typeMapping = sqlEnumerableParameter.TypeMapping;
+                    var values = (IEnumerable?)ParameterValues[sqlEnumerableParameter.Name] ?? throw new NullReferenceException();
+                    var paramBaseName = char.IsDigit(sqlEnumerableParameter.Name[^1])
+                        ? sqlEnumerableParameter.Name + "_"
+                        : sqlEnumerableParameter.Name;
+
+                    var i = 0;
+                    SqlParameterExpression? lastParameter = null;
+                    foreach (var value in values)
+                    {
+                        if (value == null && extractNullValues)
+                        {
+                            hasNullValue = true;
+                            continue;
+                        }
+
+                        inValues.Add(value); // TODO: Remove
+                        // TODO: Uniquify parameter name
+                        var parameterName = paramBaseName + (++i);
+                        ParameterValues[parameterName] = value;
+
+                        lastParameter = new SqlParameterExpression(
+                                Expression.Parameter(
+                                    value?.GetType() ?? throw new InvalidOperationException(), // TODO: Figure out the null case
+                                    parameterName),
+                                typeMapping);
+
+                        expressions.Add(lastParameter);
+                    }
+
+                    // To avoid having different SQLs for different array lengths, we pad
+                    var paddedParameterCount = GetInExpressionPaddedParameterCount(i);
+                    if (i < paddedParameterCount && lastParameter is not null)
+                    {
+                        for (; i < paddedParameterCount; i++)
+                        {
+                            expressions.Add(lastParameter);
+                        }
+                    }
+
+                    break;
+                }
 
                 default:
                     throw new InvalidOperationException(
                         RelationalStrings.NonConstantOrParameterAsInExpressionValues(valuesExpression.GetType().Name));
             }
 
-            foreach (var value in values)
-            {
-                if (value == null && extractNullValues)
-                {
-                    hasNullValue = true;
-                    continue;
-                }
 
-                inValues.Add(value);
-            }
-
-            var processedValuesExpression = _sqlExpressionFactory.Constant(inValues, typeMapping);
+            var processedValuesExpression = _sqlExpressionFactory.Constant(expressions, typeMapping);
 
             return (processedValuesExpression, inValues, hasNullValue);
         }
@@ -767,6 +813,17 @@ public class SqlNullabilityProcessor
                         _sqlExpressionFactory.Constant(inValuesList[0], inExpression.Values!.TypeMapping))
                 : inExpression;
     }
+
+    protected virtual int GetInExpressionPaddedParameterCount(int parameterCount)
+        => parameterCount switch
+        {
+            <= 5 => 5,
+            <= 10 => 10,
+            <= 50 => 50,
+            <= 100 => 100,
+            <= 500 => 500,
+            _ => parameterCount + (parameterCount % 1000)
+        };
 
     /// <summary>
     ///     Visits a <see cref="LikeExpression" /> and computes its nullability.

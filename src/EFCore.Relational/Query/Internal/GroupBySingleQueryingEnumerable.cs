@@ -100,7 +100,7 @@ public class GroupBySingleQueryingEnumerable<TKey, TElement>
     /// </summary>
     public virtual DbCommand CreateDbCommand()
         => _relationalCommandCache
-            .GetRelationalCommandTemplate(_relationalQueryContext.ParameterValues)
+            .GetRelationalCommandTemplate((IDictionary<string, object?>)_relationalQueryContext.ParameterValues)
             .CreateDbCommand(
                 new RelationalCommandParameterObject(
                     _relationalQueryContext.Connection,

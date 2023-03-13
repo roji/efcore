@@ -32,13 +32,13 @@ public class SqlServerParameterBasedSqlProcessor : RelationalParameterBasedSqlPr
     /// </summary>
     public override Expression Optimize(
         Expression queryExpression,
-        IReadOnlyDictionary<string, object?> parametersValues,
+        IDictionary<string, object?> parametersValues,
         out bool canCache)
     {
         var optimizedQueryExpression = base.Optimize(queryExpression, parametersValues, out canCache);
 
         optimizedQueryExpression = new SkipTakeCollapsingExpressionVisitor(Dependencies.SqlExpressionFactory)
-            .Process(optimizedQueryExpression, parametersValues, out var canCache2);
+            .Process(optimizedQueryExpression, (IReadOnlyDictionary<string, object?>)parametersValues, out var canCache2);
 
         canCache &= canCache2;
 
@@ -48,7 +48,7 @@ public class SqlServerParameterBasedSqlProcessor : RelationalParameterBasedSqlPr
     /// <inheritdoc />
     protected override Expression ProcessSqlNullability(
         Expression selectExpression,
-        IReadOnlyDictionary<string, object?> parametersValues,
+        IDictionary<string, object?> parametersValues,
         out bool canCache)
     {
         Check.NotNull(selectExpression, nameof(selectExpression));

@@ -24,7 +24,8 @@ public static class RelationCommandCacheExtensions
         this RelationalCommandCache relationalCommandCache,
         RelationalQueryContext queryContext)
     {
-        var relationalCommandTemplate = relationalCommandCache.GetRelationalCommandTemplate(queryContext.ParameterValues);
+        // TODO: Hack. Decide what we want to do here, pass ParameterValues or just a direct dictionary.
+        var relationalCommandTemplate = relationalCommandCache.GetRelationalCommandTemplate((IDictionary<string, object?>)queryContext.ParameterValues);
         var relationalCommand = queryContext.Connection.RentCommand();
         relationalCommand.PopulateFrom(relationalCommandTemplate);
         return relationalCommand;

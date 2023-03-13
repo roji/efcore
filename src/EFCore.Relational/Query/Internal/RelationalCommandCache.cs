@@ -48,9 +48,9 @@ public class RelationalCommandCache : IPrintableExpression
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual IRelationalCommandTemplate GetRelationalCommandTemplate(IReadOnlyDictionary<string, object?> parameters)
+    public virtual IRelationalCommandTemplate GetRelationalCommandTemplate(IDictionary<string, object?> parameters)
     {
-        var cacheKey = new CommandCacheKey(_queryExpression, parameters);
+        var cacheKey = new CommandCacheKey(_queryExpression, (IReadOnlyDictionary<string, object?>)parameters);
 
         if (_memoryCache.TryGetValue(cacheKey, out IRelationalCommandTemplate? relationalCommandTemplate))
         {

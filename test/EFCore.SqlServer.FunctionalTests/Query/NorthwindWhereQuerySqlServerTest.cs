@@ -12,7 +12,7 @@ public class NorthwindWhereQuerySqlServerTest : NorthwindWhereQueryRelationalTes
         : base(fixture)
     {
         ClearLog();
-        //Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
+        Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
     protected override bool CanExecuteQueryString
@@ -2453,9 +2453,12 @@ WHERE [o].[OrderID] IN (10248, 10249)
 
         AssertSql(
 """
+@__orderIds_0_1='10248'
+@__orderIds_0_2='10249'
+
 SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
 FROM [Orders] AS [o]
-WHERE [o].[OrderID] IN (10248, 10249)
+WHERE [o].[OrderID] IN (@__orderIds_0_1, @__orderIds_0_2, @__orderIds_0_2, @__orderIds_0_2, @__orderIds_0_2)
 """);
     }
 
