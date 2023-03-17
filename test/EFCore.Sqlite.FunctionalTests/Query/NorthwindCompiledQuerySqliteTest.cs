@@ -12,14 +12,6 @@ public class NorthwindCompiledQuerySqliteTest : NorthwindCompiledQueryTestBase<N
     {
     }
 
-    public override void MakeBinary_does_not_throw_for_unsupported_operator()
-        => Assert.Equal(
-            CoreStrings.TranslationFailedWithDetails(
-                "DbSet<Customer>()    .Where(c => c.CustomerID == (string)__parameters        .ElementAt(0))",
-                CoreStrings.QueryUnableToTranslateMethod("System.Linq.Enumerable", nameof(Enumerable.ElementAt))),
-            Assert.Throws<InvalidOperationException>(
-                () => base.MakeBinary_does_not_throw_for_unsupported_operator()).Message.Replace("\r", "").Replace("\n", ""));
-
     public override void Query_with_array_parameter()
     {
         var query = EF.CompileQuery(
@@ -60,7 +52,7 @@ public class NorthwindCompiledQuerySqliteTest : NorthwindCompiledQueryTestBase<N
                     "DbSet<Customer>()    .Where(c => c.CustomerID == __args        .ElementAt(0))",
                     CoreStrings.QueryUnableToTranslateMethod("System.Linq.Enumerable", nameof(Enumerable.ElementAt))),
                 (await Assert.ThrowsAsync<InvalidOperationException>(
-                    () => Enumerate(query(context, new[] { "ALFKI" })))).Message.Replace("\r", "").Replace("\n", ""));
+                    () => CountAsync(query(context, new[] { "ALFKI" })))).Message.Replace("\r", "").Replace("\n", ""));
         }
 
         using (var context = CreateContext())
@@ -70,7 +62,7 @@ public class NorthwindCompiledQuerySqliteTest : NorthwindCompiledQueryTestBase<N
                     "DbSet<Customer>()    .Where(c => c.CustomerID == __args        .ElementAt(0))",
                     CoreStrings.QueryUnableToTranslateMethod("System.Linq.Enumerable", nameof(Enumerable.ElementAt))),
                 (await Assert.ThrowsAsync<InvalidOperationException>(
-                    () => Enumerate(query(context, new[] { "ANATR" })))).Message.Replace("\r", "").Replace("\n", ""));
+                    () => CountAsync(query(context, new[] { "ANATR" })))).Message.Replace("\r", "").Replace("\n", ""));
         }
     }
 }
