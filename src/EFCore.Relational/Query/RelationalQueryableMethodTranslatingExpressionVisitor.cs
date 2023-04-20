@@ -543,6 +543,58 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
     }
 
     /// <inheritdoc />
+    protected override ShapedQueryExpression? TranslateAppend(ShapedQueryExpression source, Expression element)
+    {
+        // Translate ints.Append(3) as 'ints UNION ALL SELECT 3'
+
+        var selectExpression = (SelectExpression)source.QueryExpression;
+
+        var shaperExpression = source.ShaperExpression;
+        // No need to check ConvertChecked since this is convert node which we may have added during projection
+        if (shaperExpression is UnaryExpression { NodeType: ExpressionType.Convert } unaryExpression
+            && unaryExpression.Operand.Type.IsNullableType()
+            && unaryExpression.Operand.Type.UnwrapNullableType() == unaryExpression.Type)
+        {
+            shaperExpression = unaryExpression.Operand;
+        }
+
+        // TODO: This applies the default type mapping - not good. Infer the type mapping from the projection and apply it here.
+        // TODO: Also do it the other way around below in ColumnTypeMappingScanner.
+        // Check what's being projected out of the source.
+        // If it's an entity, translate the element as a subquery; otherwise do regular SQL translation and wrap the result in a
+        // SelectExpression. Finally, translate to UNION ALL between the source and that.
+        switch (shaperExpression)
+        {
+            case RelationalEntityShaperExpression
+                when Visit(element) is ShapedQueryExpression { QueryExpression: SelectExpression select2 }:
+                selectExpression.ApplyUnion(select2, distinct: false);
+                return source;
+
+            case ProjectionBindingExpression:
+                // var projection = selectExpression.GetProjection(projectionBindingExpression);
+                var translation = TranslateExpression(element);
+                if (translation is null)
+                {
+                    return null;
+                }
+
+                // TODO: Nullability on the shaper (see Union implementation). When Append has null argument, that possibly changes things.
+                var elementSelectExpression = new SelectExpression(translation);
+                selectExpression.ApplyUnion(elementSelectExpression, distinct: false);
+                return source;
+
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        // Union:
+        // ((SelectExpression)source1.QueryExpression).ApplyUnion((SelectExpression)source2.QueryExpression, distinct: true);
+        //
+        // return source1.UpdateShaperExpression(
+        //     MatchShaperNullabilityForSetOperation(source1.ShaperExpression, source2.ShaperExpression, makeNullable: true));
+    }
+
+    /// <inheritdoc />
     protected override ShapedQueryExpression? TranslateAverage(
         ShapedQueryExpression source,
         LambdaExpression? selector,

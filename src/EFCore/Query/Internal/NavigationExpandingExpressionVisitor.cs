@@ -372,6 +372,16 @@ public partial class NavigationExpandingExpressionVisitor : ExpressionVisitor
                             genericMethod,
                             methodCallExpression.Arguments[1].UnwrapLambdaFromQuote());
 
+                    case nameof(Queryable.Append)
+                        when genericMethod == QueryableMethods.Append:
+                    {
+                        var element = Visit(methodCallExpression.Arguments[1]);
+
+                        source.UpdateSource(Expression.Call(genericMethod.MakeGenericMethod(source.SourceElementType), source.Source, element));
+
+                        return source;
+                    }
+
                     case nameof(Queryable.Average)
                         when QueryableMethods.IsAverageWithoutSelector(method):
                     case nameof(Queryable.Max)
@@ -410,6 +420,15 @@ public partial class NavigationExpandingExpressionVisitor : ExpressionVisitor
                             source,
                             genericMethod,
                             methodCallExpression.Arguments[1]);
+
+                    // case nameof(Queryable.Append)
+                    //     when genericMethod == QueryableMethods.Append
+                    //     && Visit(methodCallExpression.Arguments[1]) is NavigationExpansionExpression e:
+                    //     return ProcessSetOperation(source, QueryableMethods.Append, e);
+
+                    case nameof(Queryable.Append)
+                        when genericMethod == QueryableMethods.Append:
+                        return ProcessAppend(source, methodCallExpression.Arguments[1]);
 
                     case nameof(Queryable.Contains)
                         when genericMethod == QueryableMethods.Contains:
@@ -963,6 +982,31 @@ public partial class NavigationExpandingExpressionVisitor : ExpressionVisitor
         var parameterName = GetParameterName("e");
 
         return new NavigationExpansionExpression(result, navigationTree, navigationTree, parameterName);
+    }
+
+    private Expression ProcessAppend(NavigationExpansionExpression source, Expression element)
+    {
+        var visitedElement = Visit(element);
+        visitedElement = UnwrapCollectionMaterialization(visitedElement);
+
+        source = (NavigationExpansionExpression)_pendingSelectorExpandingExpressionVisitor.Visit(source);
+        var treeStructure = SnapshotExpression(source.PendingSelector);
+
+        // ValidateExpressionCompatibility(outerTreeStructure, innerTreeStructure);
+
+        var reducedSource = Reduce(source);
+        var reducedElement = Reduce(visitedElement);
+        // var elementType = reducedSource.Type.GetSequenceType();
+
+        var result = Expression.Call(QueryableMethods.Append.MakeGenericMethod(reducedElement.Type), reducedSource, reducedElement);
+        var navigationTree = new NavigationTreeExpression(treeStructure);
+        var parameterName = GetParameterName("e");
+
+        return new NavigationExpansionExpression(result, navigationTree, navigationTree, parameterName);
+
+        // Naive implementation, without applying pending selector. Works for primitive collections, fails over Select.
+        // source.UpdateSource(Expression.Call(QueryableMethods.Append.MakeGenericMethod(source.SourceElementType), source.Source, element));
+        // return source;
     }
 
     private Expression ProcessContains(NavigationExpansionExpression source, Expression item)

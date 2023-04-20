@@ -1581,6 +1581,68 @@ WHERE [c1].[CustomerID] LIKE N'A%'
         AssertSql();
     }
 
+    public override async Task Append_scalar_at_toplevel(bool async)
+    {
+        await base.Append_scalar_at_toplevel(async);
+
+        AssertSql(
+"""
+SELECT TOP(2) [c].[CustomerID]
+FROM [Customers] AS [c]
+WHERE [c].[City] = N'Berlin'
+""",
+            //
+"""
+@__p_0='ALFKI' (Size = 4000)
+
+SELECT [c].[CustomerID]
+FROM [Customers] AS [c]
+WHERE [c].[City] = N'London'
+UNION ALL
+SELECT @__p_0 AS [CustomerID]
+""");
+    }
+
+    public override async Task Append_scalar_in_subquery(bool async)
+    {
+        await base.Append_scalar_in_subquery(async);
+
+        AssertSql(
+"""
+SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
+FROM [Orders] AS [o]
+WHERE (
+    SELECT COALESCE(SUM([t].[UnitPrice]), 0.0)
+    FROM (
+        SELECT [o0].[UnitPrice]
+        FROM [Order Details] AS [o0]
+        WHERE [o].[OrderID] = [o0].[OrderID] AND [o0].[ProductID] = 11
+        UNION ALL
+        SELECT 88.0 AS [UnitPrice]
+    ) AS [t]) = 102.0
+""");
+    }
+
+    public override async Task Append_entity_in_subquery(bool async)
+    {
+        await base.Append_entity_in_subquery(async);
+
+        AssertSql(
+            """
+SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
+FROM [Orders] AS [o]
+WHERE (
+    SELECT COALESCE(SUM([t].[UnitPrice]), 0.0)
+    FROM (
+        SELECT [o0].[UnitPrice]
+        FROM [Order Details] AS [o0]
+        WHERE [o].[OrderID] = [o0].[OrderID] AND [o0].[ProductID] = 11
+        UNION ALL
+        SELECT 88.0 AS [UnitPrice]
+    ) AS [t]) = 102.0
+""");
+    }
+
     [ConditionalTheory, MemberData(nameof(IsAsyncData))]
     public virtual async Task Union_with_different_store_types_is_fine_if_database_can_translate_it(bool async)
     {

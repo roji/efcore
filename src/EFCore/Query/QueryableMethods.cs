@@ -34,6 +34,11 @@ public static class QueryableMethods
     /// </summary>
     public static MethodInfo AnyWithPredicate { get; }
 
+    /// <summary>
+    ///     The <see cref="MethodInfo" /> for <see cref="Queryable.Append{TResult}" />
+    /// </summary>
+    public static MethodInfo Append { get; }
+
     //public static MethodInfo AsQueryableNonGeneric { get; }
 
     /// <summary>
@@ -487,6 +492,14 @@ public static class QueryableMethods
                 typeof(IQueryable<>).MakeGenericType(types[0]),
                 typeof(Expression<>).MakeGenericType(typeof(Func<,>).MakeGenericType(types[0], typeof(bool)))
             ]);
+
+        Append = GetMethod(
+            nameof(Queryable.Append), 1,
+            types => new[]
+            {
+                typeof(IQueryable<>).MakeGenericType(types[0]),
+                types[0]
+            });
 
         AsQueryable = GetMethod(
             nameof(Queryable.AsQueryable), 1,

@@ -2153,69 +2153,74 @@ public sealed partial class SelectExpression : TableExpressionBase
                      kv => kv.Key,
                      (kv1, kv2) => (kv1.Key, Value1: kv1.Value, Value2: kv2.Value)))
         {
-            if (expression1 is StructuralTypeProjectionExpression projection1
-                && expression2 is StructuralTypeProjectionExpression projection2)
+            switch ((expression1, expression2))
             {
-                HandleStructuralTypeProjection(projectionMember, select1, projection1, select2, projection2);
-                continue;
-            }
+                case (StructuralTypeProjectionExpression projection1, StructuralTypeProjectionExpression projection2):
+                    HandleStructuralTypeProjection(projectionMember, select1, projection1, select2, projection2);
+                    continue;
 
-            var innerColumn1 = (SqlExpression)expression1;
-            var innerColumn2 = (SqlExpression)expression2;
-
-            var projectionAlias = GenerateUniqueColumnAlias(
-                projectionMember.Last?.Name
-                ?? (innerColumn1 as ColumnExpression)?.Name
-                ?? "c");
-
-            var innerProjection1 = new ProjectionExpression(innerColumn1, projectionAlias);
-            var innerProjection2 = new ProjectionExpression(innerColumn2, projectionAlias);
-            select1._projection.Add(innerProjection1);
-            select2._projection.Add(innerProjection2);
-            var outerProjection = CreateColumnExpression(innerProjection1, setOperationAlias);
-
-            if (IsNullableProjection(innerProjection1)
-                || IsNullableProjection(innerProjection2))
-            {
-                outerProjection = outerProjection.MakeNullable();
-            }
-
-            _projectionMapping[projectionMember] = outerProjection;
-
-            if (outerIdentifiers.Length > 0)
-            {
-                // If we happen to project identifier columns, make them candidates for lifting up to be the outer identifiers for the
-                // set operation result. Note that we check below that *all* identifier columns are projected out, since a partial
-                // identifier (e.g. one column in a composite key) is insufficient.
-                var index = select1._identifier.FindIndex(e => e.Column.Equals(expression1));
-                if (index != -1)
+                case (SqlExpression innerColumn1, SqlExpression innerColumn2):
                 {
-                    if (select2._identifier[index].Column.Equals(expression2))
+                    var projectionAlias = GenerateUniqueColumnAlias(
+                        projectionMember.Last?.Name
+                        ?? (innerColumn1 as ColumnExpression)?.Name
+                        ?? "c");
+
+                    var innerProjection1 = new ProjectionExpression(innerColumn1, projectionAlias);
+                    var innerProjection2 = new ProjectionExpression(innerColumn2, projectionAlias);
+                    select1._projection.Add(innerProjection1);
+                    select2._projection.Add(innerProjection2);
+                    var outerProjection = CreateColumnExpression(innerProjection1, setOperationAlias);
+
+                    if (IsNullableProjection(innerProjection1)
+                        || IsNullableProjection(innerProjection2))
                     {
-                        outerIdentifiers[index] = outerProjection;
+                        outerProjection = outerProjection.MakeNullable();
                     }
-                    else
+
+                    _projectionMapping[projectionMember] = outerProjection;
+
+                    if (outerIdentifiers.Length > 0)
                     {
-                        // If select1 matched but select2 did not then we erase all identifiers
-                        // TODO: We could make this little more robust by allow the indexes to be different. See issue#24475
-                        // i.e. Identifier ordering being different.
-                        outerIdentifiers = [];
+                        // If we happen to project identifier columns, make them candidates for lifting up to be the outer identifiers for the
+                        // set operation result. Note that we check below that *all* identifier columns are projected out, since a partial
+                        // identifier (e.g. one column in a composite key) is insufficient.
+                        var index = select1._identifier.FindIndex(e => e.Column.Equals(expression1));
+                        if (index != -1)
+                        {
+                            if (select2._identifier[index].Column.Equals(expression2))
+                            {
+                                outerIdentifiers[index] = outerProjection;
+                            }
+                            else
+                            {
+                                // If select1 matched but select2 did not then we erase all identifiers
+                                // TODO: We could make this little more robust by allow the indexes to be different. See issue#24475
+                                // i.e. Identifier ordering being different.
+                                outerIdentifiers = [];
+                            }
+                        }
+
+                        // we need comparer (that we get from type mapping) for identifiers
+                        // it may happen that one side of the set operation comes from collection parameter
+                        // and therefore doesn't have type mapping (yet - we infer those after the translation is complete)
+                        // but for set operation at least one side should have type mapping, otherwise whole thing would have been parameterized out
+                        // this can only happen in compiled query, since we always parameterize parameters there - if this happens we throw
+                        var outerTypeMapping = innerProjection1.Expression.TypeMapping ?? innerProjection2.Expression.TypeMapping;
+                        if (outerTypeMapping == null)
+                        {
+                            throw new InvalidOperationException(
+                                RelationalStrings.SetOperationsRequireAtLeastOneSideWithValidTypeMapping(setOperationType));
+                        }
+
+                        otherExpressions.Add((outerProjection, outerTypeMapping.KeyComparer));
                     }
+
+                    continue;
                 }
 
-                // we need comparer (that we get from type mapping) for identifiers
-                // it may happen that one side of the set operation comes from collection parameter
-                // and therefore doesn't have type mapping (yet - we infer those after the translation is complete)
-                // but for set operation at least one side should have type mapping, otherwise whole thing would have been parameterized out
-                // this can only happen in compiled query, since we always parameterize parameters there - if this happens we throw
-                var outerTypeMapping = innerProjection1.Expression.TypeMapping ?? innerProjection2.Expression.TypeMapping;
-                if (outerTypeMapping == null)
-                {
-                    throw new InvalidOperationException(
-                        RelationalStrings.SetOperationsRequireAtLeastOneSideWithValidTypeMapping(setOperationType));
-                }
-
-                otherExpressions.Add((outerProjection, outerTypeMapping.KeyComparer));
+                default:
+                    throw new UnreachableException();
             }
         }
 

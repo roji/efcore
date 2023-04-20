@@ -237,6 +237,10 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
                         shapedQueryExpression = shapedQueryExpression.UpdateResultCardinality(ResultCardinality.Single);
                         return CheckTranslated(TranslateAny(shapedQueryExpression, GetLambdaExpressionFromArgument(1)));
 
+                    case nameof(Queryable.Append)
+                        when genericMethod == QueryableMethods.Append:
+                        return CheckTranslated(TranslateAppend(shapedQueryExpression, methodCallExpression.Arguments[1]));
+
                     case nameof(Queryable.AsQueryable)
                         when genericMethod == QueryableMethods.AsQueryable:
                         return source;
@@ -718,6 +722,24 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     /// <param name="predicate">The predicate supplied in the call.</param>
     /// <returns>The shaped query after translation.</returns>
     protected abstract ShapedQueryExpression? TranslateAny(ShapedQueryExpression source, LambdaExpression? predicate);
+
+    /// <summary>
+    ///     Translates <see cref="Queryable.Any{TSource}(IQueryable{TSource})" /> method and other overloads over the given source.
+    /// </summary>
+    /// <param name="source">The shaped query on which the operator is applied.</param>
+    /// <param name="element">The element to append to <paramref name="source" />.</param>
+    /// <returns>The shaped query after translation.</returns>
+    protected virtual ShapedQueryExpression? TranslateAppend(ShapedQueryExpression source, Expression element)
+    {
+        // TODO: Not sure this core-only approach works
+
+        var translatedElement = Visit(element);
+        // TODO: Check translation
+        // TODO: Single inline/parameter?
+        return Visit(translatedElement) is ShapedQueryExpression source2
+            ? TranslateConcat(source, source2)
+            : null;
+    }
 
     /// <summary>
     ///     Translates <see cref="Queryable.Average(IQueryable{decimal})" /> method and other overloads over the given source.

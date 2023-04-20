@@ -905,4 +905,49 @@ public abstract class NorthwindSetOperationsQueryTestBase<TFixture>(TFixture fix
                 .Concat(ss.Set<Customer>().Where(c => c.CustomerID.StartsWith("B")).Distinct())
                 .Concat(ss.Set<Customer>().Where(c => c.CustomerID.StartsWith("A")))
                 .Select(x => x.City));
+
+    // Note that the following is in fact two separately-evaluated LINQ queries (note the Single); unlike set operations, since Append
+    // accepts a non-lambda element, that gets evaluated separately when at the top-level, and so the entire LINQ query cannot be
+    // translated as a single SQL query.
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Append_scalar_at_toplevel(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<Customer>()
+                .Where(c => c.City == "London")
+                .Select(c => c.CustomerID)
+                .Append(
+                    ss.Set<Customer>()
+                        .Where(c => c.City == "Berlin")
+                        .Select(c => c.CustomerID)
+                        .Single()));
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Append_scalar_in_subquery(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<Order>()
+                .Where(o => o.OrderDetails
+                    .Where(od => od.ProductID == 11)
+                    .Select(od => od.UnitPrice)
+                    .Append(88)
+                    .Sum() == 102m));
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Append_entity_in_toplevel(bool async)
+        => throw new NotImplementedException();
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Append_entity_in_subquery(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<Order>()
+                .Where(o => o.OrderDetails
+                    .Where(od => od.ProductID == 11)
+                    .Append(o.OrderDetails.OrderBy(od => od.ProductID).First())
+                    .Count() == 102m));
 }
