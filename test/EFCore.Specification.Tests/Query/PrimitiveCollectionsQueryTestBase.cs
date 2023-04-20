@@ -387,7 +387,7 @@ public class PrimitiveCollectionsQueryTestBase<TFixture> : QueryTestBase<TFixtur
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
-    public virtual Task Column_collection_and_Parameter_collection_Join(bool async)
+    public virtual Task Inline_collection_and_parameter_collection_Join(bool async)
     {
         var ints = new[] { 11, 111 };
 
@@ -439,6 +439,22 @@ public class PrimitiveCollectionsQueryTestBase<TFixture> : QueryTestBase<TFixtur
             ss => ss.Set<PrimitiveCollectionsEntity>().Where(
                 c => new[] { 11, 111 }.Except(c.Ints).Count(i => i % 2 == 1) == 2),
             entryCount: 2);
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Column_collection_Append_constant(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<PrimitiveCollectionsEntity>().Where(c => c.Ints.Append(100).Count() == 3),
+            entryCount: 1);
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Inline_collection_Append_column(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<PrimitiveCollectionsEntity>().Where(c => new[] { 1, 10 }.Append(c.Int).Sum() == 21),
+            entryCount: 1);
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]

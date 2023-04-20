@@ -139,6 +139,10 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
                         shapedQueryExpression = shapedQueryExpression.UpdateResultCardinality(ResultCardinality.Single);
                         return CheckTranslated(TranslateAny(shapedQueryExpression, GetLambdaExpressionFromArgument(1)));
 
+                    case nameof(Queryable.Append)
+                        when genericMethod == QueryableMethods.Append:
+                        return CheckTranslated(TranslateAppend(shapedQueryExpression, methodCallExpression.Arguments[1]));
+
                     case nameof(Queryable.AsQueryable)
                         when genericMethod == QueryableMethods.AsQueryable:
                         return source;
@@ -558,6 +562,14 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     protected abstract ShapedQueryExpression? TranslateAny(
         ShapedQueryExpression source,
         LambdaExpression? predicate);
+
+    /// <summary>
+    ///     Translates <see cref="Queryable.Any{TSource}(IQueryable{TSource})" /> method and other overloads over the given source.
+    /// </summary>
+    /// <param name="source">The shaped query on which the operator is applied.</param>
+    /// <param name="element">The element to append to <paramref name="source" />.</param>
+    /// <returns>The shaped query after translation.</returns>
+    protected abstract ShapedQueryExpression? TranslateAppend(ShapedQueryExpression source, Expression element);
 
     /// <summary>
     ///     Translates <see cref="Queryable.Average(IQueryable{decimal})" /> method and other overloads over the given source.

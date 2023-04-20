@@ -337,8 +337,8 @@ ORDER BY [p].[Id]
 """);
     }
 
-    public override Task Column_collection_and_parameter_collection_Join(bool async)
-        => AssertTranslationFailed(() => base.Column_collection_and_parameter_collection_Join(async));
+    public override Task Inline_collection_and_parameter_collection_Join(bool async)
+        => AssertTranslationFailed(() => base.Inline_collection_and_parameter_collection_Join(async));
 
     public override Task Parameter_collection_Concat_column_collection(bool async)
         => AssertTranslationFailed(() => base.Parameter_collection_Concat_column_collection(async));

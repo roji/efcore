@@ -559,9 +559,9 @@ ORDER BY "p"."Id"
 """);
     }
 
-    public override async Task Column_collection_and_parameter_collection_Join(bool async)
+    public override async Task Inline_collection_and_parameter_collection_Join(bool async)
     {
-        await base.Column_collection_and_parameter_collection_Join(async);
+        await base.Inline_collection_and_parameter_collection_Join(async);
 
         AssertSql(
 """

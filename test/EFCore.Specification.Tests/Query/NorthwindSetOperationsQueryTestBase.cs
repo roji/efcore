@@ -956,4 +956,45 @@ public abstract class NorthwindSetOperationsQueryTestBase<TFixture> : QueryTestB
                 .Concat(ss.Set<Customer>().Where(c => c.CustomerID.StartsWith("B")).Distinct())
                 .Concat(ss.Set<Customer>().Where(c => c.CustomerID.StartsWith("A")))
                 .Select(x => x.City));
+
+    // Note that the following is in fact two separately-evaluated LINQ queries (note the Single); unlike set operations, since Append
+    // accepts a single element, when at the top-level is cannot be executed as a single query.
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Append_non_entity_at_toplevel(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<Customer>()
+                .Where(c => c.City == "London")
+                .Select(c => c.CustomerID)
+                .Append(
+                    ss.Set<Customer>()
+                        .Where(c => c.City == "Berlin")
+                        .Select(c => c.CustomerID)
+                        .Single()));
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Append_non_entity_in_subquery(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<Order>()
+                .Where(o => o.OrderDetails
+                    .Where(od => od.ProductID == 11)
+                    .Select(od => od.UnitPrice)
+                    .Append(88)
+                    .Sum() == 102m),
+            entryCount: 1);
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Append_entity_in_subquery(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<Order>()
+                .Where(o => o.OrderDetails
+                    .Where(od => od.ProductID == 11)
+                    .Append(o.OrderDetails.OrderBy(od => od.ProductID).First())
+                    .Count() == 102m),
+            entryCount: 1);
 }

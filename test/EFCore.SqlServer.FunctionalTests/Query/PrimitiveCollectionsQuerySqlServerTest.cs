@@ -10,7 +10,7 @@ public class PrimitiveCollectionsQuerySqlServerTest : PrimitiveCollectionsQueryT
         : base(fixture)
     {
         Fixture.TestSqlLoggerFactory.Clear();
-        //Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
+        Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
     public override async Task Inline_collection_of_ints_Contains(bool async)
@@ -598,9 +598,9 @@ ORDER BY [p].[Id]
 """);
     }
 
-    public override async Task Column_collection_and_parameter_collection_Join(bool async)
+    public override async Task Inline_collection_and_parameter_collection_Join(bool async)
     {
-        await base.Column_collection_and_parameter_collection_Join(async);
+        await base.Inline_collection_and_parameter_collection_Join(async);
 
         AssertSql(
 """
@@ -697,6 +697,44 @@ WHERE (
         FROM OpenJson([p].[Ints]) AS [i]
     ) AS [t]
     WHERE [t].[Value] % 2 = 1) = 2
+""");
+    }
+
+    public override async Task Column_collection_Append_constant(bool async)
+    {
+        await base.Column_collection_Append_constant(async);
+
+        AssertSql(
+"""
+SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[String], [p].[Strings]
+FROM [PrimitiveCollectionsEntity] AS [p]
+WHERE (
+    SELECT COUNT(*)
+    FROM (
+        SELECT CAST([i].[value] AS int) AS [c]
+        FROM OpenJson([p].[Ints]) AS [i]
+        UNION ALL
+        SELECT 100 AS [c]
+    ) AS [t]) = 3
+""");
+    }
+
+    public override async Task Inline_collection_Append_column(bool async)
+    {
+        await base.Inline_collection_Append_column(async);
+
+        AssertSql(
+"""
+SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[String], [p].[Strings]
+FROM [PrimitiveCollectionsEntity] AS [p]
+WHERE (
+    SELECT COALESCE(SUM([t].[Value]), 0)
+    FROM (
+        SELECT [v].[Value]
+        FROM (VALUES (CAST(1 AS int)), (10)) AS [v]([Value])
+        UNION ALL
+        SELECT [p].[Int] AS [Value]
+    ) AS [t]) = 21
 """);
     }
 
