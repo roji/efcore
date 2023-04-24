@@ -461,12 +461,6 @@ public class SqlServerTypeMappingSource : RelationalTypeMappingSource
             return null;
         }
 
-        // Specifically exclude collections over Geometry, since there's a dedicated GeometryCollection type for that (see #30630)
-        if (elementClrType.Namespace == "NetTopologySuite.Geometries")
-        {
-            return null;
-        }
-
         // TODO: This can be moved into a SQL Server implementation of ValueConverterSelector.. But it seems better for this method's logic
         // to be in the type mapping source.
         var stringMappingInfo = new RelationalTypeMappingInfo(

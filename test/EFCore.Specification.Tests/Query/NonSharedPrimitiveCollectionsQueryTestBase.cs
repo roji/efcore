@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using NetTopologySuite.Geometries;
+
 namespace Microsoft.EntityFrameworkCore.Query;
 
 public abstract class NonSharedPrimitiveCollectionsQueryTestBase : NonSharedModelTestBase
@@ -76,11 +78,6 @@ public abstract class NonSharedPrimitiveCollectionsQueryTestBase : NonSharedMode
         => TestArray(MyEnum.Label1, MyEnum.Label2);
 
     enum MyEnum { Label1, Label2 }
-
-    // This ensures that collections of Geometry (e.g. Geometry[]) aren't mapped; NTS has GeometryCollection for that.
-    // See SQL Server/SQLite for a sample implementation.
-    [ConditionalFact] // #30630
-    public abstract Task Array_of_geometry_is_not_supported();
 
     [ConditionalFact]
     public virtual async Task Array_of_array_is_not_supported()
@@ -215,12 +212,16 @@ public abstract class NonSharedPrimitiveCollectionsQueryTestBase : NonSharedMode
     protected async Task TestArray<TElement>(
         TElement value1,
         TElement value2,
-        Action<ModelBuilder> onModelCreating = null)
+        Action<ModelBuilder> onModelCreating = null,
+        Action<DbContextOptionsBuilder> onConfiguring = null,
+        Action<IServiceCollection> addServices = null)
     {
         var arrayClrType = typeof(TElement).MakeArrayType();
 
         var contextFactory = await InitializeAsync<TestContext>(
-            onModelCreating: onModelCreating ?? (mb => mb.Entity<TestEntity>().Property(arrayClrType, "SomeArray")),
+            onModelCreating ?? (mb => mb.Entity<TestEntity>().Property(arrayClrType, "SomeArray")),
+            onConfiguring,
+            addServices,
             seed: context =>
             {
                 var instance1 = new TestEntity { Id = 1 };

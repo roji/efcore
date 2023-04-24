@@ -201,12 +201,6 @@ public class SqliteTypeMappingSource : RelationalTypeMappingSource
                 return null;
             }
 
-            // Specifically exclude collections over Geometry, since there's a dedicated GeometryCollection type for that (see #30630)
-            if (elementClrType.Namespace == "NetTopologySuite.Geometries")
-            {
-                return null;
-            }
-
             stringTypeMapping = (SqliteStringTypeMapping)stringTypeMapping
                 .Clone(new CollectionToJsonStringConverter(mappingInfo.ClrType, elementTypeMapping));
 

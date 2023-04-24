@@ -14,8 +14,6 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
 /// </summary>
 public class SqlServerNetTopologySuiteTypeMappingSourcePlugin : IRelationalTypeMappingSourcePlugin
 {
-    private readonly HashSet<string> _spatialStoreTypes = new(StringComparer.OrdinalIgnoreCase) { "geometry", "geography" };
-
     private readonly NtsGeometryServices _geometryServices;
 
     /// <summary>
@@ -41,8 +39,7 @@ public class SqlServerNetTopologySuiteTypeMappingSourcePlugin : IRelationalTypeM
         var storeTypeName = mappingInfo.StoreTypeName;
 
         return typeof(Geometry).IsAssignableFrom(clrType)
-            || (storeTypeName != null
-                && _spatialStoreTypes.Contains(storeTypeName))
+            || storeTypeName is "geometry" or "geography"
                 ? (RelationalTypeMapping)Activator.CreateInstance(
                     typeof(SqlServerGeometryTypeMapping<>).MakeGenericType(
                         clrType is null || clrType == typeof(SqlBytes) ? typeof(Geometry) : clrType),

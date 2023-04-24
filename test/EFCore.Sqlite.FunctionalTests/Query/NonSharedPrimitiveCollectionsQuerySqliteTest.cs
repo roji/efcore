@@ -200,17 +200,13 @@ LIMIT 2
 """);
     }
 
-    [ConditionalFact] // #30630
-    public override async Task Array_of_geometry_is_not_supported()
-    {
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => InitializeAsync<TestContext>(
-                onConfiguring: options => options.UseSqlite(o => o.UseNetTopologySuite()),
-                addServices: s => s.AddEntityFrameworkSqliteNetTopologySuite(),
-                onModelCreating: mb => mb.Entity<TestEntity>().Property<Point[]>("Points")));
-
-        Assert.Equal(CoreStrings.PropertyNotMapped("Point[]", "TestEntity", "Points"), exception.Message);
-    }
+    [ConditionalFact]
+    public virtual Task Array_of_geometry()
+        => TestArray(
+            new Point(1.0, 2.0),
+            new Point(2.0, 3.0),
+            onConfiguring: options => options.UseSqlite(o => o.UseNetTopologySuite()),
+            addServices: s => s.AddEntityFrameworkSqliteNetTopologySuite());
 
     #endregion Support for specific element types
 
