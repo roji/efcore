@@ -10,7 +10,7 @@ public class PrimitiveCollectionsQuerySqlServerTest : PrimitiveCollectionsQueryT
         : base(fixture)
     {
         Fixture.TestSqlLoggerFactory.Clear();
-        // Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
+        Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
     public override async Task Inline_collection_of_ints_Contains(bool async)
@@ -144,18 +144,14 @@ WHERE [p].[Id] IN (2, 999, 1000)
     {
         await base.Inline_collection_Contains_with_all_parameters(async);
 
-        // See #30732 for making this better
-
         AssertSql(
 """
-@__p_0='[2,999]' (Size = 4000)
+@__i_0='2'
+@__j_1='999'
 
 SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[String], [p].[Strings]
 FROM [PrimitiveCollectionsEntity] AS [p]
-WHERE [p].[Id] IN (
-    SELECT [p0].[value]
-    FROM OPENJSON(@__p_0) WITH ([value] int '$') AS [p0]
-)
+WHERE [p].[Id] IN (@__i_0, @__j_1)
 """);
     }
 

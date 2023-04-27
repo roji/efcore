@@ -296,7 +296,7 @@ public abstract class UdfDbFunctionTestBase<TFixture> : IClassFixture<TFixture>
                 .HasTranslation(
                     args => new InExpression(
                         args.First(),
-                        new SqlConstantExpression(Expression.Constant(abc), typeMapping: null), // args.First().TypeMapping),
+                        new[] { new SqlConstantExpression(Expression.Constant(abc), typeMapping: null) }, // args.First().TypeMapping)
                         negated: false,
                         typeMapping: null));
 
@@ -306,10 +306,10 @@ public abstract class UdfDbFunctionTestBase<TFixture> : IClassFixture<TFixture>
                     args => new InExpression(
                         new InExpression(
                             args.First(),
-                            new SqlConstantExpression(Expression.Constant(abc), args.First().TypeMapping),
+                            new[] { new SqlConstantExpression(Expression.Constant(abc), args.First().TypeMapping) },
                             negated: false,
                             typeMapping: null),
-                        new SqlConstantExpression(Expression.Constant(trueFalse), typeMapping: null),
+                        new[] { new SqlConstantExpression(Expression.Constant(trueFalse), typeMapping: null) },
                         negated: false,
                         typeMapping: null));
 

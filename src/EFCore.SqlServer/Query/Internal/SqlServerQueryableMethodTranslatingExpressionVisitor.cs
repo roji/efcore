@@ -364,7 +364,7 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    protected class SqlServerInferredTypeMappingApplier : RelationalInferredTypeMappingApplier
+    protected class SqlServerInferredTypeMappingApplier : InferredTypeMappingApplier
     {
         private readonly IRelationalTypeMappingSource _typeMappingSource;
         private readonly ISqlExpressionFactory _sqlExpressionFactory;
@@ -379,7 +379,7 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
             IRelationalTypeMappingSource typeMappingSource,
             ISqlExpressionFactory sqlExpressionFactory,
             IReadOnlyDictionary<(TableExpressionBase, string), RelationalTypeMapping?> inferredTypeMappings)
-            : base(inferredTypeMappings)
+            : base(sqlExpressionFactory, inferredTypeMappings)
             => (_typeMappingSource, _sqlExpressionFactory) = (typeMappingSource, sqlExpressionFactory);
 
         /// <summary>

@@ -672,7 +672,7 @@ public class SqlNullabilityProcessor
             // we want to avoid double visitation
             var subqueryProjection = subquery.Projection.Single().Expression;
 
-            inExpression = inExpression.Update(item, values: null, subquery);
+            inExpression = inExpression.Update(item, subquery, values: null, valuesParameter: null);
 
             var unwrappedSubqueryProjection = subqueryProjection;
             while (unwrappedSubqueryProjection is SqlUnaryExpression
@@ -779,28 +779,23 @@ public class SqlNullabilityProcessor
         // Non-subquery case
 
         // for relational null semantics we don't need to extract null values from the array
-        if (UseRelationalNulls
-            || !(inExpression.Values is SqlConstantExpression || inExpression.Values is SqlParameterExpression))
+        if (UseRelationalNulls)
         {
-            var (valuesExpression, valuesList, _) = ProcessInExpressionValues(inExpression.Values!, extractNullValues: false);
+            var (processedInExpression2, _) = ProcessInExpressionValues(inExpression, extractNullValues: false);
             nullable = false;
 
-            return valuesList.Count == 0
+            return processedInExpression2.Values!.Count == 0
                 ? _sqlExpressionFactory.Constant(false, inExpression.TypeMapping)
-                : SimplifyInExpression(
-                    inExpression.Update(item, valuesExpression, subquery: null),
-                    valuesExpression,
-                    valuesList);
+                : SimplifyInExpression(processedInExpression2);
         }
 
         // for c# null semantics we need to remove nulls from Values and add IsNull/IsNotNull when necessary
-        var (inValuesExpression, inValuesList, hasNullValue) = ProcessInExpressionValues(inExpression.Values, extractNullValues: true);
+        var (processedInExpression, hasNullValue) = ProcessInExpressionValues(inExpression, extractNullValues: true);
+        nullable = false;
 
         // either values array is empty or only contains null
-        if (inValuesList.Count == 0)
+        if (processedInExpression.Values!.Count == 0)
         {
-            nullable = false;
-
             // a IN () -> false
             // non_nullable IN (NULL) -> false
             // a NOT IN () -> true
@@ -816,16 +811,11 @@ public class SqlNullabilityProcessor
                     : _sqlExpressionFactory.IsNull(item);
         }
 
-        var simplifiedInExpression = SimplifyInExpression(
-            inExpression.Update(item, inValuesExpression, subquery: null),
-            inValuesExpression,
-            inValuesList);
+        var simplifiedInExpression = SimplifyInExpression(processedInExpression);
 
         if (!itemNullable
             || (allowOptimizedExpansion && !inExpression.IsNegated && !hasNullValue))
         {
-            nullable = false;
-
             // non_nullable IN (1, 2) -> non_nullable IN (1, 2)
             // non_nullable IN (1, 2, NULL) -> non_nullable IN (1, 2)
             // non_nullable NOT IN (1, 2) -> non_nullable NOT IN (1, 2)
@@ -833,8 +823,6 @@ public class SqlNullabilityProcessor
             // nullable IN (1, 2) -> nullable IN (1, 2) (optimized)
             return simplifiedInExpression;
         }
-
-        nullable = false;
 
         // nullable IN (1, 2) -> nullable IN (1, 2) AND nullable IS NOT NULL (full)
         // nullable IN (1, 2, NULL) -> nullable IN (1, 2) OR nullable IS NULL (full)
@@ -848,61 +836,81 @@ public class SqlNullabilityProcessor
                 simplifiedInExpression,
                 _sqlExpressionFactory.IsNull(item));
 
-        (SqlConstantExpression ProcessedValuesExpression, List<object?> ProcessedValuesList, bool HasNullValue)
-            ProcessInExpressionValues(SqlExpression valuesExpression, bool extractNullValues)
+        (InExpression ProcessedInExpression, bool HasNullValue) ProcessInExpressionValues(InExpression inExpression, bool extractNullValues)
         {
-            var inValues = new List<object?>();
+            List<SqlExpression>? processedValues = null;
             var hasNullValue = false;
-            RelationalTypeMapping? typeMapping;
 
-            IEnumerable values;
-            switch (valuesExpression)
+            if (inExpression.ValuesParameter is SqlParameterExpression valuesParameter)
             {
-                case SqlConstantExpression sqlConstant:
-                    typeMapping = sqlConstant.TypeMapping;
-                    values = (IEnumerable)sqlConstant.Value!;
-                    break;
+                // The InExpression has a values parameter. Expand it out, embedding its values as constants into the SQL; disable SQL
+                // caching.
+                DoNotCache();
+                var typeMapping = inExpression.ValuesParameter.TypeMapping;
+                var values = (IEnumerable?)ParameterValues[valuesParameter.Name] ?? Array.Empty<object>();
 
-                case SqlParameterExpression sqlParameter:
-                    DoNotCache();
-                    typeMapping = sqlParameter.TypeMapping;
-                    values = (IEnumerable?)ParameterValues[sqlParameter.Name] ?? Array.Empty<object>();
-                    break;
+                processedValues = new List<SqlExpression>();
 
-                default:
-                    throw new InvalidOperationException(
-                        RelationalStrings.NonConstantOrParameterAsInExpressionValues(valuesExpression.GetType().Name));
-            }
-
-            foreach (var value in values)
-            {
-                if (value == null && extractNullValues)
+                foreach (var value in values)
                 {
-                    hasNullValue = true;
-                    continue;
-                }
+                    if (value == null && extractNullValues)
+                    {
+                        hasNullValue = true;
+                        continue;
+                    }
 
-                inValues.Add(value);
+                    processedValues.Add(_sqlExpressionFactory.Constant(value, typeMapping));
+                }
+            }
+            else
+            {
+                Check.DebugAssert(inExpression.Values is not null, "inExpression.Values is not null");
+
+                for (var i = 0; i < inExpression.Values.Count; i++)
+                {
+                    var valueExpression = inExpression.Values[i];
+
+                    var value = valueExpression switch
+                    {
+                        SqlConstantExpression c => c.Value,
+                        SqlParameterExpression p => ParameterValues[p.Name],
+
+                        _ => throw new InvalidOperationException(
+                            RelationalStrings.NonConstantOrParameterAsInExpressionValues(valueExpression.GetType().Name))
+                    };
+
+                    if (value is null && extractNullValues)
+                    {
+                        hasNullValue = true;
+
+                        if (processedValues is null)
+                        {
+                            processedValues = new List<SqlExpression>(inExpression.Values.Count - 1);
+                            for (var j = 0; j < i; j++)
+                            {
+                                processedValues.Add(inExpression.Values[j]);
+                            }
+                        }
+
+                        // Skip the NULL value
+                        continue;
+                    }
+
+                    processedValues?.Add(valueExpression);
+                }
             }
 
-            var processedValuesExpression = _sqlExpressionFactory.Constant(inValues, typeMapping);
-
-            return (processedValuesExpression, inValues, hasNullValue);
+            var processedInExpression = inExpression.Update(
+                inExpression.Item, subquery: null, values: processedValues ?? inExpression.Values, valuesParameter: null);
+            return (processedInExpression, hasNullValue);
         }
 
-        SqlExpression SimplifyInExpression(
-            InExpression inExpression,
-            SqlConstantExpression inValuesExpression,
-            List<object?> inValuesList)
-            => inValuesList.Count == 1
-                ? inExpression.IsNegated
-                    ? (SqlExpression)_sqlExpressionFactory.NotEqual(
-                        inExpression.Item,
-                        _sqlExpressionFactory.Constant(inValuesList[0], inValuesExpression.TypeMapping))
-                    : _sqlExpressionFactory.Equal(
-                        inExpression.Item,
-                        _sqlExpressionFactory.Constant(inValuesList[0], inExpression.Values!.TypeMapping))
-                : inExpression;
+        SqlExpression SimplifyInExpression(InExpression inExpression)
+            => inExpression.Values is not [var valueExpression]
+                ? inExpression
+                : inExpression.IsNegated
+                    ? _sqlExpressionFactory.NotEqual(inExpression.Item, valueExpression)
+                    : _sqlExpressionFactory.Equal(inExpression.Item, valueExpression);
     }
 
     /// <summary>
@@ -1032,8 +1040,7 @@ public class SqlNullabilityProcessor
         var optimize = allowOptimizedExpansion;
 
         allowOptimizedExpansion = allowOptimizedExpansion
-            && (sqlBinaryExpression.OperatorType == ExpressionType.AndAlso
-                || sqlBinaryExpression.OperatorType == ExpressionType.OrElse);
+            && sqlBinaryExpression.OperatorType is ExpressionType.AndAlso or ExpressionType.OrElse;
 
         var currentNonNullableColumnsCount = _nonNullableColumns.Count;
         var currentNullValueColumnsCount = _nullValueColumns.Count;

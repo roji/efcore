@@ -644,9 +644,8 @@ public class ParameterExtractingExpressionVisitor : ExpressionVisitor
         }
 
         private static bool IsEvaluatableNodeType(Expression expression)
-            => expression.NodeType != ExpressionType.Extension
-                || expression.CanReduce
-                && IsEvaluatableNodeType(expression.ReduceAndCheck());
+            => expression.NodeType is not ExpressionType.Extension and not ExpressionType.NewArrayInit
+                || expression.CanReduce && IsEvaluatableNodeType(expression.ReduceAndCheck());
 
         private static bool IsQueryableMethod(Expression expression)
             => expression is MethodCallExpression methodCallExpression

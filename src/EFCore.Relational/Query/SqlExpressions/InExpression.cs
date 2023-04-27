@@ -17,10 +17,10 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 public class InExpression : SqlExpression
 {
     /// <summary>
-    ///     Creates a new instance of the <see cref="InExpression" /> class which represents a <paramref name="item" /> IN subquery expression.
+    ///     Creates a new instance of the <see cref="InExpression" /> class, representing a SQL <c>IN</c> expression with a subquery.
     /// </summary>
     /// <param name="item">An item to look into values.</param>
-    /// <param name="subquery">A subquery in which item is searched.</param>
+    /// <param name="subquery">A subquery in which the item is searched.</param>
     /// <param name="negated">A value indicating if the item should be present in the values or absent.</param>
     /// <param name="typeMapping">The <see cref="RelationalTypeMapping" /> associated with the expression.</param>
     public InExpression(
@@ -28,30 +28,49 @@ public class InExpression : SqlExpression
         SelectExpression subquery,
         bool negated,
         RelationalTypeMapping typeMapping)
-        : this(item, null, subquery, negated, typeMapping)
+        : this(item, subquery, values: null, valuesParameter: null, negated, typeMapping)
     {
     }
 
     /// <summary>
-    ///     Creates a new instance of the <see cref="InExpression" /> class which represents a <paramref name="item" /> IN values expression.
+    ///     Creates a new instance of the <see cref="InExpression" /> class, representing a SQL <c>IN</c> expression with a given list
+    ///     of values.
     /// </summary>
     /// <param name="item">An item to look into values.</param>
-    /// <param name="values">A list of values in which item is searched.</param>
+    /// <param name="values">A list of values in which the item is searched.</param>
     /// <param name="negated">A value indicating if the item should be present in the values or absent.</param>
     /// <param name="typeMapping">The <see cref="RelationalTypeMapping" /> associated with the expression.</param>
     public InExpression(
         SqlExpression item,
-        SqlExpression values,
+        IReadOnlyList<SqlExpression> values,
         bool negated,
         RelationalTypeMapping typeMapping)
-        : this(item, values, null, negated, typeMapping)
+        : this(item, subquery: null, values, valuesParameter: null, negated, typeMapping)
+    {
+    }
+
+    /// <summary>
+    ///     Creates a new instance of the <see cref="InExpression" /> class, representing a SQL <c>IN</c> expression with a given
+    ///     parameterized list of values.
+    /// </summary>
+    /// <param name="item">An item to look into values.</param>
+    /// <param name="valuesParameter">A parameterized list of values in which the item is searched.</param>
+    /// <param name="negated">A value indicating if the item should be present in the values or absent.</param>
+    /// <param name="typeMapping">The <see cref="RelationalTypeMapping" /> associated with the expression.</param>
+    public InExpression(
+        SqlExpression item,
+        SqlParameterExpression valuesParameter,
+        bool negated,
+        RelationalTypeMapping typeMapping)
+        : this(item, subquery: null, values: null, valuesParameter, negated, typeMapping)
     {
     }
 
     private InExpression(
         SqlExpression item,
-        SqlExpression? values,
         SelectExpression? subquery,
+        IReadOnlyList<SqlExpression>? values,
+        SqlParameterExpression? valuesParameter,
         bool negated,
         RelationalTypeMapping? typeMapping)
         : base(typeof(bool), typeMapping)
@@ -65,6 +84,7 @@ public class InExpression : SqlExpression
         Item = item;
         Subquery = subquery;
         Values = values;
+        ValuesParameter = valuesParameter;
         IsNegated = negated;
     }
 
@@ -79,23 +99,54 @@ public class InExpression : SqlExpression
     public virtual bool IsNegated { get; }
 
     /// <summary>
-    ///     The list of values to search item in.
-    /// </summary>
-    public virtual SqlExpression? Values { get; }
-
-    /// <summary>
-    ///     The subquery to search item in.
+    ///     The subquery to search the item in.
     /// </summary>
     public virtual SelectExpression? Subquery { get; }
+
+    /// <summary>
+    ///     The list of values to search the item in.
+    /// </summary>
+    public virtual IReadOnlyList<SqlExpression>? Values { get; }
+
+    /// <summary>
+    ///     A parameter containing the list of values to search the item in. The parameterized list get expanded to the actual value
+    ///     before the query SQL is generated.
+    /// </summary>
+    public virtual SqlParameterExpression? ValuesParameter { get; }
 
     /// <inheritdoc />
     protected override Expression VisitChildren(ExpressionVisitor visitor)
     {
         var item = (SqlExpression)visitor.Visit(Item);
         var subquery = (SelectExpression?)visitor.Visit(Subquery);
-        var values = (SqlExpression?)visitor.Visit(Values);
 
-        return Update(item, values, subquery);
+        SqlExpression[]? values = null;
+        if (Values is not null)
+        {
+            for (var i = 0; i < Values.Count; i++)
+            {
+                var value = Values[i];
+                var newValue = (SqlExpression)visitor.Visit(value);
+
+                if (newValue != value && values is null)
+                {
+                    values = new SqlExpression[Values.Count];
+                    for (var j = 0; j < i; j++)
+                    {
+                        values[j] = Values[j];
+                    }
+                }
+
+                if (values is not null)
+                {
+                    values[i] = newValue;
+                }
+            }
+        }
+
+        var valuesParameter = (SqlParameterExpression?)visitor.Visit(ValuesParameter);
+
+        return Update(item, subquery, values ?? Values, valuesParameter);
     }
 
     /// <summary>
@@ -103,30 +154,32 @@ public class InExpression : SqlExpression
     /// </summary>
     /// <returns>An expression which is negated form of this expression.</returns>
     public virtual InExpression Negate()
-        => new(Item, Values, Subquery, !IsNegated, TypeMapping);
+        => new(Item, Subquery, Values, ValuesParameter, !IsNegated, TypeMapping);
 
     /// <summary>
     ///     Creates a new expression that is like this one, but using the supplied children. If all of the children are the same, it will
     ///     return this expression.
     /// </summary>
     /// <param name="item">The <see cref="Item" /> property of the result.</param>
-    /// <param name="values">The <see cref="Values" /> property of the result.</param>
     /// <param name="subquery">The <see cref="Subquery" /> property of the result.</param>
+    /// <param name="values">The <see cref="Values" /> property of the result.</param>
+    /// <param name="valuesParameter">The <see cref="ValuesParameter" /> property of the result.</param>
     /// <returns>This expression if no children changed, or an expression with the updated children.</returns>
     public virtual InExpression Update(
         SqlExpression item,
-        SqlExpression? values,
-        SelectExpression? subquery)
+        SelectExpression? subquery,
+        IReadOnlyList<SqlExpression>? values,
+        SqlParameterExpression? valuesParameter)
     {
-        if (values != null
-            && subquery != null)
+        if ((subquery is null ? 0 : 1) + (values is null ? 0 : 1) + (valuesParameter is null ? 0 : 1) != 1)
         {
-            throw new ArgumentException(RelationalStrings.EitherOfTwoValuesMustBeNull(nameof(values), nameof(subquery)));
+            throw new ArgumentException(
+                RelationalStrings.OneOfThreeValuesMustBeSet(nameof(subquery), nameof(values), nameof(valuesParameter)));
         }
 
-        return item != Item || subquery != Subquery || values != Values
-            ? new InExpression(item, values, subquery, IsNegated, TypeMapping)
-            : this;
+        return item == Item && subquery == Subquery && values == Values && valuesParameter == ValuesParameter
+            ? this
+            : new InExpression(item, subquery, values, valuesParameter, IsNegated, TypeMapping);
     }
 
     /// <inheritdoc />
@@ -136,31 +189,35 @@ public class InExpression : SqlExpression
         expressionPrinter.Append(IsNegated ? " NOT IN " : " IN ");
         expressionPrinter.Append("(");
 
-        if (Subquery != null)
+        switch (this)
         {
-            using (expressionPrinter.Indent())
-            {
-                expressionPrinter.Visit(Subquery);
-            }
-        }
-        else if (Values is SqlConstantExpression constantValuesExpression
-                 && constantValuesExpression.Value is IEnumerable constantValues)
-        {
-            var first = true;
-            foreach (var item in constantValues)
-            {
-                if (!first)
+            case { Subquery: not null }:
+                using (expressionPrinter.Indent())
                 {
-                    expressionPrinter.Append(", ");
+                    expressionPrinter.Visit(Subquery);
                 }
 
-                first = false;
-                expressionPrinter.Append(constantValuesExpression.TypeMapping?.GenerateSqlLiteral(item) ?? item?.ToString() ?? "NULL");
-            }
-        }
-        else
-        {
-            expressionPrinter.Visit(Values);
+                break;
+
+            case { Values: not null }:
+                for (var i = 0; i < Values.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        expressionPrinter.Append(", ");
+                    }
+
+                    expressionPrinter.Visit(Values[i]);
+                }
+
+                break;
+
+            case { ValuesParameter: not null}:
+                expressionPrinter.Visit(ValuesParameter);
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
         }
 
         expressionPrinter.Append(")");
@@ -177,10 +234,11 @@ public class InExpression : SqlExpression
         => base.Equals(inExpression)
             && Item.Equals(inExpression.Item)
             && IsNegated.Equals(inExpression.IsNegated)
+            && (Subquery?.Equals(inExpression.Subquery) ?? inExpression.Subquery == null)
             && (Values?.Equals(inExpression.Values) ?? inExpression.Values == null)
-            && (Subquery?.Equals(inExpression.Subquery) ?? inExpression.Subquery == null);
+            && (ValuesParameter?.Equals(inExpression.ValuesParameter) ?? inExpression.ValuesParameter == null);
 
     /// <inheritdoc />
     public override int GetHashCode()
-        => HashCode.Combine(base.GetHashCode(), Item, IsNegated, Values, Subquery);
+        => HashCode.Combine(base.GetHashCode(), Item, IsNegated, Values, Subquery, ValuesParameter);
 }

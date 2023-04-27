@@ -239,28 +239,72 @@ public class SqlExpressionFactory : ISqlExpressionFactory
             resultTypeMapping);
     }
 
-    private SqlExpression ApplyTypeMappingOnIn(InExpression inExpression)
+    private InExpression ApplyTypeMappingOnIn(InExpression inExpression)
     {
-        var itemTypeMapping = (inExpression.Values != null
-                ? ExpressionExtensions.InferTypeMapping(inExpression.Item, inExpression.Values)
-                : inExpression.Subquery != null
-                    ? ExpressionExtensions.InferTypeMapping(inExpression.Item, inExpression.Subquery.Projection[0].Expression)
-                    : inExpression.Item.TypeMapping)
-            ?? _typeMappingSource.FindMapping(inExpression.Item.Type, Dependencies.Model);
+        var missingTypeMappingInValues = false;
 
-        var item = ApplyTypeMapping(inExpression.Item, itemTypeMapping);
-        if (inExpression.Values != null)
+        RelationalTypeMapping? valuesTypeMapping = null;
+        switch (inExpression)
         {
-            var values = ApplyTypeMapping(inExpression.Values, itemTypeMapping);
+            case { Subquery: SelectExpression subquery }:
+                valuesTypeMapping = subquery.Projection[0].Expression.TypeMapping;
+                break;
 
-            return item != inExpression.Item || values != inExpression.Values || inExpression.TypeMapping != _boolTypeMapping
-                ? new InExpression(item, values, inExpression.IsNegated, _boolTypeMapping)
-                : inExpression;
+            case { ValuesParameter: SqlParameterExpression parameter }:
+                valuesTypeMapping = parameter.TypeMapping;
+                break;
+
+            case { Values: IReadOnlyList<SqlExpression> values }:
+                // Note: there could be conflicting type mappings inside the values; we take the first.
+                foreach (var value in values)
+                {
+                    if (value.TypeMapping is null)
+                    {
+                        missingTypeMappingInValues = true;
+                    }
+                    else
+                    {
+                        valuesTypeMapping = value.TypeMapping;
+                    }
+                }
+
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
         }
 
-        return item != inExpression.Item || inExpression.TypeMapping != _boolTypeMapping
-            ? new InExpression(item, inExpression.Subquery!, inExpression.IsNegated, _boolTypeMapping)
-            : inExpression;
+        var item = valuesTypeMapping is null
+            ? ApplyDefaultTypeMapping(inExpression.Item)
+            : ApplyTypeMapping(inExpression.Item, valuesTypeMapping);
+
+        switch (inExpression)
+        {
+            case { Subquery: SelectExpression subquery }:
+                return inExpression.Update(item, subquery, values: null, valuesParameter: null);
+
+            case { ValuesParameter: SqlParameterExpression parameter }:
+                return inExpression.Update(
+                    item, subquery: null, values: null, (SqlParameterExpression)ApplyTypeMapping(parameter, item.TypeMapping));
+
+            case { Values: IReadOnlyList<SqlExpression> values }:
+                SqlExpression[]? newValues = null;
+
+                if (missingTypeMappingInValues)
+                {
+                    newValues = new SqlExpression[values.Count];
+
+                    for (var i = 0; i < newValues.Length; i++)
+                    {
+                        newValues[i] = ApplyTypeMapping(values[i], item.TypeMapping);
+                    }
+                }
+
+                return inExpression.Update(item, subquery: null, newValues ?? values, valuesParameter: null);
+
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
     }
 
     private SqlExpression ApplyTypeMappingOnJsonScalar(
@@ -578,37 +622,23 @@ public class SqlExpressionFactory : ISqlExpressionFactory
         bool instancePropagatesNullability,
         Type returnType,
         RelationalTypeMapping? typeMapping = null)
-        => new(
-            ApplyDefaultTypeMapping(instance), name, nullable, instancePropagatesNullability, returnType, typeMapping);
+        => new(ApplyDefaultTypeMapping(instance), name, nullable, instancePropagatesNullability, returnType, typeMapping);
 
     /// <inheritdoc />
     public virtual ExistsExpression Exists(SelectExpression subquery, bool negated)
         => new(subquery, negated, _boolTypeMapping);
 
     /// <inheritdoc />
-    public virtual InExpression In(SqlExpression item, SqlExpression values, bool negated)
-    {
-        var typeMapping = item.TypeMapping ?? _typeMappingSource.FindMapping(item.Type, Dependencies.Model);
-
-        item = ApplyTypeMapping(item, typeMapping);
-        values = ApplyTypeMapping(values, typeMapping);
-
-        return new InExpression(item, values, negated, _boolTypeMapping);
-    }
+    public virtual InExpression In(SqlExpression item, SelectExpression subquery, bool negated)
+        => ApplyTypeMappingOnIn(new InExpression(item, subquery, negated, _boolTypeMapping));
 
     /// <inheritdoc />
-    public virtual InExpression In(SqlExpression item, SelectExpression subquery, bool negated)
-    {
-        var sqlExpression = subquery.Projection.Single().Expression;
-        var subqueryTypeMapping = sqlExpression.TypeMapping;
+    public virtual InExpression In(SqlExpression item, IReadOnlyList<SqlExpression> values, bool negated)
+        => ApplyTypeMappingOnIn(new InExpression(item, values, negated, _boolTypeMapping));
 
-        if (item.TypeMapping is null)
-        {
-            item = subqueryTypeMapping is null ? ApplyDefaultTypeMapping(item) : ApplyTypeMapping(item, subqueryTypeMapping);
-        }
-
-        return new InExpression(item, subquery, negated, _boolTypeMapping);
-    }
+    /// <inheritdoc />
+    public virtual InExpression In(SqlExpression item, SqlParameterExpression valuesParameter, bool negated)
+        => ApplyTypeMappingOnIn(new InExpression(item, valuesParameter, negated, _boolTypeMapping));
 
     /// <inheritdoc />
     public virtual LikeExpression Like(SqlExpression match, SqlExpression pattern, SqlExpression? escapeChar = null)
@@ -671,7 +701,7 @@ public class SqlExpressionFactory : ISqlExpressionFactory
             var concreteEntityTypes = entityType.GetConcreteDerivedTypesInclusive().ToList();
             var predicate = concreteEntityTypes.Count == 1
                 ? (SqlExpression)Equal(discriminatorColumn, Constant(concreteEntityTypes[0].GetDiscriminatorValue()))
-                : In(discriminatorColumn, Constant(concreteEntityTypes.Select(et => et.GetDiscriminatorValue()).ToList()), negated: false);
+                : In(discriminatorColumn, concreteEntityTypes.Select(et => Constant(et.GetDiscriminatorValue())).ToArray(), negated: false);
 
             selectExpression.ApplyPredicate(predicate);
 

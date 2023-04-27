@@ -407,19 +407,28 @@ public interface ISqlExpressionFactory
     ///     Creates a new <see cref="InExpression" /> which represents an IN operation in a SQL tree.
     /// </summary>
     /// <param name="item">An item to look into values.</param>
-    /// <param name="values">A list of values in which item is searched.</param>
+    /// <param name="subquery">A subquery in which item is searched.</param>
     /// <param name="negated">A value indicating if the item should be present in the values or absent.</param>
     /// <returns>An expression representing an IN operation in a SQL tree.</returns>
-    InExpression In(SqlExpression item, SqlExpression values, bool negated);
+    InExpression In(SqlExpression item, SelectExpression subquery, bool negated);
 
     /// <summary>
     ///     Creates a new <see cref="InExpression" /> which represents an IN operation in a SQL tree.
     /// </summary>
     /// <param name="item">An item to look into values.</param>
-    /// <param name="subquery">A subquery in which item is searched.</param>
+    /// <param name="values">A list of values in which item is searched.</param>
     /// <param name="negated">A value indicating if the item should be present in the values or absent.</param>
     /// <returns>An expression representing an IN operation in a SQL tree.</returns>
-    InExpression In(SqlExpression item, SelectExpression subquery, bool negated);
+    InExpression In(SqlExpression item, IReadOnlyList<SqlExpression> values, bool negated);
+
+    /// <summary>
+    ///     Creates a new <see cref="InExpression" /> which represents an IN operation in a SQL tree.
+    /// </summary>
+    /// <param name="item">An item to look into values.</param>
+    /// <param name="valuesParameter">A parameterized list of values in which the item is searched.</param>
+    /// <param name="negated">A value indicating if the item should be present in the values or absent.</param>
+    /// <returns>An expression representing an IN operation in a SQL tree.</returns>
+    InExpression In(SqlExpression item, SqlParameterExpression valuesParameter, bool negated);
 
     /// <summary>
     ///     Creates a new <see cref="InExpression" /> which represents a LIKE in a SQL tree.

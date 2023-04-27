@@ -926,30 +926,28 @@ public class QuerySqlGenerator : SqlExpressionVisitor
     /// <inheritdoc />
     protected override Expression VisitIn(InExpression inExpression)
     {
-        if (inExpression.Values != null)
+        Check.DebugAssert(inExpression.ValuesParameter is null, "inExpression.ValuesParameter is null");
+
+        Visit(inExpression.Item);
+        _relationalCommandBuilder.Append(inExpression.IsNegated ? " NOT IN (" : " IN (");
+
+        if (inExpression.Values is not null)
         {
-            Visit(inExpression.Item);
-            _relationalCommandBuilder.Append(inExpression.IsNegated ? " NOT IN " : " IN ");
-            _relationalCommandBuilder.Append("(");
-            var valuesConstant = (SqlConstantExpression)inExpression.Values;
-            var valuesList = ((IEnumerable<object?>)valuesConstant.Value!)
-                .Select(v => new SqlConstantExpression(Expression.Constant(v), valuesConstant.TypeMapping)).ToList();
-            GenerateList(valuesList, e => Visit(e));
-            _relationalCommandBuilder.Append(")");
+            GenerateList(inExpression.Values, e => Visit(e));
         }
         else
         {
-            Visit(inExpression.Item);
-            _relationalCommandBuilder.Append(inExpression.IsNegated ? " NOT IN " : " IN ");
-            _relationalCommandBuilder.AppendLine("(");
+            _relationalCommandBuilder.AppendLine();
 
             using (_relationalCommandBuilder.Indent())
             {
                 Visit(inExpression.Subquery);
             }
 
-            _relationalCommandBuilder.AppendLine().Append(")");
+            _relationalCommandBuilder.AppendLine();
         }
+
+        _relationalCommandBuilder.Append(")");
 
         return inExpression;
     }
