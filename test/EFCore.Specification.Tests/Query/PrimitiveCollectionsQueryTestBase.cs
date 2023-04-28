@@ -505,6 +505,23 @@ public class PrimitiveCollectionsQueryTestBase<TFixture> : QueryTestBase<TFixtur
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
+    public virtual Task Column_collection_Equals_inline_collection(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<PrimitiveCollectionsEntity>().Where(c => c.Ints.Equals(new[] { 1, 10 })),
+            ss => ss.Set<PrimitiveCollectionsEntity>().Where(c => c.Ints.SequenceEqual(new[] { 1, 10 })),
+            entryCount: 1);
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Column_collection_SequenceEqual_inline_collection(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<PrimitiveCollectionsEntity>().Where(c => c.Ints.SequenceEqual(new[] { 1, 10 })),
+            entryCount: 1);
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
     public virtual async Task Parameter_collection_in_subquery_Count_as_compiled_query(bool async)
     {
         // The Skip causes a pushdown into a subquery before the Union, and so the projection on the left side of the union points to the

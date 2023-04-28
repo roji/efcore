@@ -283,9 +283,12 @@ public static class QueryableMethods
 
     //public static MethodInfo SelectManyWithCollectionSelectorOrdinal { get; }
 
-    //public static MethodInfo SequenceEqual { get; }
+    /// <summary>
+    ///     The <see cref="MethodInfo" /> for <see cref="Queryable.SequenceEqual{TSource}(System.Linq.IQueryable{TSource},System.Collections.Generic.IEnumerable{TSource})" />
+    /// </summary>
+    public static MethodInfo SequenceEqual { get; }
 
-    //public static MethodInfo SequenceEqualWithComparer { get; }
+    // public static MethodInfo SequenceEqualWithComparer { get; }
 
     /// <summary>
     ///     The <see cref="MethodInfo" /> for <see cref="Queryable.Single{TSource}(IQueryable{TSource},Expression{Func{TSource,bool}})" />
@@ -702,6 +705,10 @@ public static class QueryableMethods
                         types[0], typeof(IEnumerable<>).MakeGenericType(types[1]))),
                 typeof(Expression<>).MakeGenericType(typeof(Func<,,>).MakeGenericType(types[0], types[1], types[2]))
             });
+
+        SequenceEqual = GetMethod(
+            nameof(Queryable.SequenceEqual), 1,
+            types => new[] { typeof(IQueryable<>).MakeGenericType(types[0]), typeof(IEnumerable<>).MakeGenericType(types[0]) });
 
         SingleWithoutPredicate = GetMethod(
             nameof(Queryable.Single), 1, types => new[] { typeof(IQueryable<>).MakeGenericType(types[0]) });

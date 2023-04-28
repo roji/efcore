@@ -740,6 +740,30 @@ WHERE [p].[Ints] = N'[1,10]'
 """);
     }
 
+    public override async Task Column_collection_Equals_inline_collection(bool async)
+    {
+        await base.Column_collection_Equals_inline_collection(async);
+
+        AssertSql(
+"""
+SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[String], [p].[Strings]
+FROM [PrimitiveCollectionsEntity] AS [p]
+WHERE [p].[Ints] = N'[1,10]'
+""");
+    }
+
+    public override async Task Column_collection_SequenceEqual_inline_collection(bool async)
+    {
+        await base.Column_collection_SequenceEqual_inline_collection(async);
+
+        AssertSql(
+"""
+SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[String], [p].[Strings]
+FROM [PrimitiveCollectionsEntity] AS [p]
+WHERE [p].[Ints] = N'[1,10]'
+""");
+    }
+
     public override async Task Parameter_collection_in_subquery_Union_column_collection_as_compiled_query(bool async)
     {
         await base.Parameter_collection_in_subquery_Union_column_collection_as_compiled_query(async);

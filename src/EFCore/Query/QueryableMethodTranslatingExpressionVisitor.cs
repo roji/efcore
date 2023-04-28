@@ -409,6 +409,17 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
                             TranslateSelectMany(
                                 shapedQueryExpression, GetLambdaExpressionFromArgument(1), GetLambdaExpressionFromArgument(2)));
 
+                    case nameof(Queryable.SequenceEqual)
+                        when genericMethod == QueryableMethods.SequenceEqual:
+                    {
+                        if (Visit(methodCallExpression.Arguments[1]) is ShapedQueryExpression shapedQueryExpression2)
+                        {
+                            return CheckTranslated(TranslateSequenceEquals(shapedQueryExpression, shapedQueryExpression2));
+                        }
+
+                        break;
+                    }
+
                     case nameof(Queryable.Single)
                         when genericMethod == QueryableMethods.SingleWithoutPredicate:
                         shapedQueryExpression = shapedQueryExpression.UpdateResultCardinality(ResultCardinality.Single);
@@ -847,6 +858,18 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
         ShapedQueryExpression source,
         LambdaExpression collectionSelector,
         LambdaExpression resultSelector);
+
+    /// <summary>
+    ///     Translates
+    ///     <see cref="Queryable.SequenceEqual{TSource}(System.Linq.IQueryable{TSource},System.Collections.Generic.IEnumerable{TSource})" />
+    ///     method over the given source.
+    /// </summary>
+    /// <param name="source1">The shaped query on which the operator is applied.</param>
+    /// <param name="source2">The other source to compare with.</param>
+    /// <returns>The shaped query after translation.</returns>
+    protected abstract ShapedQueryExpression? TranslateSequenceEquals(
+        ShapedQueryExpression source1,
+        ShapedQueryExpression source2);
 
     /// <summary>
     ///     Translates <see cref="Queryable.SelectMany{TSource, TResult}(IQueryable{TSource}, Expression{Func{TSource, IEnumerable{TResult}}})" />

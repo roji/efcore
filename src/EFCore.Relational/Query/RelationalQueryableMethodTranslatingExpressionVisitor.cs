@@ -1101,6 +1101,12 @@ public class RelationalQueryableMethodTranslatingExpressionVisitor : QueryableMe
     }
 
     /// <inheritdoc />
+    protected override ShapedQueryExpression? TranslateSequenceEquals(ShapedQueryExpression source1, ShapedQueryExpression source2)
+    {
+
+    }
+
+    /// <inheritdoc />
     protected override ShapedQueryExpression? TranslateSingleOrDefault(
         ShapedQueryExpression source,
         LambdaExpression? predicate,

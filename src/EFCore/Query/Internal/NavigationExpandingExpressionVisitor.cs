@@ -599,6 +599,19 @@ public partial class NavigationExpandingExpressionVisitor : ExpressionVisitor
                         when genericMethod == QueryableMethods.Reverse:
                         return ProcessReverse(source);
 
+                    case nameof(Queryable.SequenceEqual)
+                        when genericMethod == QueryableMethods.SequenceEqual:
+                    {
+                        var secondArgument = Visit(methodCallExpression.Arguments[1]);
+                        secondArgument = UnwrapCollectionMaterialization(secondArgument);
+                        if (secondArgument is NavigationExpansionExpression source2)
+                        {
+                            return ProcessSequenceEquals(source, source2);
+                        }
+
+                        goto default;
+                    }
+
                     case nameof(Queryable.Select)
                         when genericMethod == QueryableMethods.Select:
                         return ProcessSelect(
@@ -1422,6 +1435,15 @@ public partial class NavigationExpandingExpressionVisitor : ExpressionVisitor
 
         // TODO: Improve this exception message
         throw new InvalidOperationException(CoreStrings.TranslationFailed(collectionSelector.Print()));
+    }
+
+    private Expression ProcessSequenceEquals(NavigationExpansionExpression source1, Expression source2)
+    {
+        source1 = (NavigationExpansionExpression)_pendingSelectorExpandingExpressionVisitor.Visit(source1);
+        source2 = (NavigationExpansionExpression)_pendingSelectorExpandingExpressionVisitor.Visit(source2);
+        var (queryable1, queryable2) = (Reduce(source1), Reduce(source2));
+
+        return Expression.Call(QueryableMethods.SequenceEqual.MakeGenericMethod(source1.Type.GetSequenceType()), queryable1, queryable2);
     }
 
     private NavigationExpansionExpression ProcessSetOperation(

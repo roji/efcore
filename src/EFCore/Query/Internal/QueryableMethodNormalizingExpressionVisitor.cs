@@ -242,14 +242,14 @@ public class QueryableMethodNormalizingExpressionVisitor : ExpressionVisitor
 
     private Expression TryConvertEnumerableToQueryable(MethodCallExpression methodCallExpression)
     {
-        // TODO : CHECK if this is still needed
-        if (methodCallExpression.Method.Name == nameof(Enumerable.SequenceEqual))
-        {
-            // Skip SequenceEqual over enumerable since it could be over byte[] or other array properties
-            // Ideally we could make check in nav expansion about it (since it can bind to property)
-            // But since we don't translate SequenceEqual anyway, this is fine for now.
-            return base.VisitMethodCall(methodCallExpression);
-        }
+        // // TODO : CHECK if this is still needed
+        // if (methodCallExpression.Method.Name == nameof(Enumerable.SequenceEqual))
+        // {
+        //     // Skip SequenceEqual over enumerable since it could be over byte[] or other array properties
+        //     // Ideally we could make check in nav expansion about it (since it can bind to property)
+        //     // But since we don't translate SequenceEqual anyway, this is fine for now.
+        //     return base.VisitMethodCall(methodCallExpression);
+        // }
 
         if (methodCallExpression.Arguments.Count > 0
             && methodCallExpression.Arguments[0] is MemberInitExpression or NewExpression)
@@ -262,8 +262,7 @@ public class QueryableMethodNormalizingExpressionVisitor : ExpressionVisitor
         var enumerableMethod = methodCallExpression.Method;
         var enumerableParameters = enumerableMethod.GetParameters();
         var genericTypeArguments = Array.Empty<Type>();
-        if (enumerableMethod.Name == nameof(Enumerable.Min)
-            || enumerableMethod.Name == nameof(Enumerable.Max))
+        if (enumerableMethod.Name is nameof(Enumerable.Min) or nameof(Enumerable.Max))
         {
             genericTypeArguments = new Type[methodCallExpression.Arguments.Count];
 
@@ -408,9 +407,8 @@ public class QueryableMethodNormalizingExpressionVisitor : ExpressionVisitor
             return true;
         }
 
-        if (!enumerableType.IsGenericType
-            || !queryableType.IsGenericType
-            || !enumerableType.GetGenericArguments().SequenceEqual(queryableType.GetGenericArguments()))
+        if (!enumerableType.IsGenericType || !queryableType.IsGenericType)
+            // || !enumerableType.GetGenericArguments().SequenceEqual(queryableType.GetGenericArguments()))
         {
             return false;
         }
