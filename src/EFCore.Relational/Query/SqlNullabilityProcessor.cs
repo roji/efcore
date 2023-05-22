@@ -651,6 +651,9 @@ public class SqlNullabilityProcessor
     {
         var item = Visit(inExpression.Item, out var itemNullable);
 
+        // If the InExpression is negated, it's as if we have an enclosing NOT, which prohibits optimized expansion.
+        allowOptimizedExpansion &= !inExpression.IsNegated;
+
         if (inExpression.Subquery != null)
         {
             var subquery = Visit(inExpression.Subquery);
@@ -660,19 +663,77 @@ public class SqlNullabilityProcessor
             {
                 nullable = false;
 
-                return subquery.Predicate!;
+                return _sqlExpressionFactory.Constant(inExpression.IsNegated, inExpression.TypeMapping);
             }
 
-            // if item is not nullable, and subquery contains a non-nullable column we know the result can never be null
-            // note: in this case we could broaden the optimization if we knew the nullability of the projection
-            // but we don't keep that information and we want to avoid double visitation
-            nullable = !(!itemNullable
-                && subquery.Projection.Count == 1
-                && subquery.Projection[0].Expression is ColumnExpression columnProjection
-                && !columnProjection.IsNullable);
+            // Check whether the subquery projects out a nullable value; note that we unwrap any casts to get to the underlying
+            // ColumnExpression (since casts don't affect nullability).
+            // Note: we could broaden the optimization if we knew the nullability of the projection but we don't keep that information and
+            // we want to avoid double visitation
+            var subqueryProjection = subquery.Projection.Single().Expression;
 
-            return inExpression.Update(item, values: null, subquery);
+            var unwrappedSubqueryProjection = subqueryProjection;
+            while (unwrappedSubqueryProjection is SqlUnaryExpression
+                   {
+                       OperatorType: ExpressionType.Convert or ExpressionType.ConvertChecked, Operand: var operand
+                   })
+            {
+                unwrappedSubqueryProjection = operand;
+            }
+
+            var projectionNullable =
+                unwrappedSubqueryProjection is not ColumnExpression { IsNullable: false } and not SqlConstantExpression { Value: null };
+
+            if (UseRelationalNulls)
+            {
+                nullable = itemNullable || projectionNullable;
+
+                return inExpression.Update(item, values: null, subquery);
+            }
+
+            nullable = false;
+
+            // Null item and non-nullable projection - return false immediately
+            if (IsNull(item) && !projectionNullable)
+            {
+                return _sqlExpressionFactory.Constant(false, inExpression.TypeMapping);
+            }
+
+            // SQL IN returns null when the item is null, and when the values contains NULL and no match was made.
+            // If both sides are non-nullable, IN never returns null, so is safe to use as-is.
+            // If one side is null but not the other, IN returns null when the item isn't found; this is also safe to use as-is in
+            // optimized expansion (null interpreted as false).
+            // Note that we could coalesce NULL to false when we're not in optimized expansion, but that leads to more complex SQL that may
+            // be worse performance-wise than the EXISTS rewrite below.
+            if (!itemNullable && !projectionNullable
+                || allowOptimizedExpansion && (itemNullable ^ projectionNullable))
+            {
+                return inExpression.Update(item, values: null, subquery);
+            }
+
+            // We'll ned to mutate the subquery to introduce the predicate inside it, but it might be referenced by other places in the
+            // tree, so we clone it first.
+            subquery = subquery.Clone();
+
+            var predicate = VisitSqlBinary(_sqlExpressionFactory.Equal(subqueryProjection, item), allowOptimizedExpansion: true, out _);
+            subquery.ApplyPredicate(predicate);
+            subquery.ClearOrdering();
+
+            // No need for a projection with EXISTS, clear it to get SELECT 1
+            subquery = subquery.Update(
+                Array.Empty<ProjectionExpression>(),
+                subquery.Tables,
+                subquery.Predicate,
+                subquery.GroupBy,
+                subquery.Having,
+                subquery.Orderings,
+                subquery.Limit,
+                subquery.Offset);
+
+            return _sqlExpressionFactory.Exists(subquery, inExpression.IsNegated);
         }
+
+        // Non-subquery case
 
         // for relational null semantics we don't need to extract null values from the array
         if (UseRelationalNulls
@@ -1244,10 +1305,7 @@ public class SqlNullabilityProcessor
     }
 
     private static bool? TryGetBoolConstantValue(SqlExpression? expression)
-        => expression is SqlConstantExpression constantExpression
-            && constantExpression.Value is bool boolValue
-                ? boolValue
-                : null;
+        => expression is SqlConstantExpression { Value: bool boolValue } ? boolValue : null;
 
     private void RestoreNonNullableColumnsList(int counter)
     {
@@ -1929,6 +1987,10 @@ public class SqlNullabilityProcessor
         => sqlUnaryExpression != null
             && sqlUnaryExpression.OperatorType == ExpressionType.Not
             && sqlUnaryExpression.Type == typeof(bool);
+
+    private bool IsNull(SqlExpression expression)
+        => expression is SqlConstantExpression { Value: null }
+            || expression is SqlParameterExpression { Name: string parameterName } && ParameterValues[parameterName] is null;
 
     // ?a == ?b -> [(a == b) && (a != null && b != null)] || (a == null && b == null))
     //

@@ -1247,10 +1247,10 @@ END
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE EXISTS (
-    SELECT 1
+WHERE [e].[StringA] IN (
+    SELECT [l].[value]
     FROM OPENJSON(@__list_0) AS [l]
-    WHERE [l].[value] = [e].[StringA])
+)
 """,
             //
 """
@@ -1293,10 +1293,10 @@ WHERE [e].[NullableBoolA] = [e].[NullableBoolB]
 
 SELECT [e].[NullableStringA]
 FROM [Entities1] AS [e]
-WHERE EXISTS (
-    SELECT 1
+WHERE [e].[NullableStringA] IN (
+    SELECT [n].[value]
     FROM OPENJSON(@__names_0) AS [n]
-    WHERE [n].[value] = [e].[NullableStringA])
+)
 """);
     }
 
@@ -1310,10 +1310,10 @@ WHERE EXISTS (
 
 SELECT [e].[NullableStringA]
 FROM [Entities1] AS [e]
-WHERE EXISTS (
-    SELECT 1
+WHERE [e].[NullableStringA] IN (
+    SELECT [n].[value]
     FROM OPENJSON(@__names_0) AS [n]
-    WHERE [n].[value] = [e].[NullableStringA])
+)
 """);
     }
 
@@ -1327,10 +1327,10 @@ WHERE EXISTS (
 
 SELECT [e].[NullableStringA]
 FROM [Entities1] AS [e]
-WHERE EXISTS (
-    SELECT 1
+WHERE [e].[NullableStringA] IN (
+    SELECT [n].[value]
     FROM OPENJSON(@__names_0) AS [n]
-    WHERE [n].[value] = [e].[NullableStringA])
+)
 """);
     }
 
@@ -1931,10 +1931,10 @@ WHERE [e].[NullableIntA] IS NOT NULL
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE EXISTS (
-    SELECT 1
+WHERE [e].[IntA] IN (
+    SELECT CAST([i].[value] AS int) AS [value]
     FROM OPENJSON(@__ids_0) AS [i]
-    WHERE CAST([i].[value] AS int) = [e].[IntA])
+)
 """,
             //
 """
@@ -1953,10 +1953,10 @@ WHERE NOT EXISTS (
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE EXISTS (
-    SELECT 1
+WHERE [e].[IntA] IN (
+    SELECT CAST([i].[value] AS int) AS [value]
     FROM OPENJSON(@__ids2_0) AS [i]
-    WHERE CAST([i].[value] AS int) = [e].[IntA])
+)
 """,
             //
 """
@@ -1975,10 +1975,10 @@ WHERE NOT EXISTS (
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE EXISTS (
-    SELECT 1
+WHERE [e].[IntA] IN (
+    SELECT CAST([i].[value] AS int) AS [value]
     FROM OPENJSON(@__ids3_0) AS [i]
-    WHERE CAST([i].[value] AS int) = [e].[IntA])
+)
 """,
             //
 """
@@ -1997,10 +1997,10 @@ WHERE NOT EXISTS (
 
 SELECT [e].[Id]
 FROM [Entities1] AS [e]
-WHERE EXISTS (
-    SELECT 1
+WHERE [e].[IntA] IN (
+    SELECT CAST([i].[value] AS int) AS [value]
     FROM OPENJSON(@__ids4_0) AS [i]
-    WHERE CAST([i].[value] AS int) = [e].[IntA])
+)
 """,
             //
 """
