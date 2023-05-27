@@ -711,13 +711,8 @@ public class SqlNullabilityProcessor
                 return inExpression.Update(item, values: null, subquery);
             }
 
-            // We'll ned to mutate the subquery to introduce the predicate inside it, but it might be referenced by other places in the
-            // tree, so we clone it first.
-            subquery = subquery.Clone();
-
-            var predicate = VisitSqlBinary(_sqlExpressionFactory.Equal(subqueryProjection, item), allowOptimizedExpansion: true, out _);
-            subquery.ApplyPredicate(predicate);
-            subquery.ClearOrdering();
+            // We'll need to mutate the subquery to introduce the predicate inside it, but it might be referenced by other places in the
+            // tree, so we create a copy to work on.
 
             // No need for a projection with EXISTS, clear it to get SELECT 1
             subquery = subquery.Update(
@@ -729,6 +724,10 @@ public class SqlNullabilityProcessor
                 subquery.Orderings,
                 subquery.Limit,
                 subquery.Offset);
+
+            var predicate = VisitSqlBinary(_sqlExpressionFactory.Equal(subqueryProjection, item), allowOptimizedExpansion: true, out _);
+            subquery.ApplyPredicate(predicate);
+            subquery.ClearOrdering();
 
             return _sqlExpressionFactory.Exists(subquery, inExpression.IsNegated);
         }
