@@ -4665,10 +4665,6 @@ public sealed partial class SelectExpression : TableExpressionBase
             expressionPrinter.AppendLine().Append("ORDER BY ");
             expressionPrinter.VisitCollection(Orderings);
         }
-        else if (Offset != null)
-        {
-            expressionPrinter.AppendLine().Append("ORDER BY (SELECT 1)");
-        }
 
         if (Offset != null)
         {

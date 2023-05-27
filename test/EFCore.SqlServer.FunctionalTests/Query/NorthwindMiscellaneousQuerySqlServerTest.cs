@@ -4041,8 +4041,8 @@ LEFT JOIN [Employees] AS [e0] ON [e].[EmployeeID] = [e0].[ReportsTo]
 SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
 FROM [Orders] AS [o]
 WHERE CONVERT(date, [o].[OrderDate]) IN (
-    SELECT CAST([d].[value] AS datetime) AS [value]
-    FROM OPENJSON(@__dates_0) AS [d]
+    SELECT [d].[value]
+    FROM OPENJSON(@__dates_0) WITH ([value] datetime '$') AS [d]
 )
 """,
             //
@@ -4052,8 +4052,8 @@ WHERE CONVERT(date, [o].[OrderDate]) IN (
 SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
 FROM [Orders] AS [o]
 WHERE CONVERT(date, [o].[OrderDate]) IN (
-    SELECT CAST([d].[value] AS datetime) AS [value]
-    FROM OPENJSON(@__dates_0) AS [d]
+    SELECT [d].[value]
+    FROM OPENJSON(@__dates_0) WITH ([value] datetime '$') AS [d]
 )
 """);
     }
@@ -5089,8 +5089,8 @@ FROM [Customers] AS [c]
 ORDER BY CASE
     WHEN EXISTS (
         SELECT 1
-        FROM OPENJSON(@__list_0) AS [l]
-        WHERE CAST([l].[value] AS nchar(5)) = [c].[CustomerID]) THEN CAST(1 AS bit)
+        FROM OPENJSON(@__list_0) WITH ([value] nchar(5) '$') AS [l]
+        WHERE [l].[value] = [c].[CustomerID]) THEN CAST(1 AS bit)
     ELSE CAST(0 AS bit)
 END
 """);
@@ -5109,8 +5109,8 @@ FROM [Customers] AS [c]
 ORDER BY CASE
     WHEN NOT EXISTS (
         SELECT 1
-        FROM OPENJSON(@__list_0) AS [l]
-        WHERE CAST([l].[value] AS nchar(5)) = [c].[CustomerID]) THEN CAST(1 AS bit)
+        FROM OPENJSON(@__list_0) WITH ([value] nchar(5) '$') AS [l]
+        WHERE [l].[value] = [c].[CustomerID]) THEN CAST(1 AS bit)
     ELSE CAST(0 AS bit)
 END
 """);
@@ -6277,8 +6277,8 @@ SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[Cont
 FROM [Orders] AS [o]
 LEFT JOIN [Customers] AS [c] ON [o].[CustomerID] = [c].[CustomerID]
 WHERE [o].[OrderID] IN (
-    SELECT CAST([o0].[value] AS int) AS [value]
-    FROM OPENJSON(@__orderIds_0) AS [o0]
+    SELECT [o0].[value]
+    FROM OPENJSON(@__orderIds_0) WITH ([value] int '$') AS [o0]
 )
 """);
     }

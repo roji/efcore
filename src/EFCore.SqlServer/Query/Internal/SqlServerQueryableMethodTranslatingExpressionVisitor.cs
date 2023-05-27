@@ -122,75 +122,52 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
         RelationalTypeMapping? elementTypeMapping,
         string tableAlias)
     {
-        var elementClrType = sqlExpression.Type.GetSequenceType();
-
         // Generate the OPENJSON function expression, and wrap it in a SelectExpression.
-        // Note that we want to preserve the ordering of the element's, i.e. for the rows coming out of OPENJSON to be the same as the
-        // element order in the original JSON array.
-        // Unfortunately, OPENJSON with an explicit schema (with the WITH clause) doesn't support this; so we use the variant with the
-        // default schema, which returns a 'key' column containing the index, and order by that. This also means we need to explicitly
-        // apply a conversion from the values coming out of OPENJSON (always NVARCHAR(MAX)) to the required relational store type.
-        var openJsonExpression = new TableValuedFunctionExpression(tableAlias, "OPENJSON", new[] { sqlExpression });
+
+        // Note that where the elementTypeMapping is known (i.e. collection columns), we immediately generate OPENJSON with a WITH clause
+        // (i.e. with a columnInfo), which determines the type conversion to apply to the JSON elements coming out.
+        // For parameter collections, the element type mapping will only be inferred and applied later (see
+        // SqlServerInferredTypeMappingApplier below), at which point the we'll apply it to add the WITH clause.
+
+        // Note also that OPENJSON doesn't guarantee the ordering of the elements coming out. During post-processing, we'll detect whether
+        // order preservation is actually required (e.g. limit/offset are specified), and convert the OPENJSON with WITH to an ordered
+        // OPENJSON without WITH, where we order by the projected 'key' column. Therefore, the OPENJSON with WITH expression may be a
+        // temporary representation until it's replaced in postprocessing.
+
+        var openJsonExpression = elementTypeMapping is null
+            ? new SqlServerOpenJsonExpression(tableAlias, sqlExpression)
+            : new SqlServerOpenJsonExpression(
+                tableAlias, sqlExpression, columnInfos: new[]
+                {
+                    new SqlServerOpenJsonExpression.ColumnInfo { Name = "value", StoreType = elementTypeMapping.StoreType, Path = "$" }
+                });
 
         // TODO: This is a temporary CLR type-based check; when we have proper metadata to determine if the element is nullable, use it here
+        var elementClrType = sqlExpression.Type.GetSequenceType();
         var isColumnNullable = elementClrType.IsNullableType();
 
         var selectExpression = new SelectExpression(
             openJsonExpression, columnName: "value", columnType: elementClrType, columnTypeMapping: elementTypeMapping, isColumnNullable);
-
-        if (elementTypeMapping is { StoreType: not "nvarchar(max)" })
-        {
-            // For columns (where we know the type mapping), we need to overwrite the projection in order to insert a CAST() to the actual
-            // relational store type we expect out of the JSON array (e.g. OPENJSON returns strings, we want datetime2).
-            // For parameters (where we don't yet know the type mapping), we'll need to do that later, after the type mapping has been
-            // inferred.
-            // TODO: Need to pass through the type mapping API for converting the JSON value (nvarchar) to the relational store type (e.g.
-            // datetime2), see #30677
-            selectExpression.ReplaceProjection(
-                new Dictionary<ProjectionMember, Expression>
-                {
-                    {
-                        new ProjectionMember(), _sqlExpressionFactory.Convert(
-                            selectExpression.CreateColumnExpression(
-                                openJsonExpression,
-                                "value",
-                                typeof(string),
-                                _typeMappingSource.FindMapping("nvarchar(max)"),
-                                isColumnNullable),
-                            elementClrType,
-                            elementTypeMapping)
-                    }
-                });
-        }
-
-        // Append an ordering for the OPENJSON 'key' column, converting it from nvarchar to int.
-        selectExpression.AppendOrdering(
-            new OrderingExpression(
-            _sqlExpressionFactory.Convert(
-                selectExpression.CreateColumnExpression(
-                    openJsonExpression,
-                    "key",
-                    typeof(string),
-                    typeMapping: _typeMappingSource.FindMapping("nvarchar(8000)"),
-                    columnNullable: false),
-                typeof(int),
-                _typeMappingSource.FindMapping(typeof(int))),
-            ascending: true));
-
-        Expression shaperExpression = new ProjectionBindingExpression(
-            selectExpression, new ProjectionMember(), elementClrType.MakeNullable());
-
-        if (elementClrType != shaperExpression.Type)
-        {
-            Check.DebugAssert(
-                elementClrType.MakeNullable() == shaperExpression.Type,
-                "expression.Type must be nullable of targetType");
-
-            shaperExpression = Expression.Convert(shaperExpression, elementClrType);
-        }
+        var shaperExpression = new ProjectionBindingExpression(selectExpression, new ProjectionMember(), elementClrType);
 
         return new ShapedQueryExpression(selectExpression, shaperExpression);
     }
+
+    /// <summary>
+    ///     Consider select expressions whose primary table is a <see cref="SqlServerOpenJsonExpression" /> as naturally ordered, i.e.
+    ///     don't warn if offset/limit is composed on top. The <see cref="SqlServerOpenJsonExpression" /> created in
+    ///     <see cref="TranslateCollection" /> has a WITH clause and indeed doesn't guarantee ordering, but in
+    ///     <see cref="SqlServerQueryTranslationPostprocessor" />we detect cases where ordering is required, remove the WITH clause and
+    ///     inject an ordering by the OPENJSON <c>key</c> column, guaranteeing the natural JSON array ordering.
+    /// </summary>
+    /// <remarks>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </remarks>
+    protected override bool IsOrdered(SelectExpression selectExpression)
+        => base.IsOrdered(selectExpression) || selectExpression.Tables is [SqlServerOpenJsonExpression, ..];
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -203,32 +180,17 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
         Expression index,
         bool returnDefault)
     {
+        // TODO: Make sure we want to actually transform to JSON_VALUE, #30981
         if (!returnDefault
             && source.QueryExpression is SelectExpression
             {
-                Tables:
-                [
-                    TableValuedFunctionExpression
-                    {
-                        Name: "OPENJSON", Schema: null, IsBuiltIn: true, Arguments: [var jsonArrayColumn]
-                    } openJsonExpression
-                ],
+                Tables: [SqlServerOpenJsonExpression { Arguments: [var jsonArrayColumn] }],
                 GroupBy: [],
                 Having: null,
                 IsDistinct: false,
-                Orderings: [
-                {
-                    Expression: SqlUnaryExpression
-                    {
-                        OperatorType: ExpressionType.Convert,
-                        Operand: ColumnExpression { Name: "key" } orderingColumn
-                    },
-                    IsAscending: true
-                }],
                 Limit: null,
                 Offset: null
             } selectExpression
-            && orderingColumn.Table == openJsonExpression
             && TranslateExpression(index) is { } translatedIndex)
         {
             // Index on JSON array
@@ -256,27 +218,18 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
 
                 if (projectionColumn is not null)
                 {
-                    // If the inner expression happens to itself be a JsonScalarExpression, simply append the two paths to avoid created
+                    // If the inner expression happens to itself be a JsonScalarExpression, simply append the two paths to avoid creating
                     // JSON_VALUE within JSON_VALUE.
                     var (json, path) = jsonArrayColumn is JsonScalarExpression innerJsonScalarExpression
                         ? (innerJsonScalarExpression.Json, innerJsonScalarExpression.Path.Append(new(translatedIndex)).ToArray())
                         : (jsonArrayColumn, new PathSegment[] { new(translatedIndex) });
 
-                    SqlExpression translation = new JsonScalarExpression(
+                    var translation = new JsonScalarExpression(
                         json,
                         path,
                         projection.Type,
                         projection.TypeMapping,
                         projectionColumn.IsNullable);
-
-                    // If we have a type mapping (i.e. translating over a column rather than a parameter), apply any necessary server-side
-                    // conversions.
-                    // TODO: This should be part of #30677
-                    // OPENJSON's value column has type nvarchar(max); apply a CAST() unless that's the inferred element type mapping
-                    if (projectionColumn.TypeMapping is { StoreType: not "nvarchar(max)"} typeMapping)
-                    {
-                        translation = _sqlExpressionFactory.Convert(translation, typeMapping.ClrType, typeMapping);
-                    }
 
                     return source.UpdateQueryExpression(_sqlExpressionFactory.Select(translation));
                 }
@@ -414,7 +367,6 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
     {
         private readonly IRelationalTypeMappingSource _typeMappingSource;
         private readonly ISqlExpressionFactory _sqlExpressionFactory;
-        private Dictionary<TableExpressionBase, RelationalTypeMapping>? _currentSelectInferredTypeMappings;
 
         /// <summary>
         ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -436,52 +388,14 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
         protected override Expression VisitExtension(Expression expression)
-        {
-            switch (expression)
+            => expression switch
             {
-                case TableValuedFunctionExpression { Name: "OPENJSON", Schema: null, IsBuiltIn: true } openJsonExpression
-                    when TryGetInferredTypeMapping(openJsonExpression, "value", out var typeMapping):
-                    return ApplyTypeMappingsOnOpenJsonExpression(openJsonExpression, new[] { typeMapping });
+                SqlServerOpenJsonExpression openJsonExpression
+                    when TryGetInferredTypeMapping(openJsonExpression, "value", out var typeMapping)
+                    => ApplyTypeMappingsOnOpenJsonExpression(openJsonExpression, new[] { typeMapping }),
 
-                // Above, we applied the type mapping the the parameter that OPENJSON accepts as an argument.
-                // But the inferred type mapping also needs to be applied as a SQL conversion on the column projections coming out of the
-                // SelectExpression containing the OPENJSON call. So we set state to know about OPENJSON tables and their type mappings
-                // in the immediate SelectExpression, and continue visiting down (see ColumnExpression visitation below).
-                case SelectExpression selectExpression:
-                {
-                    Dictionary<TableExpressionBase, RelationalTypeMapping>? previousSelectInferredTypeMappings = null;
-
-                    foreach (var table in selectExpression.Tables)
-                    {
-                        if (table is TableValuedFunctionExpression { Name: "OPENJSON", Schema: null, IsBuiltIn: true } openJsonExpression
-                            && TryGetInferredTypeMapping(openJsonExpression, "value", out var inferredTypeMapping))
-                        {
-                            if (previousSelectInferredTypeMappings is null)
-                            {
-                                previousSelectInferredTypeMappings = _currentSelectInferredTypeMappings;
-                                _currentSelectInferredTypeMappings = new();
-                            }
-
-                            _currentSelectInferredTypeMappings![openJsonExpression] = inferredTypeMapping;
-                        }
-                    }
-
-                    var visited = base.VisitExtension(expression);
-
-                    _currentSelectInferredTypeMappings = previousSelectInferredTypeMappings;
-
-                    return visited;
-                }
-
-                case ColumnExpression { Name: "value" } columnExpression
-                    when _currentSelectInferredTypeMappings is not null
-                    && _currentSelectInferredTypeMappings.TryGetValue(columnExpression.Table, out var inferredTypeMapping):
-                    return ApplyTypeMappingOnColumn(columnExpression, inferredTypeMapping);
-
-                default:
-                    return base.VisitExtension(expression);
-            }
-        }
+                _ => base.VisitExtension(expression)
+            };
 
         /// <summary>
         ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -490,7 +404,7 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
         protected virtual TableValuedFunctionExpression ApplyTypeMappingsOnOpenJsonExpression(
-            TableValuedFunctionExpression openJsonExpression,
+            SqlServerOpenJsonExpression openJsonExpression,
             IReadOnlyList<RelationalTypeMapping> typeMappings)
         {
             Check.DebugAssert(typeMappings.Count == 1, "typeMappings.Count == 1");
@@ -498,10 +412,20 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
 
             // Constant queryables are translated to VALUES, no need for JSON.
             // Column queryables have their type mapping from the model, so we don't ever need to apply an inferred mapping on them.
-            if (openJsonExpression.Arguments[0] is not SqlParameterExpression parameterExpression)
+            if (openJsonExpression.JsonExpression is not SqlParameterExpression { TypeMapping: null } parameterExpression)
             {
+                Check.DebugAssert(
+                    openJsonExpression.JsonExpression.TypeMapping is not null, "openJsonExpression.JsonExpression.TypeMapping is not null");
                 return openJsonExpression;
             }
+
+            Check.DebugAssert(openJsonExpression.Path is null, "openJsonExpression.Path is null");
+            Check.DebugAssert(openJsonExpression.ColumnInfos is null, "Invalid SqlServerOpenJsonExpression");
+
+            // We need to apply the inferred type mapping in two places: the collection type mapping on the parameter expanded by OPENJSON,
+            // and on the WITH clause determining the conversion out on the SQL Server side
+
+            // First, find the collection type mapping and apply it to the parameter
 
             // TODO: We shouldn't need to manually construct the JSON string type mapping this way; we need to be able to provide the
             // TODO: element's store type mapping as input to _typeMappingSource.FindMapping.
@@ -520,9 +444,10 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
 
             parameterTypeMapping = (SqlServerStringTypeMapping)parameterTypeMapping.CloneWithElementTypeMapping(elementTypeMapping);
 
-            var arguments = openJsonExpression.Arguments.ToArray();
-            arguments[0] = parameterExpression.ApplyTypeMapping(parameterTypeMapping);
-            return openJsonExpression.Update(arguments);
+            return openJsonExpression.Update(
+                parameterExpression.ApplyTypeMapping(parameterTypeMapping),
+                path: null,
+                new[] { new SqlServerOpenJsonExpression.ColumnInfo("value", elementTypeMapping.StoreType, "$") });
         }
 
         /// <summary>
