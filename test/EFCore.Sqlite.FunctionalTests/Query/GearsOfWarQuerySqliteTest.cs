@@ -1904,10 +1904,10 @@ WHERE "g"."Rank" & @__parameter_0 = @__parameter_0
 SELECT "g"."Nickname", "g"."SquadId", "w"."Name", "w"."Id"
 FROM "Gears" AS "g"
 LEFT JOIN "Weapons" AS "w" ON "g"."FullName" = "w"."OwnerFullName"
-ORDER BY EXISTS (
-    SELECT 1
+ORDER BY COALESCE("g"."Nickname" IN (
+    SELECT "n"."value"
     FROM json_each(@__nicknames_0) AS "n"
-    WHERE "n"."value" = "g"."Nickname") DESC, "g"."Nickname", "g"."SquadId"
+), 0) DESC, "g"."Nickname", "g"."SquadId"
 """);
     }
 
