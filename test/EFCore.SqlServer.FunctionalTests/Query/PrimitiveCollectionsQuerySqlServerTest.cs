@@ -811,7 +811,7 @@ WHERE (
     {
         await base.Parameter_collection_in_subquery_Count_as_compiled_query(async);
 
-        // TODO: the subquery projection contains an extra column which we should remove
+        // TODO: the subquery projection contains extra columns which we should remove
         AssertSql(
 """
 @__ints='[10,111]' (Size = 4000)
@@ -821,7 +821,7 @@ FROM [PrimitiveCollectionsEntity] AS [p]
 WHERE (
     SELECT COUNT(*)
     FROM (
-        SELECT CAST([i].[value] AS int) AS [value], CAST([i].[value] AS int) AS [value0]
+        SELECT CAST([i].[value] AS int) AS [value], CAST([i].[key] AS int) AS [c], CAST([i].[value] AS int) AS [value0]
         FROM OPENJSON(@__ints) AS [i]
         ORDER BY CAST([i].[key] AS int)
         OFFSET 1 ROWS

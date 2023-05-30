@@ -17,7 +17,7 @@ public class NorthwindMiscellaneousQuerySqlServerTest : NorthwindMiscellaneousQu
         : base(fixture)
     {
         ClearLog();
-        //Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
+        Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
     protected override bool CanExecuteQueryString
@@ -4461,7 +4461,7 @@ FROM (
 
 SELECT COUNT(*)
 FROM (
-    SELECT TOP(@__p_0) [c].[CustomerID], [c].[Country]
+    SELECT TOP(@__p_0) [c].[CustomerID]
     FROM [Customers] AS [c]
     ORDER BY [c].[Country]
 ) AS [t]
@@ -4494,7 +4494,7 @@ FROM (
 
 SELECT COUNT_BIG(*)
 FROM (
-    SELECT TOP(@__p_0) [c].[CustomerID], [c].[Country]
+    SELECT TOP(@__p_0) [c].[CustomerID]
     FROM [Customers] AS [c]
     ORDER BY [c].[Country]
 ) AS [t]
@@ -4598,7 +4598,7 @@ FROM (
 
 SELECT COUNT(*)
 FROM (
-    SELECT [c].[CustomerID], [c].[Country]
+    SELECT [c].[CustomerID]
     FROM [Customers] AS [c]
     ORDER BY [c].[Country]
     OFFSET @__p_0 ROWS
@@ -4634,7 +4634,7 @@ FROM (
 
 SELECT COUNT_BIG(*)
 FROM (
-    SELECT [c].[CustomerID], [c].[Country]
+    SELECT [c].[CustomerID]
     FROM [Customers] AS [c]
     ORDER BY [c].[Country]
     OFFSET @__p_0 ROWS

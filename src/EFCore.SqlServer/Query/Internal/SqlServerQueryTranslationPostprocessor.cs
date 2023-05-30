@@ -84,8 +84,9 @@ public class SqlServerQueryTranslationPostprocessor : RelationalQueryTranslation
     }
 
     /// <summary>
-    ///     Converts <see cref="SqlServerOpenJsonExpression" /> expressions with WITH (the default) to ordered OPENJSON without WITH when
-    ///     it's detected that the ordering of the original JSON array needs to be preserved (i.e. limit/offset).
+    ///     Converts <see cref="SqlServerOpenJsonExpression" /> expressions with WITH (the default) to OPENJSON without WITH when an
+    ///     ordering still exists on the [key] column, i.e. when the ordering of the original JSON array needs to be preserved
+    ///     (e.g. limit/offset).
     /// </summary>
     private sealed class OpenJsonPostprocessor : ExpressionVisitor
     {
@@ -111,11 +112,20 @@ public class SqlServerQueryTranslationPostprocessor : RelationalQueryTranslation
                     return shapedQueryExpression.UpdateQueryExpression(Visit(shapedQueryExpression.QueryExpression));
 
                 case SelectExpression
-                    {
-                        Tables: [SqlServerOpenJsonExpression { ColumnInfos: not null } openJsonExpression, ..],
-                        Orderings: []
-                    } selectExpression
-                    when selectExpression.Limit is not null || selectExpression.Offset is not null:
+                {
+                    Tables: [SqlServerOpenJsonExpression { ColumnInfos: not null } openJsonExpression, ..],
+                    Orderings:
+                    [
+                        {
+                            Expression: SqlUnaryExpression
+                            {
+                                OperatorType: ExpressionType.Convert,
+                                Operand: ColumnExpression { Name: "key", Table: var keyColumnTable }
+                            }
+                        }
+                    ]
+                } selectExpression
+                    when keyColumnTable == openJsonExpression:
                 {
                     // Remove the WITH clause from the OPENJSON expression
                     var newOpenJsonExpression = openJsonExpression.Update(
@@ -132,23 +142,9 @@ public class SqlServerQueryTranslationPostprocessor : RelationalQueryTranslation
                         selectExpression.Predicate,
                         selectExpression.GroupBy,
                         selectExpression.Having,
-                        Array.Empty<OrderingExpression>(),
+                        selectExpression.Orderings,
                         selectExpression.Limit,
                         selectExpression.Offset);
-
-                    // Add ORDER BY CAST([i].[key] AS int)
-                    newSelectExpression.AppendOrdering(
-                        new OrderingExpression(
-                            _sqlExpressionFactory.Convert(
-                                selectExpression.CreateColumnExpression(
-                                    openJsonExpression,
-                                    "key",
-                                    typeof(string),
-                                    typeMapping: _typeMappingSource.FindMapping("nvarchar(4000)"),
-                                    columnNullable: false),
-                                typeof(int),
-                                _typeMappingSource.FindMapping(typeof(int))),
-                            ascending: true));
 
                     // Record the OPENJSON expression and its projected column(s), along with the store type we just removed from the WITH
                     // clause. Then visit the select expression, adding a cast around the matching ColumnExpressions.

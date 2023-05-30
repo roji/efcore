@@ -128,12 +128,6 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
         // (i.e. with a columnInfo), which determines the type conversion to apply to the JSON elements coming out.
         // For parameter collections, the element type mapping will only be inferred and applied later (see
         // SqlServerInferredTypeMappingApplier below), at which point the we'll apply it to add the WITH clause.
-
-        // Note also that OPENJSON doesn't guarantee the ordering of the elements coming out. During post-processing, we'll detect whether
-        // order preservation is actually required (e.g. limit/offset are specified), and convert the OPENJSON with WITH to an ordered
-        // OPENJSON without WITH, where we order by the projected 'key' column. Therefore, the OPENJSON with WITH expression may be a
-        // temporary representation until it's replaced in postprocessing.
-
         var openJsonExpression = elementTypeMapping is null
             ? new SqlServerOpenJsonExpression(tableAlias, sqlExpression)
             : new SqlServerOpenJsonExpression(
@@ -148,26 +142,33 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
 
         var selectExpression = new SelectExpression(
             openJsonExpression, columnName: "value", columnType: elementClrType, columnTypeMapping: elementTypeMapping, isColumnNullable);
+
+        // OPENJSON doesn't guarantee the ordering of the elements coming out; when using OPENJSON without WITH, a [key] column is returned
+        // with the JSON array's ordering, which we can ORDER BY; this option doesn't exist with OPENJSON with WITH, unfortunately.
+        // However, OPENJSON with WITH has better performance, and also applies JSON-specific conversions we cannot be done otherwise
+        // (e.g. OPENJSON with WITH does base64 decoding for VARBINARY).
+        // Here we generate OPENJSON with WITH, but also add an ordering by [key] - this is a temporary invalid representation.
+        // In SqlServerQueryTranslationPostprocessor, we'll post-process the expression; if the ORDER BY was stripped (e.g. because of
+        // IN, EXISTS or a set operation), we'll just leave the OPENJSON with WITH. If not, we'll convert the OPENJSON with WITH to an
+        // OPENJSON without WITH.
+        // Note that the OPENJSON 'key' column is an nvarchar - we convert it to an int before sorting.
+        selectExpression.AppendOrdering(
+            new OrderingExpression(
+                _sqlExpressionFactory.Convert(
+                    selectExpression.CreateColumnExpression(
+                        openJsonExpression,
+                        "key",
+                        typeof(string),
+                        typeMapping: _typeMappingSource.FindMapping("nvarchar(4000)"),
+                        columnNullable: false),
+                    typeof(int),
+                    _typeMappingSource.FindMapping(typeof(int))),
+                ascending: true));
+
         var shaperExpression = new ProjectionBindingExpression(selectExpression, new ProjectionMember(), elementClrType);
 
         return new ShapedQueryExpression(selectExpression, shaperExpression);
     }
-
-    /// <summary>
-    ///     Consider select expressions whose primary table is a <see cref="SqlServerOpenJsonExpression" /> as naturally ordered, i.e.
-    ///     don't warn if offset/limit is composed on top. The <see cref="SqlServerOpenJsonExpression" /> created in
-    ///     <see cref="TranslateCollection" /> has a WITH clause and indeed doesn't guarantee ordering, but in
-    ///     <see cref="SqlServerQueryTranslationPostprocessor" />we detect cases where ordering is required, remove the WITH clause and
-    ///     inject an ordering by the OPENJSON <c>key</c> column, guaranteeing the natural JSON array ordering.
-    /// </summary>
-    /// <remarks>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </remarks>
-    protected override bool IsOrdered(SelectExpression selectExpression)
-        => base.IsOrdered(selectExpression) || selectExpression.Tables is [SqlServerOpenJsonExpression, ..];
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
