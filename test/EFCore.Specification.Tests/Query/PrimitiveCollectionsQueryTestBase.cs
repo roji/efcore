@@ -141,10 +141,26 @@ public class PrimitiveCollectionsQueryTestBase<TFixture> : QueryTestBase<TFixtur
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
-    public virtual Task Inline_collection_Contains_as_Any_with_predicate(bool async)
+    public virtual Task Inline_collection_Contains_as_Any(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<PrimitiveCollectionsEntity>().Where(c => new[] { 2, 999 }.Any(i => i == c.Id)),
+            ss => ss.Set<PrimitiveCollectionsEntity>().Where(c => new[] { 10, 999 }.Any(i => i == c.Int)),
+            entryCount: 1);
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Inline_collection_Contains_as_Any_with_nullable_item_and_non_nullable_array(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<PrimitiveCollectionsEntity>().Where(c => new[] { 10, 999 }.Any(i => i == c.NullableInt)),
+            entryCount: 1);
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Inline_collection_Contains_as_Any_with_non_nullable_item_and_nullable_array(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<PrimitiveCollectionsEntity>().Where(c => new int?[] { 10, 999, null }.Any(i => i == c.Int)),
             entryCount: 1);
 
     [ConditionalTheory]
@@ -201,6 +217,18 @@ public class PrimitiveCollectionsQueryTestBase<TFixture> : QueryTestBase<TFixtur
             async,
             ss => ss.Set<PrimitiveCollectionsEntity>().Where(c => nullableInts.Contains(c.NullableInt)),
             entryCount: 2);
+    }
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Parameter_collection_of_ints_Any_with_non_nullable_int(bool async)
+    {
+        var ints = new[] { 10, 999 };
+
+        return AssertQuery(
+            async,
+            ss => ss.Set<PrimitiveCollectionsEntity>().Where(c => ints.Any(i => i == c.NullableInt)),
+            entryCount: 1);
     }
 
     [ConditionalTheory]

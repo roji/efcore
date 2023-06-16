@@ -188,9 +188,9 @@ WHERE [p].[Int] IN (999, @__i_0, [p].[Id], [p].[Id] + [p].[Int])
 """);
     }
 
-    public override async Task Inline_collection_Contains_as_Any_with_predicate(bool async)
+    public override async Task Inline_collection_Contains_as_Any(bool async)
     {
-        await base.Inline_collection_Contains_as_Any_with_predicate(async);
+        await base.Inline_collection_Contains_as_Any(async);
 
         AssertSql(
 """

@@ -183,15 +183,42 @@ WHERE [p].[Int] IN (999, @__i_0, [p].[Id], [p].[Id] + [p].[Int])
 """);
     }
 
-    public override async Task Inline_collection_Contains_as_Any_with_predicate(bool async)
+    public override async Task Inline_collection_Contains_as_Any(bool async)
     {
-        await base.Inline_collection_Contains_as_Any_with_predicate(async);
+        await base.Inline_collection_Contains_as_Any(async);
 
         AssertSql(
 """
 SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[String], [p].[Strings]
 FROM [PrimitiveCollectionsEntity] AS [p]
 WHERE [p].[Id] IN (2, 999)
+""");
+    }
+
+    public override async Task Inline_collection_Contains_as_Any_with_nullable_item_and_non_nullable_array(bool async)
+    {
+        await base.Inline_collection_Contains_as_Any_with_nullable_item_and_non_nullable_array(async);
+
+        AssertSql(
+"""
+SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[String], [p].[Strings]
+FROM [PrimitiveCollectionsEntity] AS [p]
+WHERE EXISTS ( -- NO
+    SELECT 1
+    FROM (VALUES (CAST(10 AS int)), (999)) AS [v]([Value])
+    WHERE [v].[Value] = [p].[NullableInt])
+""");
+    }
+
+    public override async Task Inline_collection_Contains_as_Any_with_non_nullable_item_and_nullable_array(bool async)
+    {
+        await base.Inline_collection_Contains_as_Any_with_non_nullable_item_and_nullable_array(async);
+
+        AssertSql(
+"""
+SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[String], [p].[Strings]
+FROM [PrimitiveCollectionsEntity] AS [p]
+WHERE [p].[Int] IN (10, 999)
 """);
     }
 
@@ -273,6 +300,23 @@ WHERE EXISTS (
     FROM OPENJSON(@__nullableInts_0) WITH ([value] int '$') AS [n]
     WHERE [n].[value] = [p].[NullableInt] OR ([n].[value] IS NULL AND [p].[NullableInt] IS NULL))
 """);
+    }
+
+    public override async Task Parameter_collection_of_ints_Any_with_non_nullable_int(bool async)
+    {
+        await base.Parameter_collection_of_ints_Any_with_non_nullable_int(async);
+
+        AssertSql(
+            """
+            @__ints_0='[10,999]' (Size = 4000)
+
+            SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[String], [p].[Strings]
+            FROM [PrimitiveCollectionsEntity] AS [p]
+            WHERE EXISTS (
+                SELECT 1
+                FROM OPENJSON(@__ints_0) WITH ([value] int '$') AS [i]
+                WHERE [i].[value] = [p].[NullableInt])
+            """);
     }
 
     public override async Task Parameter_collection_of_strings_Contains(bool async)

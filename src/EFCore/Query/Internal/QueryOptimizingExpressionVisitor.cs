@@ -211,33 +211,53 @@ public class QueryOptimizingExpressionVisitor : ExpressionVisitor
         // And x.All(i => i != foo) to !x.Contains(foo)
         if (methodCallExpression.Method.IsGenericMethod
             && methodCallExpression.Method.GetGenericMethodDefinition() is MethodInfo methodInfo
-            && (methodInfo == EnumerableMethods.AnyWithPredicate || methodInfo == EnumerableMethods.All || methodInfo == QueryableMethods.AnyWithPredicate || methodInfo == QueryableMethods.All)
+            && (methodInfo == EnumerableMethods.AnyWithPredicate
+                || methodInfo == EnumerableMethods.All
+                || methodInfo == QueryableMethods.AnyWithPredicate
+                || methodInfo == QueryableMethods.All)
             && methodCallExpression.Arguments[1].UnwrapLambdaFromQuote() is var lambda
             && TryExtractEqualityOperands(lambda.Body, out var left, out var right, out var negated))
         {
-            var itemExpression = left == lambda.Parameters[0]
+            var itemExpression = UnwrapConvert(left) == lambda.Parameters[0]
                 ? right
-                : right == lambda.Parameters[0]
+                : UnwrapConvert(right) == lambda.Parameters[0]
                     ? left
                     : null;
 
-            if (itemExpression is not null)
+            if (itemExpression is not null
+                && ((methodInfo.Name == nameof(Enumerable.Any) && !negated)
+                    || (methodInfo.Name == nameof(Enumerable.All) && negated)))
             {
+                var source = methodCallExpression.Arguments[0];
+                if (source.Type.GetSequenceType() != itemExpression.Type)
+                {
+
+                }
+
                 var containsMethodDefinition = methodInfo.DeclaringType == typeof(Enumerable)
                     ? EnumerableMethods.Contains
                     : QueryableMethods.Contains;
 
-                if ((methodInfo == EnumerableMethods.AnyWithPredicate || methodInfo == QueryableMethods.AnyWithPredicate) && !negated)
+                var containsMethod = containsMethodDefinition.MakeGenericMethod(methodCallExpression.Method.GetGenericArguments()[0]);
+                var containsMethodCall = Expression.Call(null, containsMethod, methodCallExpression.Arguments[0], itemExpression);
+
+                return negated
+                    ? Expression.Not(containsMethodCall)
+                    : containsMethodCall;
+            }
+
+            static Expression? UnwrapConvert(Expression expression)
+            {
+                while (expression is UnaryExpression
+                       {
+                           NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked or ExpressionType.TypeAs
+                       } convert
+                    && expression.Type.IsAssignableTo(convert.Type))
                 {
-                    var containsMethod = containsMethodDefinition.MakeGenericMethod(methodCallExpression.Method.GetGenericArguments()[0]);
-                    return Expression.Call(null, containsMethod, methodCallExpression.Arguments[0], itemExpression);
+                    expression = convert.Operand;
                 }
 
-                if ((methodInfo == EnumerableMethods.All || methodInfo == QueryableMethods.All) && negated)
-                {
-                    var containsMethod = containsMethodDefinition.MakeGenericMethod(methodCallExpression.Method.GetGenericArguments()[0]);
-                    return Expression.Not(Expression.Call(null, containsMethod, methodCallExpression.Arguments[0], itemExpression));
-                }
+                return expression;
             }
         }
 
