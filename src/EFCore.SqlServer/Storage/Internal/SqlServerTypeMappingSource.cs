@@ -465,12 +465,6 @@ public class SqlServerTypeMappingSource : RelationalTypeMappingSource
             return null;
         }
 
-        // Specifically exclude collections over Geometry, since there's a dedicated GeometryCollection type for that (see #30630)
-        if (elementClrType.Namespace == "NetTopologySuite.Geometries")
-        {
-            return null;
-        }
-
         // TODO: This can be moved into a SQL Server implementation of ValueConverterSelector.. But it seems better for this method's logic
         // to be in the type mapping source.
         var stringMappingInfo = new RelationalTypeMappingInfo(
@@ -493,11 +487,7 @@ public class SqlServerTypeMappingSource : RelationalTypeMappingSource
         stringTypeMapping = (SqlServerStringTypeMapping)stringTypeMapping
             .Clone(new CollectionToJsonStringConverter(mappingInfo.ClrType, elementTypeMapping));
 
-        // The JSON representation for new[] { 1, 2 } is AQI= (base64), this cannot simply be cast to varbinary(max) (0x0102)
-        if (elementTypeMapping is not SqlServerByteArrayTypeMapping)
-        {
-            stringTypeMapping = (SqlServerStringTypeMapping)stringTypeMapping.CloneWithElementTypeMapping(elementTypeMapping);
-        }
+        stringTypeMapping = (SqlServerStringTypeMapping)stringTypeMapping.CloneWithElementTypeMapping(elementTypeMapping);
 
         return stringTypeMapping;
     }

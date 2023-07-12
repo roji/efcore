@@ -2786,7 +2786,7 @@ public class RelationalQueryableMethodTranslatingExpressionVisitor : QueryableMe
         /// <returns>Whether an inferred type mapping could be found.</returns>
         protected virtual bool TryGetInferredTypeMapping(
             TableExpressionBase table,
-             string columnName,
+            string columnName,
             [NotNullWhen(true)] out RelationalTypeMapping? inferredTypeMapping)
         {
             if (_inferredTypeMappings.TryGetValue((table, columnName), out inferredTypeMapping))
