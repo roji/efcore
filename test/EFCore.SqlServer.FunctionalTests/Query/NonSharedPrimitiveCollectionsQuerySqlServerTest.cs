@@ -241,17 +241,12 @@ WHERE (
 """);
     }
 
-    [ConditionalFact] // #30630
-    public override async Task Array_of_geometry_is_not_supported()
-    {
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => InitializeAsync<TestContext>(
-                onConfiguring: options => options.UseSqlServer(o => o.UseNetTopologySuite()),
-                addServices: s => s.AddEntityFrameworkSqlServerNetTopologySuite(),
-                onModelCreating: mb => mb.Entity<TestEntity>().Property<Point[]>("Points")));
-
-        Assert.Equal(CoreStrings.PropertyNotMapped("Point[]", "TestEntity", "Points"), exception.Message);
-    }
+    [ConditionalFact]
+    public virtual Task Array_of_geometry()
+        => TestArray(
+            new Point(1, 2), new Point(2, 3),
+            onConfiguring: options => options.UseSqlServer(o => o.UseNetTopologySuite()),
+            addServices: s => s.AddEntityFrameworkSqlServerNetTopologySuite());
 
     [ConditionalFact]
     public override Task Array_of_array_is_not_supported()
