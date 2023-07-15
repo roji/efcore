@@ -1193,10 +1193,10 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             return null;
         }
 
-        var entityType = entityReferenceExpression.EntityType;
+        var typeBase = entityReferenceExpression.TypeBase;
         var property = member.MemberInfo != null
-            ? entityType.FindProperty(member.MemberInfo)
-            : entityType.FindProperty(member.Name!);
+            ? typeBase.FindProperty(member.MemberInfo)
+            : typeBase.FindProperty(member.Name!);
 
         if (property != null)
         {
@@ -1224,8 +1224,8 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             var entityProjectionExpression = (EntityProjectionExpression)valueBufferExpression;
             var propertyAccess = entityProjectionExpression.BindProperty(property);
 
-            var entityType = entityReferenceExpression.EntityType;
-            if (entityType.FindDiscriminatorProperty() != null
+            if (entityReferenceExpression.TypeBase is not IEntityType entityType
+                || entityType.FindDiscriminatorProperty() != null
                 || entityType.FindPrimaryKey() == null
                 || entityType.GetRootType() != entityType
                 || entityType.GetMappingStrategy() == RelationalAnnotationNames.TpcMappingStrategy)
@@ -1897,28 +1897,34 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
         public EntityReferenceExpression(EntityShaperExpression parameter)
         {
             ParameterEntity = parameter;
-            EntityType = parameter.EntityType;
+            TypeBase = parameter.TypeBase;
         }
 
         public EntityReferenceExpression(ShapedQueryExpression subquery)
         {
             SubqueryEntity = subquery;
-            EntityType = ((EntityShaperExpression)subquery.ShaperExpression).EntityType;
+            TypeBase = ((EntityShaperExpression)subquery.ShaperExpression).TypeBase;
         }
 
-        private EntityReferenceExpression(EntityReferenceExpression entityReferenceExpression, IEntityType entityType)
+        private EntityReferenceExpression(EntityReferenceExpression entityReferenceExpression, ITypeBase typeBase)
         {
             ParameterEntity = entityReferenceExpression.ParameterEntity;
             SubqueryEntity = entityReferenceExpression.SubqueryEntity;
-            EntityType = entityType;
+            TypeBase = typeBase;
         }
 
         public EntityShaperExpression? ParameterEntity { get; }
         public ShapedQueryExpression? SubqueryEntity { get; }
-        public IEntityType EntityType { get; }
+
+        public IEntityType EntityType
+            => TypeBase is IEntityType entityType
+                ? entityType
+                : throw new InvalidOperationException("Type isn't an entity type: " + TypeBase.DisplayName());
+
+        public ITypeBase TypeBase { get; }
 
         public override Type Type
-            => EntityType.ClrType;
+            => TypeBase.ClrType;
 
         public override ExpressionType NodeType
             => ExpressionType.Extension;

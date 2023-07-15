@@ -55,7 +55,7 @@ public class EntityMaterializerSource : IEntityMaterializerSource
         IEntityType entityType,
         string entityInstanceName,
         Expression materializationContextExpression)
-        => ((IEntityMaterializerSource)this).CreateMaterializeExpression(
+        => CreateMaterializeExpression(
             new EntityMaterializerSourceParameters(entityType, entityInstanceName, null), materializationContextExpression);
 
     /// <summary>
@@ -64,37 +64,41 @@ public class EntityMaterializerSource : IEntityMaterializerSource
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    Expression IEntityMaterializerSource.CreateMaterializeExpression(
+    public Expression CreateMaterializeExpression(
         EntityMaterializerSourceParameters parameters,
         Expression materializationContextExpression)
     {
-        var (entityType, entityInstanceName) = (parameters.EntityType, parameters.EntityInstanceName);
+        var (typeBase, entityInstanceName) = (parameters.TypeBase, parameters.EntityInstanceName);
 
-        if (entityType.IsAbstract())
+        if (typeBase.IsAbstract())
         {
-            throw new InvalidOperationException(CoreStrings.CannotMaterializeAbstractType(entityType.DisplayName()));
+            throw new InvalidOperationException(CoreStrings.CannotMaterializeAbstractType(typeBase.DisplayName()));
         }
 
-        var constructorBinding = ModifyBindings(entityType, entityType.ConstructorBinding!);
+        var constructorBinding = ModifyBindings(typeBase, typeBase.ConstructorBinding!);
         var bindingInfo = new ParameterBindingInfo(parameters, materializationContextExpression);
-        var serviceProperties = entityType.GetServiceProperties().ToList();
         var blockExpressions = new List<Expression>();
 
         var instanceVariable = Expression.Variable(constructorBinding.RuntimeType, entityInstanceName);
         bindingInfo.ServiceInstances.Add(instanceVariable);
 
-        CreateServiceInstances(constructorBinding, bindingInfo, blockExpressions, serviceProperties);
-
+        // TODO: Need to worry about shadow complex property?
         var properties = new HashSet<IPropertyBase>(
-            serviceProperties.Cast<IPropertyBase>()
-                .Concat(
-                    entityType
-                        .GetProperties()
-                        .Where(p => !p.IsShadowProperty())));
+            typeBase.GetProperties().Cast<IPropertyBase>().Where(p => !p.IsShadowProperty())
+                .Concat(typeBase.GetComplexProperties().Where(p => !p.IsShadowProperty())));
 
-        foreach (var consumedProperty in constructorBinding
-                     .ParameterBindings
-                     .SelectMany(p => p.ConsumedProperties))
+        if (typeBase is IEntityType entityType)
+        {
+            var serviceProperties = entityType.GetServiceProperties().ToList();
+            CreateServiceInstances(constructorBinding, bindingInfo, blockExpressions, serviceProperties);
+
+            foreach (var serviceProperty in serviceProperties)
+            {
+                properties.Add(serviceProperty);
+            }
+        }
+
+        foreach (var consumedProperty in constructorBinding.ParameterBindings.SelectMany(p => p.ConsumedProperties))
         {
             properties.Remove(consumedProperty);
         }
@@ -108,20 +112,22 @@ public class EntityMaterializerSource : IEntityMaterializerSource
                 return constructorExpression;
             }
 
-            return CreateMaterializeExpression(blockExpressions, instanceVariable, constructorExpression, properties, bindingInfo);
+            return CreateMaterializeExpression(
+                blockExpressions, instanceVariable, constructorExpression, properties, bindingInfo);
         }
 
-        return CreateInterceptionMaterializeExpression(
-            entityType,
-            properties,
-            _materializationInterceptor,
-            bindingInfo,
-            constructorExpression,
-            instanceVariable,
-            blockExpressions);
+        throw new NotImplementedException("Materialization interception");
+        // return CreateInterceptionMaterializeExpression(
+        //     typeBase,
+        //     properties,
+        //     _materializationInterceptor,
+        //     bindingInfo,
+        //     constructorExpression,
+        //     instanceVariable,
+        //     blockExpressions);
     }
 
-    private static void AddInitializeExpressions(
+    private void AddInitializeExpressions(
         HashSet<IPropertyBase> properties,
         ParameterBindingInfo bindingInfo,
         Expression instanceVariable,
@@ -135,14 +141,24 @@ public class EntityMaterializerSource : IEntityMaterializerSource
         {
             var memberInfo = property.GetMemberInfo(forMaterialization: true, forSet: true);
 
-            blockExpressions.Add(
-                CreateMemberAssignment(
-                    instanceVariable, memberInfo, property, property is IServiceProperty serviceProperty
-                        ? serviceProperty.ParameterBinding.BindToParameter(bindingInfo)
-                        : valueBufferExpression.CreateValueBufferReadValueExpression(
-                            memberInfo.GetMemberType(),
-                            property.GetIndex(),
-                            property)));
+            var valueExpression = property switch
+            {
+                IProperty
+                    => valueBufferExpression.CreateValueBufferReadValueExpression(
+                        memberInfo.GetMemberType(), property.GetIndex(), property),
+
+                IServiceProperty serviceProperty
+                    => serviceProperty.ParameterBinding.BindToParameter(bindingInfo),
+
+                // TODO: Better InstanceTypeName? We use "instance" everywhere else apparently?
+                IComplexProperty complexProperty
+                    => CreateMaterializeExpression(
+                        new EntityMaterializerSourceParameters(complexProperty.ComplexType, "complexType", null),
+                        bindingInfo.MaterializationContextExpression),
+                _ => throw new InvalidOperationException("IMPOSSIBLE")
+            };
+
+            blockExpressions.Add(CreateMemberAssignment(instanceVariable, memberInfo, property, valueExpression));
         }
 
         static Expression CreateMemberAssignment(Expression parameter, MemberInfo memberInfo, IPropertyBase property, Expression value)
@@ -215,7 +231,7 @@ public class EntityMaterializerSource : IEntityMaterializerSource
         = typeof(ValueTuple<object, Func<MaterializationContext, object?>>).GetConstructor(
             new[] { typeof(object), typeof(Func<MaterializationContext, object?>) })!;
 
-    private static Expression CreateMaterializeExpression(
+    private Expression CreateMaterializeExpression(
         List<Expression> blockExpressions,
         ParameterExpression instanceVariable,
         Expression constructorExpression,
@@ -232,7 +248,7 @@ public class EntityMaterializerSource : IEntityMaterializerSource
         return Expression.Block(bindingInfo.ServiceInstances, blockExpressions);
     }
 
-    private static Expression CreateInterceptionMaterializeExpression(
+    private Expression CreateInterceptionMaterializeExpression(
         IEntityType entityType,
         HashSet<IPropertyBase> properties,
         IMaterializationInterceptor materializationInterceptor,
@@ -483,9 +499,9 @@ public class EntityMaterializerSource : IEntityMaterializerSource
                         self._materializationInterceptor == null
                             ? properties.Count == 0 && blockExpressions.Count == 0
                                 ? constructorExpression
-                                : CreateMaterializeExpression(
+                                : self.CreateMaterializeExpression(
                                     blockExpressions, instanceVariable, constructorExpression, properties, bindingInfo)
-                            : CreateInterceptionMaterializeExpression(
+                            : self.CreateInterceptionMaterializeExpression(
                                 e,
                                 new HashSet<IPropertyBase>(),
                                 self._materializationInterceptor,
@@ -498,9 +514,9 @@ public class EntityMaterializerSource : IEntityMaterializerSource
             },
             this);
 
-    private InstantiationBinding ModifyBindings(IEntityType entityType, InstantiationBinding binding)
+    private InstantiationBinding ModifyBindings(ITypeBase typeBase, InstantiationBinding binding)
     {
-        var interceptionData = new InstantiationBindingInterceptionData(entityType);
+        var interceptionData = new InstantiationBindingInterceptionData(typeBase);
         foreach (var bindingInterceptor in _bindingInterceptors)
         {
             binding = bindingInterceptor.ModifyBinding(interceptionData, binding);

@@ -33,7 +33,7 @@ public class EntityTypeParameterBinding : ServiceParameterBinding
         Expression bindingInfoExpression)
         => bindingInfoExpression.Type == typeof(IEntityType)
             ? bindingInfoExpression
-            : Expression.Property(bindingInfoExpression, nameof(ParameterBindingInfo.EntityType));
+            : Expression.Property(bindingInfoExpression, nameof(ParameterBindingInfo.TypeBase));
 
     /// <summary>
     ///     Creates a copy that contains the given consumed properties.

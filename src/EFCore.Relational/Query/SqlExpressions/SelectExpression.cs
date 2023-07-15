@@ -645,45 +645,52 @@ public sealed partial class SelectExpression : TableExpressionBase
             var projections = _clientProjections.Count > 0 ? _clientProjections : _projectionMapping.Values.ToList();
             foreach (var projection in projections)
             {
-                if (projection is EntityProjectionExpression entityProjection)
+                switch (projection)
                 {
-                    var primaryKey = entityProjection.EntityType.FindPrimaryKey();
-                    // If there are any existing identifier then all entity projection must have a key
-                    // else keyless entity would have wiped identifier when generating join.
-                    Check.DebugAssert(primaryKey != null, "primary key is null.");
-                    foreach (var property in primaryKey.Properties)
-                    {
-                        entityProjectionIdentifiers.Add(entityProjection.BindProperty(property));
-                        entityProjectionValueComparers.Add(property.GetKeyValueComparer());
-                    }
-                }
-                else if (projection is JsonQueryExpression jsonQueryExpression)
-                {
-                    if (jsonQueryExpression.IsCollection)
-                    {
-                        throw new InvalidOperationException(RelationalStrings.DistinctOnCollectionNotSupported);
-                    }
+                    case EntityProjectionExpression entityProjection:
+                        // We know that there are existing identifiers (see condition above); we know we must have a key since a keyless
+                        // entity type would have wiped the identifiers when generating the join.
+                        if (entityProjection is not { TypeBase: IEntityType entityType }
+                            || entityType.FindPrimaryKey() is not IKey primaryKey)
+                        {
+                            throw new InvalidOperationException("IMPOSSIBLE");
+                        }
 
-                    var primaryKeyProperties = jsonQueryExpression.EntityType.FindPrimaryKey()!.Properties;
-                    var primaryKeyPropertiesCount = jsonQueryExpression.IsCollection
-                        ? primaryKeyProperties.Count - 1
-                        : primaryKeyProperties.Count;
+                        foreach (var property in primaryKey.Properties)
+                        {
+                            entityProjectionIdentifiers.Add(entityProjection.BindProperty(property));
+                            entityProjectionValueComparers.Add(property.GetKeyValueComparer());
+                        }
 
-                    for (var i = 0; i < primaryKeyPropertiesCount; i++)
-                    {
-                        var keyProperty = primaryKeyProperties[i];
-                        entityProjectionIdentifiers.Add((ColumnExpression)jsonQueryExpression.BindProperty(keyProperty));
-                        entityProjectionValueComparers.Add(keyProperty.GetKeyValueComparer());
-                    }
-                }
-                else if (projection is SqlExpression sqlExpression)
-                {
-                    otherExpressions.Add(sqlExpression);
-                }
-                else
-                {
-                    nonProcessableExpressionFound = true;
-                    break;
+                        break;
+
+                    case JsonQueryExpression jsonQueryExpression:
+                        if (jsonQueryExpression.IsCollection)
+                        {
+                            throw new InvalidOperationException(RelationalStrings.DistinctOnCollectionNotSupported);
+                        }
+
+                        var primaryKeyProperties = jsonQueryExpression.EntityType.FindPrimaryKey()!.Properties;
+                        var primaryKeyPropertiesCount = jsonQueryExpression.IsCollection
+                            ? primaryKeyProperties.Count - 1
+                            : primaryKeyProperties.Count;
+
+                        for (var i = 0; i < primaryKeyPropertiesCount; i++)
+                        {
+                            var keyProperty = primaryKeyProperties[i];
+                            entityProjectionIdentifiers.Add((ColumnExpression)jsonQueryExpression.BindProperty(keyProperty));
+                            entityProjectionValueComparers.Add(keyProperty.GetKeyValueComparer());
+                        }
+
+                        break;
+
+                    case SqlExpression sqlExpression:
+                        otherExpressions.Add(sqlExpression);
+                        break;
+
+                    default:
+                        nonProcessableExpressionFound = true;
+                        break;
                 }
             }
 
@@ -767,7 +774,7 @@ public sealed partial class SelectExpression : TableExpressionBase
 
         void AddEntityProjection(EntityProjectionExpression entityProjectionExpression)
         {
-            foreach (var property in GetAllPropertiesInHierarchy(entityProjectionExpression.EntityType))
+            foreach (var property in GetAllPropertiesInHierarchy(entityProjectionExpression.TypeBase))
             {
                 AddToProjection(entityProjectionExpression.BindProperty(property), null);
             }
@@ -1595,18 +1602,51 @@ public sealed partial class SelectExpression : TableExpressionBase
 
         ConstantExpression AddEntityProjection(EntityProjectionExpression entityProjectionExpression)
         {
-            var dictionary = new Dictionary<IProperty, int>();
-            foreach (var property in GetAllPropertiesInHierarchy(entityProjectionExpression.EntityType))
+            // TODO: This should be an entity type, right? Make sure of that.
+            var projections = new Dictionary<IProperty, int>();
+
+            foreach (var property in GetAllPropertiesInHierarchy(entityProjectionExpression.TypeBase))
             {
-                dictionary[property] = AddToProjection(entityProjectionExpression.BindProperty(property), null);
+                projections[property] = AddToProjection(entityProjectionExpression.BindProperty(property), null);
             }
 
-            if (entityProjectionExpression.DiscriminatorExpression != null)
+            if (entityProjectionExpression.DiscriminatorExpression is not null)
             {
                 AddToProjection(entityProjectionExpression.DiscriminatorExpression, DiscriminatorColumnAlias);
             }
 
-            return Constant(dictionary);
+            foreach (var complexProperty in entityProjectionExpression.TypeBase.GetComplexProperties())
+            {
+                // Since we don't support complex type splitting, the table mapped to the complex type must already be in our tables list.
+                var mappings = complexProperty.ComplexType.GetViewOrTableMappings().ToList();
+
+                if (mappings.Count > 1)
+                {
+                    throw new InvalidOperationException(); // TODO: Complex type splitting not supported
+                }
+
+                var table = mappings.Single().Table;
+                var tableIndex = _tables.FindIndex(t => t is TableExpression te && te.Table == table);
+                var tableReferenceExpression = _tableReferences[tableIndex];
+
+                ProcessComplexProperties(complexProperty.ComplexType);
+
+                void ProcessComplexProperties(IComplexType complexType)
+                {
+                    foreach (var property in GetAllPropertiesInHierarchy(complexType))
+                    {
+                        // TODO: Nullability
+                        projections[property] = AddToProjection(CreateColumnExpression(property, table, tableReferenceExpression, nullable: false));
+                    }
+
+                    foreach (var complexProperty in complexType.GetComplexProperties())
+                    {
+                        ProcessComplexProperties(complexProperty.ComplexType);
+                    }
+                }
+            }
+
+            return Constant(projections);
         }
 
         ConstantExpression AddJsonProjection(JsonQueryExpression jsonQueryExpression, JsonScalarExpression jsonScalarToAdd)
@@ -2015,7 +2055,7 @@ public sealed partial class SelectExpression : TableExpressionBase
                 break;
 
             case EntityShaperExpression { ValueBufferExpression: EntityProjectionExpression entityProjectionExpression }:
-                foreach (var property in GetAllPropertiesInHierarchy(entityProjectionExpression.EntityType))
+                foreach (var property in GetAllPropertiesInHierarchy(entityProjectionExpression.TypeBase))
                 {
                     PopulateGroupByTerms(entityProjectionExpression.BindProperty(property), groupByTerms, groupByAliases, name: null);
                 }
@@ -2364,13 +2404,13 @@ public sealed partial class SelectExpression : TableExpressionBase
             SelectExpression select2,
             EntityProjectionExpression projection2)
         {
-            if (projection1.EntityType != projection2.EntityType)
+            if (projection1.TypeBase != projection2.TypeBase)
             {
                 throw new InvalidOperationException(RelationalStrings.SetOperationsOnDifferentStoreTypes);
             }
 
             var propertyExpressions = new Dictionary<IProperty, ColumnExpression>();
-            foreach (var property in GetAllPropertiesInHierarchy(projection1.EntityType))
+            foreach (var property in GetAllPropertiesInHierarchy(projection1.TypeBase))
             {
                 var column1 = projection1.BindProperty(property);
                 var column2 = projection2.BindProperty(property);
@@ -2418,14 +2458,18 @@ public sealed partial class SelectExpression : TableExpressionBase
                 discriminatorExpression = new ConcreteColumnExpression(innerProjection, tableReferenceExpression);
             }
 
-            var entityProjection = new EntityProjectionExpression(projection1.EntityType, propertyExpressions, discriminatorExpression);
+            var entityProjection = new EntityProjectionExpression(projection1.TypeBase, propertyExpressions, discriminatorExpression);
 
             if (outerIdentifiers.Length > 0)
             {
-                var primaryKey = entityProjection.EntityType.FindPrimaryKey();
-                // If there are any existing identifier then all entity projection must have a key
-                // else keyless entity would have wiped identifier when generating join.
-                Check.DebugAssert(primaryKey != null, "primary key is null.");
+                // We know that there are existing identifiers (see condition above); we know we must have a key since a keyless
+                // entity type would have wiped the identifiers when generating the join.
+                if (entityProjection is not { TypeBase: IEntityType entityType }
+                    || entityType.FindPrimaryKey() is not IKey primaryKey)
+                {
+                    throw new InvalidOperationException("IMPOSSIBLE");
+                }
+
                 foreach (var property in primaryKey.Properties)
                 {
                     entityProjectionIdentifiers.Add(entityProjection.BindProperty(property));
@@ -2794,6 +2838,52 @@ public sealed partial class SelectExpression : TableExpressionBase
 
             return table;
         }
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    [EntityFrameworkInternal]
+    public EntityShaperExpression GenerateComplexPropertyShaperExpression(
+        EntityProjectionExpression principalEntityProjection, // TODO: Needed in order to determine nullability
+        IComplexProperty complexProperty)
+    {
+        var propertyExpressionMap = new Dictionary<IProperty, ColumnExpression>();
+
+        // TODO: Type splitting for complex types??
+        var table = complexProperty.ComplexType.GetTableMappings().Single().Table;
+
+        TableExpressionBase tableExpression = new TableExpression(table);
+        foreach (var annotation in table.GetAnnotations())
+        {
+            tableExpression = tableExpression.AddAnnotation(annotation.Name, annotation.Value);
+        }
+        var tableReferenceExpression = new TableReferenceExpression(this, tableExpression.Alias!);
+
+        // TODO: need to find out if the source entity projection is nullable.
+        // For owned entities this is done by binding the identifier column and checking if its nullable, but we can't do that since
+        // the source projection may be itself a complex type
+
+        var isNullable = /*principalEntityProjection.IsNullable ||*/ complexProperty.IsNullable;
+
+        foreach (var property in complexProperty.ComplexType.GetProperties())
+        {
+            var column = table.FindColumn(property)!;
+            propertyExpressionMap[property] = CreateColumnExpression(property, column, tableReferenceExpression, isNullable);
+        }
+
+        var entityShaper = new RelationalEntityShaperExpression(
+            complexProperty.ComplexType,
+            new EntityProjectionExpression(complexProperty.ComplexType, propertyExpressionMap),
+            isNullable);
+
+        // TODO: Caching...
+        // principalEntityProjection.AddNavigationBinding(navigation, entityShaper);
+
+        return entityShaper;
     }
 
     private enum JoinType
@@ -3352,7 +3442,7 @@ public sealed partial class SelectExpression : TableExpressionBase
                 {
                     if (expression is EntityProjectionExpression entityProjection)
                     {
-                        foreach (var property in GetAllPropertiesInHierarchy(entityProjection.EntityType))
+                        foreach (var property in GetAllPropertiesInHierarchy(entityProjection.TypeBase))
                         {
                             result.Add(entityProjection.BindProperty(property));
                         }
@@ -3730,7 +3820,7 @@ public sealed partial class SelectExpression : TableExpressionBase
         EntityProjectionExpression LiftEntityProjectionFromSubquery(EntityProjectionExpression entityProjection)
         {
             var propertyExpressions = new Dictionary<IProperty, ColumnExpression>();
-            foreach (var property in GetAllPropertiesInHierarchy(entityProjection.EntityType))
+            foreach (var property in GetAllPropertiesInHierarchy(entityProjection.TypeBase))
             {
                 var innerColumn = entityProjection.BindProperty(property);
                 var outerColumn = subquery.GenerateOuterColumn(subqueryTableReferenceExpression, innerColumn);
@@ -3747,23 +3837,26 @@ public sealed partial class SelectExpression : TableExpressionBase
             }
 
             var newEntityProjection = new EntityProjectionExpression(
-                entityProjection.EntityType, propertyExpressions, discriminatorExpression);
+                entityProjection.TypeBase, propertyExpressions, discriminatorExpression);
 
-            // Also lift nested entity projections
-            foreach (var navigation in entityProjection.EntityType
-                         .GetAllBaseTypes().Concat(entityProjection.EntityType.GetDerivedTypesInclusive())
-                         .SelectMany(t => t.GetDeclaredNavigations()))
+            if (entityProjection.TypeBase is IEntityType entityType)
             {
-                var boundEntityShaperExpression = entityProjection.BindNavigation(navigation);
-                if (boundEntityShaperExpression != null)
+                // Also lift nested entity projections
+                foreach (var navigation in entityType
+                             .GetAllBaseTypes().Concat(entityType.GetDerivedTypesInclusive())
+                             .SelectMany(t => t.GetDeclaredNavigations()))
                 {
-                    var newValueBufferExpression =
-                        boundEntityShaperExpression.ValueBufferExpression is EntityProjectionExpression innerEntityProjection
-                            ? (Expression)LiftEntityProjectionFromSubquery(innerEntityProjection)
-                            : LiftJsonQueryFromSubquery((JsonQueryExpression)boundEntityShaperExpression.ValueBufferExpression);
+                    var boundEntityShaperExpression = entityProjection.BindNavigation(navigation);
+                    if (boundEntityShaperExpression != null)
+                    {
+                        var newValueBufferExpression =
+                            boundEntityShaperExpression.ValueBufferExpression is EntityProjectionExpression innerEntityProjection
+                                ? (Expression)LiftEntityProjectionFromSubquery(innerEntityProjection)
+                                : LiftJsonQueryFromSubquery((JsonQueryExpression)boundEntityShaperExpression.ValueBufferExpression);
 
-                    boundEntityShaperExpression = boundEntityShaperExpression.Update(newValueBufferExpression);
-                    newEntityProjection.AddNavigationBinding(navigation, boundEntityShaperExpression);
+                        boundEntityShaperExpression = boundEntityShaperExpression.Update(newValueBufferExpression);
+                        newEntityProjection.AddNavigationBinding(navigation, boundEntityShaperExpression);
+                    }
                 }
             }
 
@@ -4054,9 +4147,14 @@ public sealed partial class SelectExpression : TableExpressionBase
     private static TableExpressionBase UnwrapJoinExpression(TableExpressionBase tableExpressionBase)
         => (tableExpressionBase as JoinExpressionBase)?.Table ?? tableExpressionBase;
 
-    private static IEnumerable<IProperty> GetAllPropertiesInHierarchy(IEntityType entityType)
-        => entityType.GetAllBaseTypes().Concat(entityType.GetDerivedTypesInclusive())
-            .SelectMany(t => t.GetDeclaredProperties());
+    private static IEnumerable<IProperty> GetAllPropertiesInHierarchy(ITypeBase typeBase)
+        => typeBase switch
+        {
+            IEntityType entityType => entityType.GetAllBaseTypes().Concat(entityType.GetDerivedTypesInclusive())
+                .SelectMany(t => t.GetDeclaredProperties()),
+            IComplexType complexType => complexType.GetDeclaredProperties(),
+            _ => throw new InvalidOperationException("IMPOSSIBLE")
+        };
 
     private static IEnumerable<INavigation> GetAllNavigationsInHierarchy(IEntityType entityType)
         => entityType.GetAllBaseTypes().Concat(entityType.GetDerivedTypesInclusive())

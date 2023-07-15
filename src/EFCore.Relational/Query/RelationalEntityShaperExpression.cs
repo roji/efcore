@@ -20,18 +20,18 @@ public class RelationalEntityShaperExpression : EntityShaperExpression
     /// <summary>
     ///     Creates a new instance of the <see cref="RelationalEntityShaperExpression" /> class.
     /// </summary>
-    /// <param name="entityType">The entity type to shape.</param>
+    /// <param name="typeBase">The entity type to shape.</param>
     /// <param name="valueBufferExpression">An expression of ValueBuffer to get values for properties of the entity.</param>
     /// <param name="nullable">A bool value indicating whether this entity instance can be null.</param>
-    public RelationalEntityShaperExpression(IEntityType entityType, Expression valueBufferExpression, bool nullable)
-        : base(entityType, valueBufferExpression, nullable, null)
+    public RelationalEntityShaperExpression(ITypeBase typeBase, Expression valueBufferExpression, bool nullable)
+        : base(typeBase, valueBufferExpression, nullable, null)
     {
     }
 
     /// <summary>
     ///     Creates a new instance of the <see cref="RelationalEntityShaperExpression" /> class.
     /// </summary>
-    /// <param name="entityType">The entity type to shape.</param>
+    /// <param name="typeBase">The entity type to shape.</param>
     /// <param name="valueBufferExpression">An expression of ValueBuffer to get values for properties of the entity.</param>
     /// <param name="nullable">Whether this entity instance can be null.</param>
     /// <param name="materializationCondition">
@@ -39,17 +39,23 @@ public class RelationalEntityShaperExpression : EntityShaperExpression
     ///     materialize.
     /// </param>
     protected RelationalEntityShaperExpression(
-        IEntityType entityType,
+        ITypeBase typeBase,
         Expression valueBufferExpression,
         bool nullable,
         LambdaExpression? materializationCondition)
-        : base(entityType, valueBufferExpression, nullable, materializationCondition)
+        : base(typeBase, valueBufferExpression, nullable, materializationCondition)
     {
     }
 
     /// <inheritdoc />
-    protected override LambdaExpression GenerateMaterializationCondition(IEntityType entityType, bool nullable)
+    protected override LambdaExpression GenerateMaterializationCondition(ITypeBase typeBase, bool nullable)
     {
+        if (typeBase is IComplexType)
+        {
+            return base.GenerateMaterializationCondition(typeBase, nullable);
+        }
+
+        var entityType = (IEntityType)typeBase;
         LambdaExpression baseCondition;
         // Generate discriminator condition
         var containsDiscriminatorProperty = entityType.FindDiscriminatorProperty() != null;
@@ -152,12 +158,12 @@ public class RelationalEntityShaperExpression : EntityShaperExpression
     public override EntityShaperExpression MakeNullable(bool nullable = true)
         => IsNullable != nullable
             // Marking nullable requires re-computation of Discriminator condition
-            ? new RelationalEntityShaperExpression(EntityType, ValueBufferExpression, true)
+            ? new RelationalEntityShaperExpression(TypeBase, ValueBufferExpression, true)
             : this;
 
     /// <inheritdoc />
     public override EntityShaperExpression Update(Expression valueBufferExpression)
         => valueBufferExpression != ValueBufferExpression
-            ? new RelationalEntityShaperExpression(EntityType, valueBufferExpression, IsNullable, MaterializationCondition)
+            ? new RelationalEntityShaperExpression(TypeBase, valueBufferExpression, IsNullable, MaterializationCondition)
             : this;
 }
