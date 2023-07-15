@@ -314,6 +314,7 @@ public abstract class ShapedQueryCompilingExpressionVisitor : ExpressionVisitor
         public Expression Inject(Expression expression)
         {
             var result = Visit(expression);
+
             if (_queryTrackingBehavior == QueryTrackingBehavior.TrackAll)
             {
                 foreach (var entityType in _visitedEntityTypes)
@@ -344,7 +345,8 @@ public abstract class ShapedQueryCompilingExpressionVisitor : ExpressionVisitor
             var expressions = new List<Expression>();
             var variables = new List<ParameterExpression>();
 
-            var entityType = entityShaperExpression.EntityType;
+            var typeBase = entityShaperExpression.StructuralType;
+            var clrType = typeBase.ClrType;
 
             var materializationContextVariable = Variable(
                 typeof(MaterializationContext),
@@ -360,16 +362,16 @@ public abstract class ShapedQueryCompilingExpressionVisitor : ExpressionVisitor
 
             var valueBufferExpression = Call(materializationContextVariable, MaterializationContext.GetValueBufferMethod);
 
-            var primaryKey = entityType.FindPrimaryKey();
+            var primaryKey = typeBase is IEntityType entityType ? entityType.FindPrimaryKey() : null;
 
             var concreteEntityTypeVariable = Variable(
-                typeof(IEntityType),
+                typeBase is IEntityType ? typeof(IEntityType) : typeof(IComplexType),
                 "entityType" + _currentEntityIndex);
             variables.Add(concreteEntityTypeVariable);
 
-            var instanceVariable = Variable(entityType.ClrType, "instance" + _currentEntityIndex);
+            var instanceVariable = Variable(clrType, "instance" + _currentEntityIndex);
             variables.Add(instanceVariable);
-            expressions.Add(Assign(instanceVariable, Constant(null, entityType.ClrType)));
+            expressions.Add(Assign(instanceVariable, Constant(null, clrType)));
 
             if (_queryStateManager
                 && primaryKey != null)
@@ -407,7 +409,7 @@ public abstract class ShapedQueryCompilingExpressionVisitor : ExpressionVisitor
                                 Assign(
                                     instanceVariable, Convert(
                                         MakeMemberAccess(entryVariable, EntityMemberInfo),
-                                        entityType.ClrType))),
+                                        clrType))),
                             MaterializeEntity(
                                 entityShaperExpression, materializationContextVariable, concreteEntityTypeVariable, instanceVariable,
                                 entryVariable))));
@@ -455,7 +457,7 @@ public abstract class ShapedQueryCompilingExpressionVisitor : ExpressionVisitor
                                                     typeof(object), p.GetIndex(), p)))),
                                     Call(
                                         CreateNullKeyValueInNoTrackingQueryMethod,
-                                        Constant(entityType),
+                                        Constant(typeBase),
                                         Constant(primaryKey.Properties),
                                         keyValuesVariable))));
                     }
@@ -480,7 +482,7 @@ public abstract class ShapedQueryCompilingExpressionVisitor : ExpressionVisitor
             ParameterExpression instanceVariable,
             ParameterExpression? entryVariable)
         {
-            var entityType = entityShaperExpression.EntityType;
+            var typeBase = entityShaperExpression.StructuralType;
 
             var expressions = new List<Expression>();
             var variables = new List<ParameterExpression>();
@@ -494,7 +496,7 @@ public abstract class ShapedQueryCompilingExpressionVisitor : ExpressionVisitor
                     shadowValuesVariable,
                     Constant(ValueBuffer.Empty)));
 
-            var returnType = entityType.ClrType;
+            var returnType = typeBase.ClrType;
             var valueBufferExpression = Call(materializationContextVariable, MaterializationContext.GetValueBufferMethod);
             var expressionContext = (returnType, materializationContextVariable, concreteEntityTypeVariable, shadowValuesVariable);
             expressions.Add(
@@ -505,14 +507,16 @@ public abstract class ShapedQueryCompilingExpressionVisitor : ExpressionVisitor
                         valueBufferExpression,
                         entityShaperExpression.MaterializationCondition.Body)));
 
-            var concreteEntityTypes = entityType.GetConcreteDerivedTypesInclusive().ToArray();
+            var (primaryKey, concreteEntityTypes) = typeBase is IEntityType entityType
+                ? (entityType.FindPrimaryKey(), entityType.GetConcreteDerivedTypesInclusive().Cast<ITypeBase>().ToArray())
+                : (null, new[] { typeBase});
 
             var switchCases = new SwitchCase[concreteEntityTypes.Length];
             for (var i = 0; i < concreteEntityTypes.Length; i++)
             {
                 switchCases[i] = SwitchCase(
                     CreateFullMaterializeExpression(concreteEntityTypes[i], expressionContext),
-                    Constant(concreteEntityTypes[i], typeof(IEntityType)));
+                    Constant(concreteEntityTypes[i], typeBase is IEntityType ? typeof(IEntityType) : typeof(IComplexType)));
             }
 
             var materializationExpression = Switch(
@@ -522,12 +526,14 @@ public abstract class ShapedQueryCompilingExpressionVisitor : ExpressionVisitor
 
             expressions.Add(Assign(instanceVariable, materializationExpression));
 
-            if (_queryStateManager
-                && entityType.FindPrimaryKey() != null)
+            if (_queryStateManager && primaryKey is not null)
             {
-                foreach (var et in entityType.GetAllBaseTypes().Concat(entityType.GetDerivedTypesInclusive()))
+                if (typeBase is IEntityType entityType2)
                 {
-                    _visitedEntityTypes.Add(et);
+                    foreach (var et in entityType2.GetAllBaseTypes().Concat(entityType2.GetDerivedTypesInclusive()))
+                    {
+                        _visitedEntityTypes.Add(et);
+                    }
                 }
 
                 expressions.Add(
@@ -553,7 +559,7 @@ public abstract class ShapedQueryCompilingExpressionVisitor : ExpressionVisitor
         }
 
         private BlockExpression CreateFullMaterializeExpression(
-            IEntityType concreteEntityType,
+            ITypeBase concreteTypeBase,
             (Type ReturnType,
                 ParameterExpression MaterializationContextVariable,
                 ParameterExpression ConcreteEntityTypeVariable,
@@ -569,19 +575,24 @@ public abstract class ShapedQueryCompilingExpressionVisitor : ExpressionVisitor
             var materializer = _entityMaterializerSource
                 .CreateMaterializeExpression(
                     new EntityMaterializerSourceParameters(
-                        concreteEntityType, "instance", _queryTrackingBehavior), materializationContextVariable);
+                        concreteTypeBase, "instance", _queryTrackingBehavior), materializationContextVariable);
 
             if (_queryStateManager
-                && ((IRuntimeEntityType)concreteEntityType).ShadowPropertyCount > 0)
+                && ((IRuntimeTypeBase)concreteTypeBase).ShadowPropertyCount > 0)
             {
                 var valueBufferExpression = Call(
                     materializationContextVariable, MaterializationContext.GetValueBufferMethod);
 
-                var shadowProperties = concreteEntityType.GetProperties()
-                    .Concat<IPropertyBase>(concreteEntityType.GetNavigations())
-                    .Concat(concreteEntityType.GetSkipNavigations())
-                    .Where(n => n.IsShadowProperty())
-                    .OrderBy(e => e.GetShadowIndex());
+                IEnumerable<IPropertyBase> shadowProperties = concreteTypeBase.GetProperties();
+
+                if (concreteTypeBase is IEntityType concreteEntityType)
+                {
+                    shadowProperties = shadowProperties
+                        .Concat(concreteEntityType.GetNavigations())
+                        .Concat(concreteEntityType.GetSkipNavigations());
+                }
+
+                shadowProperties = shadowProperties.Where(n => n.IsShadowProperty()).OrderBy(e => e.GetShadowIndex());
 
                 blockExpressions.Add(
                     Assign(

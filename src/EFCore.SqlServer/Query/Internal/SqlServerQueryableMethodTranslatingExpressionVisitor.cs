@@ -318,7 +318,7 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
             else
             {
                 var projectionBindingExpression = (ProjectionBindingExpression)entityShaperExpression.ValueBufferExpression;
-                var entityProjectionExpression = (EntityProjectionExpression)selectExpression.GetProjection(projectionBindingExpression);
+                var entityProjectionExpression = (StructuralTypeProjectionExpression)selectExpression.GetProjection(projectionBindingExpression);
                 var column = entityProjectionExpression.BindProperty(entityShaperExpression.EntityType.GetProperties().First());
                 table = column.Table;
                 if (table is JoinExpressionBase joinExpressionBase)
@@ -364,7 +364,7 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
             else
             {
                 var projectionBindingExpression = (ProjectionBindingExpression)entityShaperExpression.ValueBufferExpression;
-                var entityProjectionExpression = (EntityProjectionExpression)selectExpression.GetProjection(projectionBindingExpression);
+                var entityProjectionExpression = (StructuralTypeProjectionExpression)selectExpression.GetProjection(projectionBindingExpression);
                 var column = entityProjectionExpression.BindProperty(entityShaperExpression.EntityType.GetProperties().First());
                 table = column.Table;
                 if (table is JoinExpressionBase joinExpressionBase)

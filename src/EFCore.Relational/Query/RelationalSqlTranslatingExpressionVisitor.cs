@@ -427,7 +427,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                         null)
                     ?? QueryCompilationContext.NotTranslatedExpression;
 
-        Expression ProcessGetType(EntityReferenceExpression entityReferenceExpression, Type comparisonType, bool match)
+        Expression ProcessGetType(StructuralTypeReferenceExpression entityReferenceExpression, Type comparisonType, bool match)
         {
             var entityType = entityReferenceExpression.EntityType;
 
@@ -466,7 +466,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                 if (entityReferenceExpression.SubqueryEntity != null)
                 {
                     var entityShaper = (EntityShaperExpression)entityReferenceExpression.SubqueryEntity.ShaperExpression;
-                    var entityProjection = (EntityProjectionExpression)Visit(entityShaper.ValueBufferExpression);
+                    var entityProjection = (StructuralTypeProjectionExpression)Visit(entityShaper.ValueBufferExpression);
                     var subSelectExpression = (SelectExpression)entityReferenceExpression.SubqueryEntity.QueryExpression;
 
                     var predicate = GeneratePredicateTpt(entityProjection);
@@ -485,13 +485,13 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
                 if (entityReferenceExpression.ParameterEntity != null)
                 {
-                    var entityProjection = (EntityProjectionExpression)Visit(
+                    var entityProjection = (StructuralTypeProjectionExpression)Visit(
                         entityReferenceExpression.ParameterEntity.ValueBufferExpression);
 
                     return GeneratePredicateTpt(entityProjection);
                 }
 
-                SqlExpression GeneratePredicateTpt(EntityProjectionExpression entityProjectionExpression)
+                SqlExpression GeneratePredicateTpt(StructuralTypeProjectionExpression entityProjectionExpression)
                 {
                     if (entityProjectionExpression.DiscriminatorExpression is CaseExpression caseExpression)
                     {
@@ -546,7 +546,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             return QueryCompilationContext.NotTranslatedExpression;
         }
 
-        bool IsGetTypeMethodCall(Expression expression, out EntityReferenceExpression? entityReferenceExpression)
+        bool IsGetTypeMethodCall(Expression expression, out StructuralTypeReferenceExpression? entityReferenceExpression)
         {
             entityReferenceExpression = null;
             if (expression is not MethodCallExpression methodCallExpression
@@ -555,7 +555,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                 return false;
             }
 
-            entityReferenceExpression = Visit(methodCallExpression.Object) as EntityReferenceExpression;
+            entityReferenceExpression = Visit(methodCallExpression.Object) as StructuralTypeReferenceExpression;
             return entityReferenceExpression != null;
         }
 
@@ -608,15 +608,15 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     {
         switch (extensionExpression)
         {
-            case EntityProjectionExpression:
-            case EntityReferenceExpression:
+            case StructuralTypeProjectionExpression:
+            case StructuralTypeReferenceExpression:
             case SqlExpression:
             case EnumerableExpression:
             case JsonQueryExpression:
                 return extensionExpression;
 
             case EntityShaperExpression entityShaperExpression:
-                return new EntityReferenceExpression(entityShaperExpression);
+                return new StructuralTypeReferenceExpression(entityShaperExpression);
 
             case ProjectionBindingExpression projectionBindingExpression:
                 return Visit(
@@ -644,7 +644,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                     && (convertedType == null
                         || convertedType.IsAssignableFrom(ese.Type)))
                 {
-                    return new EntityReferenceExpression(shapedQueryExpression.UpdateShaperExpression(innerExpression));
+                    return new StructuralTypeReferenceExpression(shapedQueryExpression.UpdateShaperExpression(innerExpression));
                 }
 
                 if (innerExpression is ProjectionBindingExpression pbe
@@ -1022,7 +1022,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
         var innerExpression = Visit(typeBinaryExpression.Expression);
 
         if (typeBinaryExpression.NodeType != ExpressionType.TypeIs
-            || innerExpression is not EntityReferenceExpression entityReferenceExpression)
+            || innerExpression is not StructuralTypeReferenceExpression entityReferenceExpression)
         {
             return QueryCompilationContext.NotTranslatedExpression;
         }
@@ -1052,7 +1052,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             if (entityReferenceExpression.SubqueryEntity != null)
             {
                 var entityShaper = (EntityShaperExpression)entityReferenceExpression.SubqueryEntity.ShaperExpression;
-                var entityProjection = (EntityProjectionExpression)Visit(entityShaper.ValueBufferExpression);
+                var entityProjection = (StructuralTypeProjectionExpression)Visit(entityShaper.ValueBufferExpression);
                 var subSelectExpression = (SelectExpression)entityReferenceExpression.SubqueryEntity.QueryExpression;
 
                 var predicate = GeneratePredicateTpt(entityProjection);
@@ -1071,13 +1071,13 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
             if (entityReferenceExpression.ParameterEntity != null)
             {
-                var entityProjection = (EntityProjectionExpression)Visit(
+                var entityProjection = (StructuralTypeProjectionExpression)Visit(
                     entityReferenceExpression.ParameterEntity.ValueBufferExpression);
 
                 return GeneratePredicateTpt(entityProjection);
             }
 
-            SqlExpression GeneratePredicateTpt(EntityProjectionExpression entityProjectionExpression)
+            SqlExpression GeneratePredicateTpt(StructuralTypeProjectionExpression entityProjectionExpression)
             {
                 if (entityProjectionExpression.DiscriminatorExpression is CaseExpression caseExpression)
                 {
@@ -1136,7 +1136,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     {
         var operand = Visit(unaryExpression.Operand);
 
-        if (operand is EntityReferenceExpression entityReferenceExpression
+        if (operand is StructuralTypeReferenceExpression entityReferenceExpression
             && unaryExpression.NodeType is ExpressionType.Convert or ExpressionType.ConvertChecked or ExpressionType.TypeAs)
         {
             return entityReferenceExpression.Convert(unaryExpression.Type);
@@ -1188,15 +1188,15 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
     private SqlExpression? TryBindMember(Expression? source, MemberIdentity member)
     {
-        if (source is not EntityReferenceExpression entityReferenceExpression)
+        if (source is not StructuralTypeReferenceExpression entityReferenceExpression)
         {
             return null;
         }
 
-        var entityType = entityReferenceExpression.EntityType;
+        var structuralType = entityReferenceExpression.StructuralType;
         var property = member.MemberInfo != null
-            ? entityType.FindProperty(member.MemberInfo)
-            : entityType.FindProperty(member.Name!);
+            ? structuralType.FindProperty(member.MemberInfo)
+            : structuralType.FindProperty(member.Name!);
 
         if (property != null)
         {
@@ -1211,21 +1211,21 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
         return null;
     }
 
-    private SqlExpression? BindProperty(EntityReferenceExpression entityReferenceExpression, IProperty property)
+    private SqlExpression? BindProperty(StructuralTypeReferenceExpression structuralTypeReferenceExpression, IProperty property)
     {
-        if (entityReferenceExpression.ParameterEntity != null)
+        if (structuralTypeReferenceExpression.ParameterEntity != null)
         {
-            var valueBufferExpression = Visit(entityReferenceExpression.ParameterEntity.ValueBufferExpression);
+            var valueBufferExpression = Visit(structuralTypeReferenceExpression.ParameterEntity.ValueBufferExpression);
             if (valueBufferExpression is JsonQueryExpression jsonQueryExpression)
             {
                 return jsonQueryExpression.BindProperty(property);
             }
 
-            var entityProjectionExpression = (EntityProjectionExpression)valueBufferExpression;
+            var entityProjectionExpression = (StructuralTypeProjectionExpression)valueBufferExpression;
             var propertyAccess = entityProjectionExpression.BindProperty(property);
 
-            var entityType = entityReferenceExpression.EntityType;
-            if (entityType.FindDiscriminatorProperty() != null
+            if (structuralTypeReferenceExpression.StructuralType is not IEntityType entityType
+                || entityType.FindDiscriminatorProperty() != null
                 || entityType.FindPrimaryKey() == null
                 || entityType.GetRootType() != entityType
                 || entityType.GetMappingStrategy() == RelationalAnnotationNames.TpcMappingStrategy)
@@ -1287,13 +1287,13 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             // single result so either it is regular entity or a collection which always have their own table.
         }
 
-        if (entityReferenceExpression.SubqueryEntity != null)
+        if (structuralTypeReferenceExpression.SubqueryEntity != null)
         {
-            var entityShaper = (EntityShaperExpression)entityReferenceExpression.SubqueryEntity.ShaperExpression;
-            var subSelectExpression = (SelectExpression)entityReferenceExpression.SubqueryEntity.QueryExpression;
+            var entityShaper = (EntityShaperExpression)structuralTypeReferenceExpression.SubqueryEntity.ShaperExpression;
+            var subSelectExpression = (SelectExpression)structuralTypeReferenceExpression.SubqueryEntity.QueryExpression;
 
             var projectionBindingExpression = (ProjectionBindingExpression)entityShaper.ValueBufferExpression;
-            var entityProjectionExpression = (EntityProjectionExpression)subSelectExpression.GetProjection(projectionBindingExpression);
+            var entityProjectionExpression = (StructuralTypeProjectionExpression)subSelectExpression.GetProjection(projectionBindingExpression);
             var innerProjection = entityProjectionExpression.BindProperty(property);
             subSelectExpression.ReplaceProjection(new List<Expression> { innerProjection });
             subSelectExpression.ApplyProjection();
@@ -1587,7 +1587,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     {
         result = null;
 
-        if (item is not EntityReferenceExpression itemEntityReference)
+        if (item is not StructuralTypeReferenceExpression itemEntityReference)
         {
             return false;
         }
@@ -1662,8 +1662,8 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
         bool equalsMethod,
         [NotNullWhen(true)] out Expression? result)
     {
-        var leftEntityReference = left as EntityReferenceExpression;
-        var rightEntityReference = right as EntityReferenceExpression;
+        var leftEntityReference = left as StructuralTypeReferenceExpression;
+        var rightEntityReference = right as StructuralTypeReferenceExpression;
 
         if (leftEntityReference == null
             && rightEntityReference == null)
@@ -1892,33 +1892,40 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
         return false;
     }
 
-    private sealed class EntityReferenceExpression : Expression
+    private sealed class StructuralTypeReferenceExpression : Expression
     {
-        public EntityReferenceExpression(EntityShaperExpression parameter)
+        public StructuralTypeReferenceExpression(EntityShaperExpression parameter)
         {
             ParameterEntity = parameter;
-            EntityType = parameter.EntityType;
+            StructuralType = parameter.StructuralType;
         }
 
-        public EntityReferenceExpression(ShapedQueryExpression subquery)
+        public StructuralTypeReferenceExpression(ShapedQueryExpression subquery)
         {
             SubqueryEntity = subquery;
-            EntityType = ((EntityShaperExpression)subquery.ShaperExpression).EntityType;
+            StructuralType = ((EntityShaperExpression)subquery.ShaperExpression).StructuralType;
         }
 
-        private EntityReferenceExpression(EntityReferenceExpression entityReferenceExpression, IEntityType entityType)
+        private StructuralTypeReferenceExpression(
+            StructuralTypeReferenceExpression structuralTypeReferenceExpression, ITypeBase structuralType)
         {
-            ParameterEntity = entityReferenceExpression.ParameterEntity;
-            SubqueryEntity = entityReferenceExpression.SubqueryEntity;
-            EntityType = entityType;
+            ParameterEntity = structuralTypeReferenceExpression.ParameterEntity;
+            SubqueryEntity = structuralTypeReferenceExpression.SubqueryEntity;
+            StructuralType = structuralType;
         }
 
         public EntityShaperExpression? ParameterEntity { get; }
         public ShapedQueryExpression? SubqueryEntity { get; }
-        public IEntityType EntityType { get; }
+
+        // TODO: Temporary, remove
+        public IEntityType EntityType
+            => StructuralType as IEntityType
+                ?? throw new InvalidOperationException("Type isn't an entity type: " + StructuralType.DisplayName());
+
+        public ITypeBase StructuralType { get; }
 
         public override Type Type
-            => EntityType.ClrType;
+            => StructuralType.ClrType;
 
         public override ExpressionType NodeType
             => ExpressionType.Extension;
@@ -1935,7 +1942,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
             return derivedEntityType == null
                 ? QueryCompilationContext.NotTranslatedExpression
-                : new EntityReferenceExpression(this, derivedEntityType);
+                : new StructuralTypeReferenceExpression(this, derivedEntityType);
         }
     }
 }

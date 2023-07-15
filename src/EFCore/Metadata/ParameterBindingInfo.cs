@@ -14,16 +14,16 @@ public readonly struct ParameterBindingInfo
     /// <summary>
     ///     Creates a new <see cref="ParameterBindingInfo" /> to define a parameter binding.
     /// </summary>
-    /// <param name="entityType">The entity type for this binding.</param>
+    /// <param name="typeBase">The entity type for this binding.</param>
     /// <param name="materializationContextExpression">The expression tree from which the parameter value will come.</param>
     public ParameterBindingInfo(
-        IEntityType entityType,
+        IEntityType typeBase,
         Expression materializationContextExpression)
     {
-        Check.NotNull(entityType, nameof(entityType));
-        Check.NotNull(entityType, nameof(materializationContextExpression));
+        Check.NotNull(typeBase, nameof(typeBase));
+        Check.NotNull(typeBase, nameof(materializationContextExpression));
 
-        EntityType = entityType;
+        TypeBase = typeBase;
         EntityInstanceName = "instance";
         MaterializationContextExpression = materializationContextExpression;
     }
@@ -37,7 +37,7 @@ public readonly struct ParameterBindingInfo
         EntityMaterializerSourceParameters materializerSourceParameters,
         Expression materializationContextExpression)
     {
-        EntityType = materializerSourceParameters.EntityType;
+        TypeBase = materializerSourceParameters.TypeBase;
         QueryTrackingBehavior = materializerSourceParameters.QueryTrackingBehavior;
         EntityInstanceName = materializerSourceParameters.EntityInstanceName;
         MaterializationContextExpression = materializationContextExpression;
@@ -46,7 +46,7 @@ public readonly struct ParameterBindingInfo
     /// <summary>
     ///     The entity type for this binding.
     /// </summary>
-    public IEntityType EntityType { get; }
+    public ITypeBase TypeBase { get; }
 
     /// <summary>
     ///     The name of the instance being materialized.

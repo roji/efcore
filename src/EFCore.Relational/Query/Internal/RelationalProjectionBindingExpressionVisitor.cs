@@ -24,7 +24,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
     private SelectExpression _selectExpression;
 
     private bool _indexBasedBinding;
-    private Dictionary<EntityProjectionExpression, ProjectionBindingExpression>? _entityProjectionCache;
+    private Dictionary<StructuralTypeProjectionExpression, ProjectionBindingExpression>? _projectionBindingCache;
     private List<Expression>? _clientProjections;
 
     private readonly Dictionary<ProjectionMember, Expression> _projectionMapping = new();
@@ -64,7 +64,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
         if (result == QueryCompilationContext.NotTranslatedExpression)
         {
             _indexBasedBinding = true;
-            _entityProjectionCache = new Dictionary<EntityProjectionExpression, ProjectionBindingExpression>();
+            _projectionBindingCache = new Dictionary<StructuralTypeProjectionExpression, ProjectionBindingExpression>();
             _projectionMapping.Clear();
             _clientProjections = new List<Expression>();
 
@@ -122,9 +122,9 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
 
                     case ProjectionBindingExpression projectionBindingExpression:
                         var mappedProjection = _selectExpression.GetProjection(projectionBindingExpression);
-                        if (mappedProjection is EntityProjectionExpression entityProjection)
+                        if (mappedProjection is StructuralTypeProjectionExpression structuralTypeProjection)
                         {
-                            return AddClientProjection(entityProjection, typeof(ValueBuffer));
+                            return AddClientProjection(structuralTypeProjection, typeof(ValueBuffer));
                         }
 
                         if (mappedProjection is SqlExpression mappedSqlExpression)
@@ -299,7 +299,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
             case EntityShaperExpression entityShaperExpression:
             {
                 // TODO: Make this easier to understand some day.
-                EntityProjectionExpression entityProjectionExpression;
+                StructuralTypeProjectionExpression projectionExpression;
 
                 if (entityShaperExpression.ValueBufferExpression is JsonQueryExpression jsonQueryExpression)
                 {
@@ -344,25 +344,25 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                             new ProjectionBindingExpression(_selectExpression, _projectionMembers.Peek(), typeof(ValueBuffer)));
                     }
 
-                    entityProjectionExpression = (EntityProjectionExpression)projection;
+                    projectionExpression = (StructuralTypeProjectionExpression)projection;
                 }
                 else
                 {
-                    entityProjectionExpression = (EntityProjectionExpression)entityShaperExpression.ValueBufferExpression;
+                    projectionExpression = (StructuralTypeProjectionExpression)entityShaperExpression.ValueBufferExpression;
                 }
 
                 if (_indexBasedBinding)
                 {
-                    if (!_entityProjectionCache!.TryGetValue(entityProjectionExpression, out var entityProjectionBinding))
+                    if (!_projectionBindingCache!.TryGetValue(projectionExpression, out var entityProjectionBinding))
                     {
-                        entityProjectionBinding = AddClientProjection(entityProjectionExpression, typeof(ValueBuffer));
-                        _entityProjectionCache[entityProjectionExpression] = entityProjectionBinding;
+                        entityProjectionBinding = AddClientProjection(projectionExpression, typeof(ValueBuffer));
+                        _projectionBindingCache[projectionExpression] = entityProjectionBinding;
                     }
 
                     return entityShaperExpression.Update(entityProjectionBinding);
                 }
 
-                _projectionMapping[_projectionMembers.Peek()] = entityProjectionExpression;
+                _projectionMapping[_projectionMembers.Peek()] = projectionExpression;
 
                 return entityShaperExpression.Update(
                     new ProjectionBindingExpression(_selectExpression, _projectionMembers.Peek(), typeof(ValueBuffer)));

@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 namespace Microsoft.EntityFrameworkCore.Query;
@@ -14,45 +15,62 @@ namespace Microsoft.EntityFrameworkCore.Query;
 ///         not used in application code.
 ///     </para>
 /// </summary>
-public class EntityProjectionExpression : Expression
+public class StructuralTypeProjectionExpression : Expression
 {
     private readonly IReadOnlyDictionary<IProperty, ColumnExpression> _propertyExpressionMap;
     private readonly Dictionary<INavigation, EntityShaperExpression> _ownedNavigationMap;
 
     /// <summary>
-    ///     Creates a new instance of the <see cref="EntityProjectionExpression" /> class.
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    /// <param name="entityType">An entity type to shape.</param>
-    /// <param name="propertyExpressionMap">A dictionary of column expressions corresponding to properties of the entity type.</param>
-    /// <param name="discriminatorExpression">A <see cref="SqlExpression" /> to generate discriminator for each concrete entity type in hierarchy.</param>
-    public EntityProjectionExpression(
-        IEntityType entityType,
+    [EntityFrameworkInternal]
+    public StructuralTypeProjectionExpression(
+        ITypeBase structuralType,
         IReadOnlyDictionary<IProperty, ColumnExpression> propertyExpressionMap,
+        IReadOnlyDictionary<ITableBase, TableReferenceExpression> tableMap,
         SqlExpression? discriminatorExpression = null)
         : this(
-            entityType,
+            structuralType,
             propertyExpressionMap,
             new Dictionary<INavigation, EntityShaperExpression>(),
+            tableMap,
             discriminatorExpression)
     {
     }
 
-    private EntityProjectionExpression(
-        IEntityType entityType,
+    private StructuralTypeProjectionExpression(
+        ITypeBase structuralType,
         IReadOnlyDictionary<IProperty, ColumnExpression> propertyExpressionMap,
         Dictionary<INavigation, EntityShaperExpression> ownedNavigationMap,
+        IReadOnlyDictionary<ITableBase, TableReferenceExpression> tableMap,
         SqlExpression? discriminatorExpression = null)
     {
-        EntityType = entityType;
+        StructuralType = structuralType;
         _propertyExpressionMap = propertyExpressionMap;
         _ownedNavigationMap = ownedNavigationMap;
+        TableMap = tableMap;
         DiscriminatorExpression = discriminatorExpression;
     }
 
     /// <summary>
-    ///     The entity type being projected out.
+    ///     The base type being projected out (entity or complex type)
     /// </summary>
-    public virtual IEntityType EntityType { get; }
+    public virtual ITypeBase StructuralType { get; }
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    /// <remarks>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </remarks>
+    [EntityFrameworkInternal]
+    public virtual IReadOnlyDictionary<ITableBase, TableReferenceExpression> TableMap { get; }
 
     /// <summary>
     ///     A <see cref="SqlExpression" /> to generate discriminator for entity type.
@@ -65,7 +83,7 @@ public class EntityProjectionExpression : Expression
 
     /// <inheritdoc />
     public override Type Type
-        => EntityType.ClrType;
+        => StructuralType.ClrType;
 
     /// <inheritdoc />
     protected override Expression VisitChildren(ExpressionVisitor visitor)
@@ -80,6 +98,14 @@ public class EntityProjectionExpression : Expression
             propertyExpressionMap[property] = newExpression;
         }
 
+        // We only need to visit the table map since TableReferenceUpdatingExpressionVisitor may need to modify it; it mutates
+        // TableReferenceExpression (a new TableReferenceExpression is never returned), so we never need a new table map.
+        foreach (var (_, tableExpression) in TableMap)
+        {
+            var newTableExpression = (TableReferenceExpression)visitor.Visit(tableExpression);
+            Check.DebugAssert(newTableExpression == tableExpression, $"New {nameof(TableReferenceExpression)} returned during visitation!");
+        }
+
         var discriminatorExpression = (SqlExpression?)visitor.Visit(DiscriminatorExpression);
         changed |= discriminatorExpression != DiscriminatorExpression;
 
@@ -92,7 +118,7 @@ public class EntityProjectionExpression : Expression
         }
 
         return changed
-            ? new EntityProjectionExpression(EntityType, propertyExpressionMap, ownedNavigationMap, discriminatorExpression)
+            ? new StructuralTypeProjectionExpression(StructuralType, propertyExpressionMap, ownedNavigationMap, TableMap, discriminatorExpression)
             : this;
     }
 
@@ -100,7 +126,7 @@ public class EntityProjectionExpression : Expression
     ///     Makes entity instance in projection nullable.
     /// </summary>
     /// <returns>A new entity projection expression which can project nullable entity.</returns>
-    public virtual EntityProjectionExpression MakeNullable()
+    public virtual StructuralTypeProjectionExpression MakeNullable()
     {
         var propertyExpressionMap = new Dictionary<IProperty, ColumnExpression>();
         foreach (var (property, columnExpression) in _propertyExpressionMap)
@@ -130,10 +156,11 @@ public class EntityProjectionExpression : Expression
             }
         }
 
-        return new EntityProjectionExpression(
-            EntityType,
+        return new StructuralTypeProjectionExpression(
+            StructuralType,
             propertyExpressionMap,
             ownedNavigationMap,
+            TableMap,
             discriminatorExpression);
     }
 
@@ -142,13 +169,18 @@ public class EntityProjectionExpression : Expression
     /// </summary>
     /// <param name="derivedType">A derived entity type which should be projected.</param>
     /// <returns>A new entity projection expression which has the derived type being projected.</returns>
-    public virtual EntityProjectionExpression UpdateEntityType(IEntityType derivedType)
+    public virtual StructuralTypeProjectionExpression UpdateEntityType(IEntityType derivedType)
     {
-        if (!derivedType.GetAllBaseTypes().Contains(EntityType))
+        if (StructuralType is not IEntityType entityType)
+        {
+            throw new InvalidOperationException(); // TODO: Message
+        }
+
+        if (!derivedType.GetAllBaseTypes().Contains(entityType))
         {
             throw new InvalidOperationException(
                 RelationalStrings.InvalidDerivedTypeInEntityProjection(
-                    derivedType.DisplayName(), EntityType.DisplayName()));
+                    derivedType.DisplayName(), entityType.DisplayName()));
         }
 
         var propertyExpressionMap = new Dictionary<IProperty, ColumnExpression>();
@@ -171,8 +203,34 @@ public class EntityProjectionExpression : Expression
             }
         }
 
+        // Remove tables from the table map which aren't mapped to the new derived type.
+        Dictionary<ITableBase, TableReferenceExpression>? newTableMap = null;
+        switch (entityType.GetMappingStrategy())
+        {
+            case RelationalAnnotationNames.TphMappingStrategy:
+                // In TPH, changing the entity type has no effect on the tables being mapped; just reuse the existing TableMap.
+                break;
+
+            case RelationalAnnotationNames.TpcMappingStrategy:
+            case RelationalAnnotationNames.TptMappingStrategy:
+                newTableMap = new();
+                foreach (var (table, tableReferenceExpression) in TableMap)
+                {
+                    if (table.EntityTypeMappings.Any(m => m.TypeBase == derivedType))
+                    {
+                        newTableMap.Add(table, tableReferenceExpression);
+                    }
+                }
+                break;
+
+            case null:
+                throw new UnreachableException($"Cannot be in {nameof(UpdateEntityType)} for entity type '{entityType.DisplayName()}' which has no mapping strategy");
+            default:
+                throw new UnreachableException("Unknown mapping strategy: " + entityType.GetMappingStrategy());
+        }
+
         var discriminatorExpression = DiscriminatorExpression;
-        if (DiscriminatorExpression is CaseExpression caseExpression)
+        if (discriminatorExpression is CaseExpression caseExpression)
         {
             var entityTypesToSelect =
                 derivedType.GetConcreteDerivedTypesInclusive().Select(e => (string)e.GetDiscriminatorValue()!).ToList();
@@ -183,7 +241,8 @@ public class EntityProjectionExpression : Expression
             discriminatorExpression = caseExpression.Update(operand: null, whenClauses, elseResult: null);
         }
 
-        return new EntityProjectionExpression(derivedType, propertyExpressionMap, ownedNavigationMap, discriminatorExpression);
+        return new StructuralTypeProjectionExpression(
+            derivedType, propertyExpressionMap, ownedNavigationMap, newTableMap ?? TableMap, discriminatorExpression);
     }
 
     /// <summary>
@@ -193,11 +252,11 @@ public class EntityProjectionExpression : Expression
     /// <returns>A column which is a SQL representation of the property.</returns>
     public virtual ColumnExpression BindProperty(IProperty property)
     {
-        if (!EntityType.IsAssignableFrom(property.DeclaringType)
-            && !property.DeclaringType.IsAssignableFrom(EntityType))
+        if (!StructuralType.IsAssignableFrom(property.DeclaringType)
+            && !property.DeclaringType.IsAssignableFrom(StructuralType))
         {
             throw new InvalidOperationException(
-                RelationalStrings.UnableToBindMemberToEntityProjection("property", property.Name, EntityType.DisplayName()));
+                RelationalStrings.UnableToBindMemberToEntityProjection("property", property.Name, StructuralType.DisplayName()));
         }
 
         return _propertyExpressionMap[property];
@@ -210,11 +269,16 @@ public class EntityProjectionExpression : Expression
     /// <param name="entityShaper">An entity shaper expression for the target type.</param>
     public virtual void AddNavigationBinding(INavigation navigation, EntityShaperExpression entityShaper)
     {
-        if (!EntityType.IsAssignableFrom(navigation.DeclaringEntityType)
-            && !navigation.DeclaringEntityType.IsAssignableFrom(EntityType))
+        if (StructuralType is not IEntityType entityType)
+        {
+            throw new InvalidOperationException(); // TODO: Message
+        }
+
+        if (!entityType.IsAssignableFrom(navigation.DeclaringEntityType)
+            && !navigation.DeclaringEntityType.IsAssignableFrom(entityType))
         {
             throw new InvalidOperationException(
-                RelationalStrings.UnableToBindMemberToEntityProjection("navigation", navigation.Name, EntityType.DisplayName()));
+                RelationalStrings.UnableToBindMemberToEntityProjection("navigation", navigation.Name, entityType.DisplayName()));
         }
 
         _ownedNavigationMap[navigation] = entityShaper;
@@ -228,11 +292,16 @@ public class EntityProjectionExpression : Expression
     /// <returns>An entity shaper expression for the target entity type of the navigation.</returns>
     public virtual EntityShaperExpression? BindNavigation(INavigation navigation)
     {
-        if (!EntityType.IsAssignableFrom(navigation.DeclaringEntityType)
-            && !navigation.DeclaringEntityType.IsAssignableFrom(EntityType))
+        if (StructuralType is not IEntityType entityType)
+        {
+            throw new InvalidOperationException(); // TODO: Message
+        }
+
+        if (!entityType.IsAssignableFrom(navigation.DeclaringEntityType)
+            && !navigation.DeclaringEntityType.IsAssignableFrom(entityType))
         {
             throw new InvalidOperationException(
-                RelationalStrings.UnableToBindMemberToEntityProjection("navigation", navigation.Name, EntityType.DisplayName()));
+                RelationalStrings.UnableToBindMemberToEntityProjection("navigation", navigation.Name, entityType.DisplayName()));
         }
 
         return _ownedNavigationMap.TryGetValue(navigation, out var expression)
@@ -242,5 +311,5 @@ public class EntityProjectionExpression : Expression
 
     /// <inheritdoc />
     public override string ToString()
-        => $"EntityProjectionExpression: {EntityType.ShortName()}";
+        => $"EntityProjectionExpression: {StructuralType.ShortName()}";
 }

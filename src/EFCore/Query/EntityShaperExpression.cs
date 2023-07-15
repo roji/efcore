@@ -30,21 +30,21 @@ public class EntityShaperExpression : Expression, IPrintableExpression
     /// <summary>
     ///     Creates a new instance of the <see cref="EntityShaperExpression" /> class.
     /// </summary>
-    /// <param name="entityType">The entity type to shape.</param>
+    /// <param name="structuralType">The entity or complex type to shape.</param>
     /// <param name="valueBufferExpression">An expression of ValueBuffer to get values for properties of the entity.</param>
     /// <param name="nullable">A bool value indicating whether this entity instance can be null.</param>
     public EntityShaperExpression(
-        IEntityType entityType,
+        ITypeBase structuralType,
         Expression valueBufferExpression,
         bool nullable)
-        : this(entityType, valueBufferExpression, nullable, null)
+        : this(structuralType, valueBufferExpression, nullable, null)
     {
     }
 
     /// <summary>
     ///     Creates a new instance of the <see cref="EntityShaperExpression" /> class.
     /// </summary>
-    /// <param name="entityType">The entity type to shape.</param>
+    /// <param name="structuralType">The entity type to shape.</param>
     /// <param name="valueBufferExpression">An expression of ValueBuffer to get values for properties of the entity.</param>
     /// <param name="nullable">Whether this entity instance can be null.</param>
     /// <param name="materializationCondition">
@@ -52,26 +52,27 @@ public class EntityShaperExpression : Expression, IPrintableExpression
     ///     materialize.
     /// </param>
     protected EntityShaperExpression(
-        IEntityType entityType,
+        ITypeBase structuralType,
         Expression valueBufferExpression,
         bool nullable,
         LambdaExpression? materializationCondition)
     {
         if (materializationCondition == null)
         {
-            materializationCondition = GenerateMaterializationCondition(entityType, nullable);
+            materializationCondition = GenerateMaterializationCondition(structuralType, nullable);
         }
         else if (materializationCondition.Parameters.Count != 1
                  || materializationCondition.Parameters[0].Type != typeof(ValueBuffer)
-                 || materializationCondition.ReturnType != typeof(IEntityType))
+                 || materializationCondition.ReturnType != (structuralType is IEntityType ? typeof(IEntityType) : typeof(IComplexType)))
         {
-            throw new InvalidOperationException(CoreStrings.QueryEntityMaterializationConditionWrongShape(entityType.DisplayName()));
+            throw new InvalidOperationException(CoreStrings.QueryEntityMaterializationConditionWrongShape(structuralType.DisplayName()));
         }
 
-        EntityType = entityType;
+        StructuralType = structuralType;
+
         ValueBufferExpression = valueBufferExpression;
         IsNullable = nullable;
-        MaterializationCondition = materializationCondition;
+        MaterializationCondition = materializationCondition!;
     }
 
     /// <summary>
@@ -93,12 +94,19 @@ public class EntityShaperExpression : Expression, IPrintableExpression
     /// <summary>
     ///     Creates an expression of <see cref="Func{ValueBuffer, IEntityType}" /> to determine which entity type to materialize.
     /// </summary>
-    /// <param name="entityType">The entity type to create materialization condition for.</param>
+    /// <param name="structuralType">The entity type to create materialization condition for.</param>
     /// <param name="nullable">Whether this entity instance can be null.</param>
     /// <returns>An expression of <see cref="Func{ValueBuffer, IEntityType}" /> representing materilization condition for the entity type.</returns>
-    protected virtual LambdaExpression GenerateMaterializationCondition(IEntityType entityType, bool nullable)
+    protected virtual LambdaExpression GenerateMaterializationCondition(ITypeBase structuralType, bool nullable)
     {
         var valueBufferParameter = Parameter(typeof(ValueBuffer));
+
+        if (structuralType is IComplexType complexType)
+        {
+            return Lambda(Constant(complexType, typeof(IComplexType)), valueBufferParameter);
+        }
+
+        var entityType = (IEntityType)structuralType;
         Expression body;
         var concreteEntityTypes = entityType.GetConcreteDerivedTypesInclusive().ToArray();
         var discriminatorProperty = entityType.FindDiscriminatorProperty();
@@ -155,6 +163,8 @@ public class EntityShaperExpression : Expression, IPrintableExpression
         if (entityType.FindPrimaryKey() == null
             && nullable)
         {
+            // If there's no nullable key and we're generating a nullable shaper, generate checks for any non-null property; if all are
+            // null, return null for the entity instance.
             body = Condition(
                 entityType.GetProperties()
                     .Select(
@@ -169,10 +179,19 @@ public class EntityShaperExpression : Expression, IPrintableExpression
         return Lambda(body, valueBufferParameter);
     }
 
+    // TODO: Temporary, remove
     /// <summary>
     ///     The entity type being shaped.
     /// </summary>
-    public virtual IEntityType EntityType { get; }
+    public virtual IEntityType EntityType
+        => StructuralType is IEntityType entityType
+            ? entityType
+            : throw new InvalidOperationException("Type isn't an entity type: " + StructuralType.DisplayName());
+
+    /// <summary>
+    ///     The entity or complex type being shaped.
+    /// </summary>
+    public virtual ITypeBase StructuralType { get; }
 
     /// <summary>
     ///     The expression representing a <see cref="ValueBuffer" /> to get values from that are used to create the entity instance.
@@ -231,7 +250,7 @@ public class EntityShaperExpression : Expression, IPrintableExpression
 
     /// <inheritdoc />
     public override Type Type
-        => EntityType.ClrType;
+        => StructuralType.ClrType;
 
     /// <inheritdoc />
     public sealed override ExpressionType NodeType

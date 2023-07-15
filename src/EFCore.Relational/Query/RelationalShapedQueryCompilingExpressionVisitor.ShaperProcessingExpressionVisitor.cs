@@ -525,10 +525,10 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                         {
                             var entityParameter = Parameter(entityShaperExpression.Type);
                             _variables.Add(entityParameter);
-                            if (entityShaperExpression.EntityType.GetMappingStrategy() == RelationalAnnotationNames.TpcMappingStrategy)
+                            if (entityShaperExpression.StructuralType is IEntityType entityType
+                                && entityType.GetMappingStrategy() == RelationalAnnotationNames.TpcMappingStrategy)
                             {
-                                var concreteTypes = entityShaperExpression.EntityType.GetDerivedTypesInclusive().Where(e => !e.IsAbstract())
-                                    .ToArray();
+                                var concreteTypes = entityType.GetDerivedTypesInclusive().Where(e => !e.IsAbstract()).ToArray();
                                 // Single concrete TPC entity type won't have discriminator column.
                                 // We store the value here and inject it directly rather than reading from server.
                                 if (concreteTypes.Length == 1)
