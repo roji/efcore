@@ -746,25 +746,27 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     [EntityFrameworkInternal]
     public virtual bool TryTranslatePropertyAccess(Expression expression, [NotNullWhen(true)] out SqlExpression? propertyAccessExpression)
     {
-        if (expression is MethodCallExpression methodCallExpression)
-        {
-            if (methodCallExpression.TryGetEFPropertyArguments(out var source, out var propertyName)
-                && TryBindMember(Visit(source), MemberIdentity.Create(propertyName)) is { } result)
-            {
-                propertyAccessExpression = result;
-                return true;
-            }
+        throw new NotImplementedException();
 
-            if (methodCallExpression.TryGetIndexerArguments(_model, out source, out propertyName)
-                && TryBindMember(Visit(source), MemberIdentity.Create(propertyName)) is { } indexerResult)
-            {
-                propertyAccessExpression = indexerResult;
-                return true;
-            }
-        }
-
-        propertyAccessExpression = null;
-        return false;
+        // if (expression is MethodCallExpression methodCallExpression)
+        // {
+        //     if (methodCallExpression.TryGetEFPropertyArguments(out var source, out var propertyName)
+        //         && TryBindMember(Visit(source), MemberIdentity.Create(propertyName)) is { } result)
+        //     {
+        //         propertyAccessExpression = result;
+        //         return true;
+        //     }
+        //
+        //     if (methodCallExpression.TryGetIndexerArguments(_model, out source, out propertyName)
+        //         && TryBindMember(Visit(source), MemberIdentity.Create(propertyName)) is { } indexerResult)
+        //     {
+        //         propertyAccessExpression = indexerResult;
+        //         return true;
+        //     }
+        // }
+        //
+        // propertyAccessExpression = null;
+        // return false;
     }
 
     /// <inheritdoc />
@@ -1186,7 +1188,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
         return QueryCompilationContext.NotTranslatedExpression;
     }
 
-    private SqlExpression? TryBindMember(Expression? source, MemberIdentity member)
+    private Expression? TryBindMember(Expression? source, MemberIdentity member)
     {
         if (source is not EntityReferenceExpression entityReferenceExpression)
         {
@@ -1198,9 +1200,18 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             ? typeBase.FindProperty(member.MemberInfo)
             : typeBase.FindProperty(member.Name!);
 
-        if (property != null)
+        if (property is not null)
         {
             return BindProperty(entityReferenceExpression, property);
+        }
+
+        var complexProperty = member.MemberInfo != null
+            ? typeBase.FindComplexProperty(member.MemberInfo)
+            : typeBase.FindComplexProperty(member.Name!);
+
+        if (complexProperty is not null)
+        {
+            return BindComplexProperty(entityReferenceExpression, complexProperty);
         }
 
         AddTranslationErrorDetails(
@@ -1303,6 +1314,19 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
         return null;
     }
+
+    private Expression? BindComplexProperty(EntityReferenceExpression entityReferenceExpression, IComplexProperty complexProperty)
+        => entityReferenceExpression switch
+        {
+            { ParameterEntity: EntityShaperExpression parameterEntity }
+                => Visit(parameterEntity.ValueBufferExpression) is EntityProjectionExpression entityProjectionExpression
+                    ? new EntityReferenceExpression(entityProjectionExpression.BindComplexProperty(complexProperty))
+                    : null,
+
+            { SubqueryEntity: ShapedQueryExpression } => throw new NotImplementedException(),
+
+            _ => null
+        };
 
     private bool TryTranslateAggregateMethodCall(
         MethodCallExpression methodCallExpression,

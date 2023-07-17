@@ -215,7 +215,7 @@ public sealed partial class SelectExpression : TableExpressionBase
                     ? null
                     : sqlExpressionFactory.ApplyDefaultTypeMapping(
                         sqlExpressionFactory.Case(caseWhenClauses, elseResult: null));
-                var entityProjection = new EntityProjectionExpression(entityType, columns, discriminatorExpression);
+                var entityProjection = new EntityProjectionExpression(entityType, columns, GenerateComplexPropertyExpressionMap(entityType), discriminatorExpression);
                 _projectionMapping[new ProjectionMember()] = entityProjection;
             }
 
@@ -240,7 +240,8 @@ public sealed partial class SelectExpression : TableExpressionBase
                         propertyExpressions[property] = CreateColumnExpression(property, table, tableReferenceExpression, nullable: false);
                     }
 
-                    _projectionMapping[new ProjectionMember()] = new EntityProjectionExpression(entityType, propertyExpressions);
+                    _projectionMapping[new ProjectionMember()] = new EntityProjectionExpression(
+                        entityType, propertyExpressions, GenerateComplexPropertyExpressionMap(entityType));
 
                     var primaryKey = entityType.FindPrimaryKey();
                     if (primaryKey != null)
@@ -348,7 +349,8 @@ public sealed partial class SelectExpression : TableExpressionBase
 
                     var discriminatorColumn = new ConcreteColumnExpression(firstSelectExpression._projection[^1], tpcTableReference);
                     _tpcDiscriminatorValues[tpcTables] = (discriminatorColumn, discriminatorValues);
-                    var entityProjection = new EntityProjectionExpression(entityType, columns, discriminatorColumn);
+                    var entityProjection = new EntityProjectionExpression(
+                        entityType, columns, GenerateComplexPropertyExpressionMap(entityType), discriminatorColumn);
                     _projectionMapping[new ProjectionMember()] = entityProjection;
                 }
             }
@@ -428,7 +430,8 @@ public sealed partial class SelectExpression : TableExpressionBase
                                 property, columnBase, tableReferenceExpressionMap[columnBase.Table], nullable: false);
                         }
 
-                        var entityProjection = new EntityProjectionExpression(entityType, columns);
+                        var entityProjection = new EntityProjectionExpression(
+                            entityType, columns, GenerateComplexPropertyExpressionMap(entityType));
                         _projectionMapping[new ProjectionMember()] = entityProjection;
                     }
                 }
@@ -448,7 +451,7 @@ public sealed partial class SelectExpression : TableExpressionBase
                 propertyExpressions[property] = CreateColumnExpression(property, table, tableReferenceExpression, nullable: false);
             }
 
-            var entityProjection = new EntityProjectionExpression(entityType, propertyExpressions);
+            var entityProjection = new EntityProjectionExpression(entityType, propertyExpressions, GenerateComplexPropertyExpressionMap(entityType));
             AddJsonNavigationBindings(entityType, entityProjection, propertyExpressions, tableReferenceExpression);
             _projectionMapping[new ProjectionMember()] = entityProjection;
 
@@ -487,7 +490,7 @@ public sealed partial class SelectExpression : TableExpressionBase
             propertyExpressions[property] = CreateColumnExpression(property, table, tableReferenceExpression, nullable: false);
         }
 
-        var entityProjection = new EntityProjectionExpression(entityType, propertyExpressions);
+        var entityProjection = new EntityProjectionExpression(entityType, propertyExpressions, GenerateComplexPropertyExpressionMap(entityType));
         AddJsonNavigationBindings(entityType, entityProjection, propertyExpressions, tableReferenceExpression);
         _projectionMapping[new ProjectionMember()] = entityProjection;
 
@@ -2458,7 +2461,10 @@ public sealed partial class SelectExpression : TableExpressionBase
                 discriminatorExpression = new ConcreteColumnExpression(innerProjection, tableReferenceExpression);
             }
 
-            var entityProjection = new EntityProjectionExpression(projection1.TypeBase, propertyExpressions, discriminatorExpression);
+            // TODO: This may be wrong, check
+            var entityProjection = new EntityProjectionExpression(
+                projection1.TypeBase, propertyExpressions, GenerateComplexPropertyExpressionMap(projection1.TypeBase),
+                discriminatorExpression);
 
             if (outerIdentifiers.Length > 0)
             {
@@ -2584,7 +2590,8 @@ public sealed partial class SelectExpression : TableExpressionBase
 
         var entityShaper = new RelationalEntityShaperExpression(
             navigation.TargetEntityType,
-            new EntityProjectionExpression(navigation.TargetEntityType, expressions),
+            new EntityProjectionExpression(
+                navigation.TargetEntityType, expressions, GenerateComplexPropertyExpressionMap(navigation.TargetEntityType)),
             identifyingColumn.IsNullable || navigation.DeclaringEntityType.BaseType != null || !navigation.ForeignKey.IsRequiredDependent);
         principalEntityProjection.AddNavigationBinding(navigation, entityShaper);
 
@@ -2840,51 +2847,116 @@ public sealed partial class SelectExpression : TableExpressionBase
         }
     }
 
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
-    [EntityFrameworkInternal]
-    public EntityShaperExpression GenerateComplexPropertyShaperExpression(
-        EntityProjectionExpression principalEntityProjection, // TODO: Needed in order to determine nullability
-        IComplexProperty complexProperty)
+    private Dictionary<IComplexProperty, EntityShaperExpression> GenerateComplexPropertyExpressionMap(ITypeBase typeBase)
     {
-        var propertyExpressionMap = new Dictionary<IProperty, ColumnExpression>();
+        var complexPropertyExpressionMap = new Dictionary<IComplexProperty, EntityShaperExpression>();
 
-        // TODO: Type splitting for complex types??
-        var table = complexProperty.ComplexType.GetTableMappings().Single().Table;
-
-        TableExpressionBase tableExpression = new TableExpression(table);
-        foreach (var annotation in table.GetAnnotations())
+        var complexProperties = typeBase switch
         {
-            tableExpression = tableExpression.AddAnnotation(annotation.Name, annotation.Value);
-        }
-        var tableReferenceExpression = new TableReferenceExpression(this, tableExpression.Alias!);
+            IEntityType entityType => entityType.GetAllBaseTypes().Concat(entityType.GetDerivedTypesInclusive())
+                .SelectMany(t => t.GetDeclaredComplexProperties()),
 
-        // TODO: need to find out if the source entity projection is nullable.
-        // For owned entities this is done by binding the identifier column and checking if its nullable, but we can't do that since
-        // the source projection may be itself a complex type
+            IComplexType complexType => complexType.GetDeclaredComplexProperties(),
 
-        var isNullable = /*principalEntityProjection.IsNullable ||*/ complexProperty.IsNullable;
+            _ => throw new InvalidOperationException("IMPOSSIBLE")
+        };
 
-        foreach (var property in complexProperty.ComplexType.GetProperties())
+        foreach (var complexProperty in complexProperties)
         {
-            var column = table.FindColumn(property)!;
-            propertyExpressionMap[property] = CreateColumnExpression(property, column, tableReferenceExpression, isNullable);
+            var mappings = typeBase.GetViewOrTableMappings().ToList();
+
+            // var columnBase = mappings.Select(e => e.Table.FindColumn(property)).First(e => e != null)!;
+            // columns[property] = CreateColumnExpression(
+            //     property, columnBase, tableReferenceExpressionMap[columnBase.Table], nullable: false);
+
+            var complexTypeShaper = new RelationalEntityShaperExpression(
+                complexProperty.ComplexType,
+                new EntityProjectionExpression(complexProperty.ComplexType, propertyExpressionMap),
+                nullable: false);
+
+            complexPropertyExpressionMap[complexProperty] = complexTypeShaper;
         }
 
-        var entityShaper = new RelationalEntityShaperExpression(
-            complexProperty.ComplexType,
-            new EntityProjectionExpression(complexProperty.ComplexType, propertyExpressionMap),
-            isNullable);
+        return complexPropertyExpressionMap;
 
-        // TODO: Caching...
-        // principalEntityProjection.AddNavigationBinding(navigation, entityShaper);
-
-        return entityShaper;
+        // // TODO: Type splitting for complex types??
+        // var table = complexProperty.ComplexType.GetTableMappings().Single().Table;
+        //
+        // TableExpressionBase tableExpression = new TableExpression(table);
+        // foreach (var annotation in table.GetAnnotations())
+        // {
+        //     tableExpression = tableExpression.AddAnnotation(annotation.Name, annotation.Value);
+        // }
+        // var tableReferenceExpression = new TableReferenceExpression(this, tableExpression.Alias!);
+        //
+        // // TODO: need to find out if the source entity projection is nullable.
+        // // For owned entities this is done by binding the identifier column and checking if its nullable, but we can't do that since
+        // // the source projection may be itself a complex type
+        //
+        // var isNullable = /*principalEntityProjection.IsNullable ||*/ complexProperty.IsNullable;
+        //
+        // foreach (var property in complexProperty.ComplexType.GetProperties())
+        // {
+        //     var column = table.FindColumn(property)!;
+        //     propertyExpressionMap[property] = CreateColumnExpression(property, column, tableReferenceExpression, isNullable);
+        // }
+        //
+        // var entityShaper = new RelationalEntityShaperExpression(
+        //     complexProperty.ComplexType,
+        //     new EntityProjectionExpression(complexProperty.ComplexType, propertyExpressionMap),
+        //     isNullable);
+        //
+        // // TODO: Caching...
+        // // principalEntityProjection.AddNavigationBinding(navigation, entityShaper);
+        //
+        // return entityShaper;
     }
+
+    // /// <summary>
+    // ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    // ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    // ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    // ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    // /// </summary>
+    // [EntityFrameworkInternal]
+    // public EntityShaperExpression GenerateComplexPropertyShaperExpression(
+    //     EntityProjectionExpression principalEntityProjection, // TODO: Needed in order to determine nullability
+    //     IComplexProperty complexProperty)
+    // {
+    //     var propertyExpressionMap = new Dictionary<IProperty, ColumnExpression>();
+    //
+    //     // TODO: Type splitting for complex types??
+    //     var table = complexProperty.ComplexType.GetTableMappings().Single().Table;
+    //
+    //     TableExpressionBase tableExpression = new TableExpression(table);
+    //     foreach (var annotation in table.GetAnnotations())
+    //     {
+    //         tableExpression = tableExpression.AddAnnotation(annotation.Name, annotation.Value);
+    //     }
+    //     var tableReferenceExpression = new TableReferenceExpression(this, tableExpression.Alias!);
+    //
+    //     // TODO: need to find out if the source entity projection is nullable.
+    //     // For owned entities this is done by binding the identifier column and checking if its nullable, but we can't do that since
+    //     // the source projection may be itself a complex type
+    //
+    //     var isNullable = /*principalEntityProjection.IsNullable ||*/ complexProperty.IsNullable;
+    //
+    //     foreach (var property in complexProperty.ComplexType.GetProperties())
+    //     {
+    //         var column = table.FindColumn(property)!;
+    //         propertyExpressionMap[property] = CreateColumnExpression(property, column, tableReferenceExpression, isNullable);
+    //     }
+    //
+    //     var entityShaper = new RelationalEntityShaperExpression(
+    //         complexProperty.ComplexType,
+    //         new EntityProjectionExpression(complexProperty.ComplexType, propertyExpressionMap),
+    //         isNullable);
+    //
+    //     // TODO: Caching...
+    //     // principalEntityProjection.AddNavigationBinding(navigation, entityShaper);
+    //
+    //     return entityShaper;
+    // }
 
     private enum JoinType
     {
@@ -3837,7 +3909,8 @@ public sealed partial class SelectExpression : TableExpressionBase
             }
 
             var newEntityProjection = new EntityProjectionExpression(
-                entityProjection.TypeBase, propertyExpressions, discriminatorExpression);
+                entityProjection.TypeBase, propertyExpressions, GenerateComplexPropertyExpressionMap(entityProjection.TypeBase),
+                discriminatorExpression);
 
             if (entityProjection.TypeBase is IEntityType entityType)
             {

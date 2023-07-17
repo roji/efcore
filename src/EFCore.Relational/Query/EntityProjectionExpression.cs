@@ -17,7 +17,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 public class EntityProjectionExpression : Expression
 {
     private readonly IReadOnlyDictionary<IProperty, ColumnExpression> _propertyExpressionMap;
-    private readonly Dictionary<IComplexProperty, EntityShaperExpression> _complexPropertyExpressionMap;
+    private readonly IReadOnlyDictionary<IComplexProperty, EntityShaperExpression> _complexPropertyExpressionMap;
     private readonly Dictionary<INavigation, EntityShaperExpression> _ownedNavigationMap;
 
     /// <summary>
@@ -25,15 +25,17 @@ public class EntityProjectionExpression : Expression
     /// </summary>
     /// <param name="typeBase">An entity type to shape.</param>
     /// <param name="propertyExpressionMap">A dictionary of column expressions corresponding to properties of the entity type.</param>
+    /// <param name="complexPropertyExpressionMap">A dictionary of entity shapers corresponding to complex properties of the entity type.</param>
     /// <param name="discriminatorExpression">A <see cref="SqlExpression" /> to generate discriminator for each concrete entity type in hierarchy.</param>
     public EntityProjectionExpression(
         ITypeBase typeBase,
         IReadOnlyDictionary<IProperty, ColumnExpression> propertyExpressionMap,
+        IReadOnlyDictionary<IComplexProperty, EntityShaperExpression> complexPropertyExpressionMap,
         SqlExpression? discriminatorExpression = null)
         : this(
             typeBase,
             propertyExpressionMap,
-            new Dictionary<IComplexProperty, EntityShaperExpression>(),
+            complexPropertyExpressionMap,
             new Dictionary<INavigation, EntityShaperExpression>(),
             discriminatorExpression)
     {
@@ -42,7 +44,7 @@ public class EntityProjectionExpression : Expression
     private EntityProjectionExpression(
         ITypeBase typeBase,
         IReadOnlyDictionary<IProperty, ColumnExpression> propertyExpressionMap,
-        Dictionary<IComplexProperty, EntityShaperExpression> complexPropertyExpressionMap,
+        IReadOnlyDictionary<IComplexProperty, EntityShaperExpression> complexPropertyExpressionMap,
         Dictionary<INavigation, EntityShaperExpression> ownedNavigationMap,
         SqlExpression? discriminatorExpression = null)
     {
@@ -233,6 +235,24 @@ public class EntityProjectionExpression : Expression
         }
 
         return _propertyExpressionMap[property];
+    }
+
+    /// <summary>
+    ///     Binds a complex property with this entity projection to get the shaper for the target complex type.
+    /// </summary>
+    // /// <param name="property">A property to bind.</param>
+    // /// <returns>A column which is a SQL representation of the property.</returns>
+    public virtual EntityShaperExpression BindComplexProperty(IComplexProperty complexProperty)
+    {
+        if (!TypeBase.IsAssignableFrom(complexProperty.DeclaringType)
+            && !complexProperty.DeclaringType.IsAssignableFrom(TypeBase))
+        {
+            throw new InvalidOperationException(
+                RelationalStrings.UnableToBindMemberToEntityProjection("complexProperty", complexProperty.Name, TypeBase.DisplayName()));
+        }
+
+        throw new NotImplementedException();
+        // return _propertyExpressionMap[complexProperty];
     }
 
     /// <summary>

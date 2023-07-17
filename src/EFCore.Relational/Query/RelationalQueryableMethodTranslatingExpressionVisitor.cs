@@ -2135,15 +2135,15 @@ public class RelationalQueryableMethodTranslatingExpressionVisitor : QueryableMe
                 Check.DebugAssert(convertedType is null, "convertedType must be null for complex types, no inheritance support");
             }
 
-            var complexProperty = member.MemberInfo != null
-                ? entityShaperExpression.TypeBase.FindComplexProperty(member.MemberInfo)
-                : entityShaperExpression.TypeBase.FindComplexProperty(member.Name!);
-
-            if (complexProperty is not null)
-            {
-                var entityProjectionExpression = GetEntityProjectionExpression(entityShaperExpression);
-                return _selectExpression.GenerateComplexPropertyShaperExpression(entityProjectionExpression, complexProperty);
-            }
+            // var complexProperty = member.MemberInfo != null
+            //     ? entityShaperExpression.TypeBase.FindComplexProperty(member.MemberInfo)
+            //     : entityShaperExpression.TypeBase.FindComplexProperty(member.Name!);
+            //
+            // if (complexProperty is not null)
+            // {
+            //     var entityProjectionExpression = GetEntityProjectionExpression(entityShaperExpression);
+            //     return _selectExpression.GenerateComplexPropertyShaperExpression(entityProjectionExpression, complexProperty);
+            // }
 
             return null;
 
@@ -2317,7 +2317,7 @@ public class RelationalQueryableMethodTranslatingExpressionVisitor : QueryableMe
                 ProjectionBindingExpression projectionBindingExpression
                     => (EntityProjectionExpression)_selectExpression.GetProjection(projectionBindingExpression),
                 EntityProjectionExpression entityProjectionExpression => entityProjectionExpression,
-                _ => throw new InvalidOperationException()
+                _ => throw new InvalidOperationException("IMPOSSIBLE")
             };
     }
 
