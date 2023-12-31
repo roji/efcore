@@ -31,7 +31,7 @@ public class StructuralTypeProjectionExpression : Expression
     public StructuralTypeProjectionExpression(
         ITypeBase type,
         IReadOnlyDictionary<IProperty, ColumnExpression> propertyExpressionMap,
-        IReadOnlyDictionary<ITableBase, TableReferenceExpression> tableMap,
+        IReadOnlyDictionary<ITableBase, TableExpressionBase> tableMap,
         bool nullable = false,
         SqlExpression? discriminatorExpression = null)
         : this(
@@ -48,7 +48,7 @@ public class StructuralTypeProjectionExpression : Expression
         ITypeBase type,
         IReadOnlyDictionary<IProperty, ColumnExpression> propertyExpressionMap,
         Dictionary<INavigation, StructuralTypeShaperExpression> ownedNavigationMap,
-        IReadOnlyDictionary<ITableBase, TableReferenceExpression> tableMap,
+        IReadOnlyDictionary<ITableBase, TableExpressionBase> tableMap,
         bool nullable,
         SqlExpression? discriminatorExpression = null)
     {
@@ -72,7 +72,7 @@ public class StructuralTypeProjectionExpression : Expression
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     [EntityFrameworkInternal]
-    public virtual IReadOnlyDictionary<ITableBase, TableReferenceExpression> TableMap { get; }
+    public virtual IReadOnlyDictionary<ITableBase, TableExpressionBase.TableReference> TableMap { get; }
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -124,12 +124,10 @@ public class StructuralTypeProjectionExpression : Expression
             propertyExpressionMap[property] = newExpression;
         }
 
-        // We only need to visit the table map since TableReferenceUpdatingExpressionVisitor may need to modify it; it mutates
-        // TableReferenceExpression (a new TableReferenceExpression is never returned), so we never need a new table map.
         foreach (var (_, tableExpression) in TableMap)
         {
-            var newTableExpression = (TableReferenceExpression)visitor.Visit(tableExpression);
-            Check.DebugAssert(newTableExpression == tableExpression, $"New {nameof(TableReferenceExpression)} returned during visitation!");
+            var newTableExpression = (TableExpressionBase)visitor.Visit(tableExpression);
+            Check.DebugAssert(newTableExpression == tableExpression, $"New {nameof(TableExpressionBase)} returned during visitation!");
         }
 
         var discriminatorExpression = (SqlExpression?)visitor.Visit(DiscriminatorExpression);
@@ -232,7 +230,7 @@ public class StructuralTypeProjectionExpression : Expression
         }
 
         // Remove tables from the table map which aren't mapped to the new derived type.
-        Dictionary<ITableBase, TableReferenceExpression>? newTableMap = null;
+        Dictionary<ITableBase, TableExpressionBase>? newTableMap = null;
         switch (entityType.GetMappingStrategy())
         {
             case RelationalAnnotationNames.TphMappingStrategy:
@@ -241,12 +239,12 @@ public class StructuralTypeProjectionExpression : Expression
 
             case RelationalAnnotationNames.TpcMappingStrategy:
             case RelationalAnnotationNames.TptMappingStrategy:
-                newTableMap = new Dictionary<ITableBase, TableReferenceExpression>();
-                foreach (var (table, tableReferenceExpression) in TableMap)
+                newTableMap = new Dictionary<ITableBase, TableExpressionBase>();
+                foreach (var (table, tableExpression) in TableMap)
                 {
                     if (table.EntityTypeMappings.Any(m => m.TypeBase == derivedType))
                     {
-                        newTableMap.Add(table, tableReferenceExpression);
+                        newTableMap.Add(table, tableExpression);
                     }
                 }
 

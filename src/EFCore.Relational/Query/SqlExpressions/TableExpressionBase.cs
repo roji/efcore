@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Query.Internal;
+
 namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 /// <summary>
@@ -18,6 +20,13 @@ public abstract class TableExpressionBase : Expression, IPrintableExpression
     private readonly IReadOnlyDictionary<string, IAnnotation>? _annotations;
 
     /// <summary>
+    ///     A mutable reference object that allows <see cref="ColumnExpression" /> to indirectly reference this table expression.
+    ///     When a table is replaced in a <see cref="SelectExpression" />, its reference can be updated to point to the new table.
+    /// </summary>
+    [EntityFrameworkInternal]
+    internal TableReferenceExpression Reference { get; }
+
+    /// <summary>
     ///     Creates a new instance of the <see cref="TableExpressionBase" /> class.
     /// </summary>
     /// <param name="alias">A string alias for the table source.</param>
@@ -25,6 +34,7 @@ public abstract class TableExpressionBase : Expression, IPrintableExpression
     protected TableExpressionBase(string? alias, IEnumerable<IAnnotation>? annotations = null)
     {
         Alias = alias;
+        Reference = new TableReferenceExpression(this);
 
         if (annotations != null)
         {
@@ -130,11 +140,7 @@ public abstract class TableExpressionBase : Expression, IPrintableExpression
     ///     The existing annotation if an annotation with the specified name already exists. Otherwise, <see langword="null" />.
     /// </returns>
     public virtual IAnnotation? FindAnnotation(string name)
-        => _annotations == null
-            ? null
-            : _annotations.TryGetValue(name, out var annotation)
-                ? annotation
-                : null;
+        => _annotations?.GetValueOrDefault(name);
 
     /// <summary>
     ///     Gets all annotations on the current object.
