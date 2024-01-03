@@ -145,6 +145,9 @@
   <data name="CompiledModelFunctionTranslation" xml:space="preserve">
     <value>The function '{function}' has a custom translation. Compiled model can't be generated, because custom function translations are not supported.</value>
   </data>
+  <data name="ColumnReferencesOutOfScopeTable" xml:space="preserve">
+    <value>Column '{column}' references a table that isn't in scope; please file a bug with EF.</value>
+  </data>
   <data name="ComputedColumnSqlUnspecified" xml:space="preserve">
     <value>The computed column SQL has not been specified for the column '{table}.{column}'. Specify the SQL before using Entity Framework to create the database schema.</value>
   </data>

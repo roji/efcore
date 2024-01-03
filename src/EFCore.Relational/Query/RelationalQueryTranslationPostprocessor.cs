@@ -13,6 +13,10 @@ public class RelationalQueryTranslationPostprocessor : QueryTranslationPostproce
     private readonly SqlTreePruner _pruner = new();
     private readonly bool _useRelationalNulls;
 
+#if DEBUG
+    private readonly SqlTreeVerifier _sqlTreeVerifier = new();
+#endif
+
     /// <summary>
     ///     Creates a new instance of the <see cref="RelationalQueryTranslationPostprocessor" /> class.
     /// </summary>
@@ -45,6 +49,9 @@ public class RelationalQueryTranslationPostprocessor : QueryTranslationPostproce
 #if DEBUG
         // Verifies that all SelectExpression are marked as immutable after this point.
         new SelectExpressionMutableVerifyingExpressionVisitor().Visit(query);
+
+        _sqlTreeVerifier.Verify(query);
+
         // Verifies that all table aliases are uniquely assigned without skipping over
         // Which points to possible mutation of a SelectExpression being used in multiple places.
         new TableAliasVerifyingExpressionVisitor().Visit(query);
@@ -65,6 +72,70 @@ public class RelationalQueryTranslationPostprocessor : QueryTranslationPostproce
         => _pruner.Prune(query);
 
 #if DEBUG
+    private sealed class SqlTreeVerifier : ExpressionVisitor
+    {
+        private HashSet<TableExpressionBase> _tablesInScope = new(ReferenceEqualityComparer.Instance);
+
+        public void Verify(Expression expression)
+        {
+            Check.DebugAssert(_tablesInScope.Count == 0, "_tablesInScope isn't empty");
+
+            Visit(expression);
+
+            Check.DebugAssert(_tablesInScope.Count == 0, "_tablesInScope isn't empty");
+        }
+
+        protected override Expression VisitExtension(Expression node)
+        {
+            switch (node)
+            {
+                case SelectExpression select:
+                    return VisitSelect(select);
+
+                case ColumnExpression column:
+                    return _tablesInScope.Contains(column.Table)
+                        ? column
+                        : throw new InvalidOperationException(RelationalStrings.ColumnReferencesOutOfScopeTable(column.ToString()));
+
+                case ShapedQueryExpression shapedQueryExpression:
+                    Visit(shapedQueryExpression.QueryExpression);
+                    Visit(shapedQueryExpression.ShaperExpression);
+                    return shapedQueryExpression;
+
+                default:
+                    return base.VisitExtension(node);
+            }
+        }
+
+        private SelectExpression VisitSelect(SelectExpression select)
+        {
+            // Note that we don't just use SelectExpression.VisitChildren since we must visit the tables first (to have the right table
+            // scope list when visiting everything else), but VisitChildren visits the projection first.
+            foreach (var table in select.Tables)
+            {
+                // TODO: Can tighten this to validate references out of tables wrt lateral rules, etc.
+                _tablesInScope.Add(table);
+                Visit(table);
+            }
+
+            this.Visit(select.Projection);
+            Visit(select.Predicate);
+            this.Visit(select.GroupBy);
+            Visit(select.Having);
+            this.Visit(select.Orderings);
+            Visit(select.Limit);
+            Visit(select.Offset);
+
+            // Note that we don't visit identifiers/_tpcDiscriminatorValues - these are supposed to have been cleared/used already.
+
+            _tablesInScope.ExceptWith(select.Tables);
+
+            return select;
+        }
+    }
+
+    // Note: this is kept distinct from SqlTreeVerifier to allow using SqlTreeVerifier in ad-hoc/debugging ways, where we still have
+    // mutable SelectExpression.
     private sealed class SelectExpressionMutableVerifyingExpressionVisitor : ExpressionVisitor
     {
         [return: NotNullIfNotNull("expression")]

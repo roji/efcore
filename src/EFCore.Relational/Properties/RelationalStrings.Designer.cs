@@ -90,6 +90,14 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 function);
 
         /// <summary>
+        ///     Column '{column}' references a table that isn't in scope; please file a bug with EF.
+        /// </summary>
+        public static string ColumnReferencesOutOfScopeTable(object? column)
+            => string.Format(
+                GetString("ColumnReferencesOutOfScopeTable", nameof(column)),
+                column);
+
+        /// <summary>
         ///     The computed column SQL has not been specified for the column '{table}.{column}'. Specify the SQL before using Entity Framework to create the database schema.
         /// </summary>
         public static string ComputedColumnSqlUnspecified(object? table, object? column)

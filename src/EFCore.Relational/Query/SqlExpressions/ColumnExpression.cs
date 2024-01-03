@@ -64,4 +64,8 @@ public abstract class ColumnExpression : SqlExpression
         expressionPrinter.Append(TableAlias).Append(".");
         expressionPrinter.Append(Name);
     }
+
+    /// <inheritdoc />
+    public override string ToString()
+        => $"{TableAlias}.{Name}";
 }
