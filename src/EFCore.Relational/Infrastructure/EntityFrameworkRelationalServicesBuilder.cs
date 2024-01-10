@@ -62,6 +62,7 @@ public class EntityFrameworkRelationalServicesBuilder : EntityFrameworkServicesB
             { typeof(IRawSqlCommandBuilder), new ServiceCharacteristics(ServiceLifetime.Singleton) },
             { typeof(IQuerySqlGeneratorFactory), new ServiceCharacteristics(ServiceLifetime.Singleton) },
             { typeof(IModificationCommandFactory), new ServiceCharacteristics(ServiceLifetime.Singleton) },
+            { typeof(ISqlAliasManagerFactory), new ServiceCharacteristics(ServiceLifetime.Singleton) },
             { typeof(ICommandBatchPreparer), new ServiceCharacteristics(ServiceLifetime.Scoped) },
             { typeof(IModificationCommandBatchFactory), new ServiceCharacteristics(ServiceLifetime.Scoped) },
             { typeof(IRelationalSqlTranslatingExpressionVisitorFactory), new ServiceCharacteristics(ServiceLifetime.Scoped) },
@@ -185,6 +186,7 @@ public class EntityFrameworkRelationalServicesBuilder : EntityFrameworkServicesB
         TryAdd<IRelationalParameterBasedSqlProcessorFactory, RelationalParameterBasedSqlProcessorFactory>();
         TryAdd<IRelationalQueryStringFactory, RelationalQueryStringFactory>();
         TryAdd<IQueryCompilationContextFactory, RelationalQueryCompilationContextFactory>();
+        TryAdd<ISqlAliasManagerFactory, SqlAliasManagerFactory>();
 
         ServiceCollectionMap.GetInfrastructure()
             .AddDependencySingleton<RelationalSqlGenerationHelperDependencies>()

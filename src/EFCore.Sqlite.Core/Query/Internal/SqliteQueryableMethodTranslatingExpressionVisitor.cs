@@ -19,6 +19,7 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
 {
     private readonly IRelationalTypeMappingSource _typeMappingSource;
     private readonly SqliteSqlExpressionFactory _sqlExpressionFactory;
+    private readonly SqlAliasManager _sqlAliasManager;
     private readonly bool _areJsonFunctionsSupported;
 
     /// <summary>
@@ -30,11 +31,12 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
     public SqliteQueryableMethodTranslatingExpressionVisitor(
         QueryableMethodTranslatingExpressionVisitorDependencies dependencies,
         RelationalQueryableMethodTranslatingExpressionVisitorDependencies relationalDependencies,
-        QueryCompilationContext queryCompilationContext)
+        RelationalQueryCompilationContext queryCompilationContext)
         : base(dependencies, relationalDependencies, queryCompilationContext)
     {
         _typeMappingSource = relationalDependencies.TypeMappingSource;
         _sqlExpressionFactory = (SqliteSqlExpressionFactory)relationalDependencies.SqlExpressionFactory;
+        _sqlAliasManager = queryCompilationContext.SqlAliasManager;
 
         _areJsonFunctionsSupported = new Version(new SqliteConnection().ServerVersion) >= new Version(3, 38);
     }
@@ -51,6 +53,7 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
     {
         _typeMappingSource = parentVisitor._typeMappingSource;
         _sqlExpressionFactory = parentVisitor._sqlExpressionFactory;
+        _sqlAliasManager = parentVisitor._sqlAliasManager;
 
         _areJsonFunctionsSupported = parentVisitor._areJsonFunctionsSupported;
     }
@@ -94,7 +97,7 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
                         typeof(int)),
                     _sqlExpressionFactory.Constant(0));
 
-            return source.UpdateQueryExpression(_sqlExpressionFactory.Select(translation));
+            return source.UpdateQueryExpression(_sqlExpressionFactory.Select(translation, _sqlAliasManager));
         }
 
         return base.TranslateAny(source, predicate);
@@ -189,7 +192,7 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
                 argumentsPropagateNullability: new[] { true },
                 typeof(int));
 
-            return source.UpdateQueryExpression(_sqlExpressionFactory.Select(translation));
+            return source.UpdateQueryExpression(_sqlExpressionFactory.Select(translation, _sqlAliasManager));
         }
 
         return base.TranslateCount(source, predicate);
@@ -227,6 +230,7 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
 
 #pragma warning disable EF1001 // Internal EF Core API usage.
         var selectExpression = new SelectExpression(
+            _sqlAliasManager,
             jsonEachExpression,
             columnName: "value",
             columnType: elementClrType,
@@ -312,6 +316,7 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
 
 #pragma warning disable EF1001 // Internal EF Core API usage.
         var selectExpression = new SelectExpression(
+            _sqlAliasManager,
             jsonQueryExpression,
             jsonEachExpression,
             "key",
@@ -390,6 +395,7 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
 
 #pragma warning disable EF1001 // Internal EF Core API usage.
         var newOuterSelectExpression = new SelectExpression(
+            _sqlAliasManager,
             jsonQueryExpression,
             subquery,
             "key",
@@ -487,7 +493,7 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
                         translation, _sqlExpressionFactory, projectionColumn.TypeMapping, projectionColumn.IsNullable);
                 }
 
-                return source.UpdateQueryExpression(_sqlExpressionFactory.Select(translation));
+                return source.UpdateQueryExpression(_sqlExpressionFactory.Select(translation, _sqlAliasManager));
             }
         }
 
