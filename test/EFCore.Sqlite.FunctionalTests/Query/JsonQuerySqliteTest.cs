@@ -116,7 +116,7 @@ FROM "JsonEntitiesBasic" AS "j"
 WHERE (
     SELECT "t0"."c"
     FROM (
-        SELECT "t"."OwnedReferenceLeaf" ->> 'SomethingSomething' AS "c", "t"."key" AS "key0"
+        SELECT "t"."OwnedReferenceLeaf" ->> 'SomethingSomething' AS "c", "t"."key"
         FROM (
             SELECT "o"."value" ->> 'OwnedReferenceLeaf' AS "OwnedReferenceLeaf", "o"."key"
             FROM json_each("j"."OwnedReferenceRoot", '$.OwnedCollectionBranch') AS "o"
@@ -124,7 +124,7 @@ WHERE (
         ORDER BY "t"."key"
         LIMIT -1 OFFSET 1
     ) AS "t0"
-    ORDER BY "t0"."key0"
+    ORDER BY "t0"."key"
     LIMIT 1 OFFSET 0) = 'e1_r_c2_r'
 """);
     }

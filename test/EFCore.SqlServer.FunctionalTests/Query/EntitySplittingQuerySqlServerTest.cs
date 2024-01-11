@@ -446,7 +446,7 @@ LEFT JOIN [OwnedReferencePart3] AS [o0] ON [l].[Id] = [o0].[LeafEntityId]
 
         AssertSql(
             """
-SELECT [t].[Id], [t].[BaseValue], [t].[MiddleValue], [t].[SiblingValue], [t].[LeafValue], [t].[Discriminator], [l].[Id], [l].[OwnedReference_Id], [l].[OwnedReference_OwnedIntValue1], [l].[OwnedReference_OwnedIntValue2], [o0].[OwnedIntValue3], [o].[OwnedIntValue4], [l].[OwnedReference_OwnedStringValue1], [l].[OwnedReference_OwnedStringValue2], [o0].[OwnedStringValue3], [o].[OwnedStringValue4]
+SELECT [t].[Id], [t].[BaseValue], [t].[MiddleValue], [t].[SiblingValue], [t].[LeafValue], [t].[Discriminator], [l0].[Id], [l0].[OwnedReference_Id], [l0].[OwnedReference_OwnedIntValue1], [l0].[OwnedReference_OwnedIntValue2], [o0].[OwnedIntValue3], [o].[OwnedIntValue4], [l0].[OwnedReference_OwnedStringValue1], [l0].[OwnedReference_OwnedStringValue2], [o0].[OwnedStringValue3], [o].[OwnedStringValue4]
 FROM (
     SELECT [b].[Id], [b].[BaseValue], NULL AS [MiddleValue], NULL AS [SiblingValue], NULL AS [LeafValue], N'BaseEntity' AS [Discriminator]
     FROM [BaseEntity] AS [b]
@@ -457,12 +457,12 @@ FROM (
     SELECT [s].[Id], [s].[BaseValue], NULL AS [MiddleValue], [s].[SiblingValue], NULL AS [LeafValue], N'SiblingEntity' AS [Discriminator]
     FROM [SiblingEntity] AS [s]
     UNION ALL
-    SELECT [l0].[Id], [l0].[BaseValue], [l0].[MiddleValue], NULL AS [SiblingValue], [l0].[LeafValue], N'LeafEntity' AS [Discriminator]
-    FROM [LeafEntity] AS [l0]
+    SELECT [l].[Id], [l].[BaseValue], [l].[MiddleValue], NULL AS [SiblingValue], [l].[LeafValue], N'LeafEntity' AS [Discriminator]
+    FROM [LeafEntity] AS [l]
 ) AS [t]
-LEFT JOIN [LeafEntity] AS [l] ON [t].[Id] = [l].[Id]
-LEFT JOIN [OwnedReferencePart4] AS [o] ON [l].[Id] = [o].[LeafEntityId]
-LEFT JOIN [OwnedReferencePart3] AS [o0] ON [l].[Id] = [o0].[LeafEntityId]
+LEFT JOIN [LeafEntity] AS [l0] ON [t].[Id] = [l0].[Id]
+LEFT JOIN [OwnedReferencePart4] AS [o] ON [l0].[Id] = [o].[LeafEntityId]
+LEFT JOIN [OwnedReferencePart3] AS [o0] ON [l0].[Id] = [o0].[LeafEntityId]
 """);
     }
 

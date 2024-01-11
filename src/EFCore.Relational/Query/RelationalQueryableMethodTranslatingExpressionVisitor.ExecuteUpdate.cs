@@ -51,6 +51,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
             return null;
         }
 
+        var selectExpression = (SelectExpression)source.QueryExpression;
+
         // Translate the setters: the left (property) selectors get translated to ColumnExpressions, the right (value) selectors to
         // arbitrary SqlExpressions.
         // Note that if the query isn't natively supported, we'll do a pushdown (see PushdownWithPkInnerJoinPredicate below); if that
@@ -61,10 +63,17 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
             return null;
         }
 
+        if (targetTable is TpcTablesExpression tpcTablesExpression)
+        {
+            AddTranslationErrorDetails(
+                RelationalStrings.ExecuteOperationOnTPC(
+                    nameof(RelationalQueryableExtensions.ExecuteUpdate), tpcTablesExpression.EntityType.DisplayName()));
+            return null;
+        }
+
         // Check if the provider has a native translation for the update represented by the select expression.
         // The default relational implementation handles simple, universally-supported cases (i.e. no operators except for predicate).
         // Providers may override IsValidSelectExpressionForExecuteUpdate to add support for more cases via provider-specific UPDATE syntax.
-        var selectExpression = (SelectExpression)source.QueryExpression;
         if (IsValidSelectExpressionForExecuteUpdate(selectExpression, targetTable, out var tableExpression))
         {
             selectExpression.ReplaceProjection(new List<Expression>());
@@ -114,10 +123,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
             [NotNullWhen(true)] out List<ColumnValueSetter>? translatedSetters,
             [NotNullWhen(true)] out TableExpressionBase? targetTable)
         {
-            var selectExpression = (SelectExpression)source.QueryExpression;
-
             targetTable = null;
-            TableExpressionBase? tempTargetTable = null;
+            string? targetTableAlias = null;
             var tempTranslatedSetters = new List<ColumnValueSetter>();
             translatedSetters = null;
 
@@ -165,29 +172,21 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 }
             }
 
-            targetTable = tempTargetTable;
             translatedSetters = tempTranslatedSetters;
 
-            Check.DebugAssert(targetTable is not null, "Target table should have a value");
-
-            if (targetTable is TpcTablesExpression tpcTablesExpression)
-            {
-                AddTranslationErrorDetails(
-                    RelationalStrings.ExecuteOperationOnTPC(
-                        nameof(RelationalQueryableExtensions.ExecuteUpdate), tpcTablesExpression.EntityType.DisplayName()));
-                return false;
-            }
+            Check.DebugAssert(targetTableAlias is not null, "Target table alias should have a value");
+            targetTable = selectExpression.Tables.First(t => t.GetRequiredAlias() == targetTableAlias);
 
             return true;
 
             bool IsColumnOnSameTable(ColumnExpression column, LambdaExpression propertySelector)
             {
-                if (tempTargetTable is null)
+                if (targetTableAlias is null)
                 {
-                    tempTargetTable = column.Table;
+                    targetTableAlias = column.TableAlias;
                     targetTablePropertySelector = propertySelector;
                 }
-                else if (!ReferenceEquals(column.Table, tempTargetTable))
+                else if (!ReferenceEquals(column.TableAlias, targetTableAlias))
                 {
                     AddTranslationErrorDetails(
                         RelationalStrings.MultipleTablesInExecuteUpdate(

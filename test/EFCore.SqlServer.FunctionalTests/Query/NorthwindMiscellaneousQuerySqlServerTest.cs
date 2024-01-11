@@ -388,7 +388,7 @@ ORDER BY (
 SELECT [t].[EmployeeID], [t].[City], [t].[Country], [t].[FirstName], [t].[ReportsTo], [t].[Title]
 FROM (
     SELECT 1 AS empty
-) AS [e]
+) AS [e0]
 LEFT JOIN (
     SELECT [e].[EmployeeID], [e].[City], [e].[Country], [e].[FirstName], [e].[ReportsTo], [e].[Title]
     FROM [Employees] AS [e]
@@ -406,7 +406,7 @@ LEFT JOIN (
 SELECT [t].[EmployeeID], [t].[City], [t].[Country], [t].[FirstName], [t].[ReportsTo], [t].[Title]
 FROM (
     SELECT 1 AS empty
-) AS [e]
+) AS [e0]
 LEFT JOIN (
     SELECT [e].[EmployeeID], [e].[City], [e].[Country], [e].[FirstName], [e].[ReportsTo], [e].[Title]
     FROM [Employees] AS [e]
@@ -416,11 +416,11 @@ INNER JOIN (
     SELECT [t0].[EmployeeID]
     FROM (
         SELECT 1 AS empty
-    ) AS [e]
+    ) AS [e2]
     LEFT JOIN (
-        SELECT [e0].[EmployeeID]
-        FROM [Employees] AS [e0]
-        WHERE [e0].[EmployeeID] = -1
+        SELECT [e1].[EmployeeID]
+        FROM [Employees] AS [e1]
+        WHERE [e1].[EmployeeID] = -1
     ) AS [t0] ON 1 = 1
 ) AS [t1] ON [t].[EmployeeID] = [t1].[EmployeeID]
 """);
@@ -435,7 +435,7 @@ INNER JOIN (
 SELECT N'Foo'
 FROM (
     SELECT 1 AS empty
-) AS [e]
+) AS [e0]
 LEFT JOIN (
     SELECT 1 AS empty
     FROM [Employees] AS [e]
@@ -453,7 +453,7 @@ LEFT JOIN (
 SELECT [t].[EmployeeID], [t].[City], [t].[Country], [t].[FirstName], [t].[ReportsTo], [t].[Title]
 FROM (
     SELECT 1 AS empty
-) AS [e]
+) AS [e0]
 LEFT JOIN (
     SELECT [e].[EmployeeID], [e].[City], [e].[Country], [e].[FirstName], [e].[ReportsTo], [e].[Title]
     FROM [Employees] AS [e]
@@ -471,7 +471,7 @@ LEFT JOIN (
 SELECT COALESCE([t].[EmployeeID], 0)
 FROM (
     SELECT 1 AS empty
-) AS [e]
+) AS [e0]
 LEFT JOIN (
     SELECT [e].[EmployeeID]
     FROM [Employees] AS [e]
@@ -5316,7 +5316,7 @@ SELECT CASE
         SELECT 1
         FROM (
             SELECT 1 AS empty
-        ) AS [e]
+        ) AS [e0]
         LEFT JOIN (
             SELECT 1 AS empty
             FROM [Employees] AS [e]

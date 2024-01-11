@@ -1193,17 +1193,17 @@ INNER JOIN (
     SELECT [t].[Id], [t].[Name], [t].[Number], [t].[Slumber], [t].[IsGreen], [t].[IsBrown], [t].[Discriminator], [e0].[CompositeKeySkipSharedKey1], [e0].[CompositeKeySkipSharedKey2], [e0].[CompositeKeySkipSharedKey3]
     FROM [EntityCompositeKeyEntityRoot] AS [e0]
     INNER JOIN (
-        SELECT [r0].[Id], [r0].[Name], NULL AS [Number], NULL AS [Slumber], NULL AS [IsGreen], NULL AS [IsBrown], N'EntityRoot' AS [Discriminator]
-        FROM [Roots] AS [r0]
+        SELECT [r].[Id], [r].[Name], NULL AS [Number], NULL AS [Slumber], NULL AS [IsGreen], NULL AS [IsBrown], N'EntityRoot' AS [Discriminator]
+        FROM [Roots] AS [r]
         UNION ALL
-        SELECT [b0].[Id], [b0].[Name], [b0].[Number], NULL AS [Slumber], NULL AS [IsGreen], NULL AS [IsBrown], N'EntityBranch' AS [Discriminator]
-        FROM [Branches] AS [b0]
+        SELECT [b].[Id], [b].[Name], [b].[Number], NULL AS [Slumber], NULL AS [IsGreen], NULL AS [IsBrown], N'EntityBranch' AS [Discriminator]
+        FROM [Branches] AS [b]
         UNION ALL
-        SELECT [l1].[Id], [l1].[Name], [l1].[Number], NULL AS [Slumber], [l1].[IsGreen], NULL AS [IsBrown], N'EntityLeaf' AS [Discriminator]
-        FROM [Leaves] AS [l1]
+        SELECT [l].[Id], [l].[Name], [l].[Number], NULL AS [Slumber], [l].[IsGreen], NULL AS [IsBrown], N'EntityLeaf' AS [Discriminator]
+        FROM [Leaves] AS [l]
         UNION ALL
-        SELECT [l2].[Id], [l2].[Name], NULL AS [Number], [l2].[Slumber], NULL AS [IsGreen], [l2].[IsBrown], N'EntityLeaf2' AS [Discriminator]
-        FROM [Leaf2s] AS [l2]
+        SELECT [l0].[Id], [l0].[Name], NULL AS [Number], [l0].[Slumber], NULL AS [IsGreen], [l0].[IsBrown], N'EntityLeaf2' AS [Discriminator]
+        FROM [Leaf2s] AS [l0]
     ) AS [t] ON [e0].[RootSkipSharedId] = [t].[Id]
 ) AS [t0] ON [e].[Key1] = [t0].[CompositeKeySkipSharedKey1] AND [e].[Key2] = [t0].[CompositeKeySkipSharedKey2] AND [e].[Key3] = [t0].[CompositeKeySkipSharedKey3]
 ORDER BY [e].[Key1], [e].[Key2], [e].[Key3]
@@ -1493,17 +1493,17 @@ ORDER BY [t].[Id]
             """
 SELECT [t0].[Id], [t0].[CollectionInverseId], [t0].[Name], [t0].[ReferenceInverseId], [t].[Id], [t0].[RootSkipSharedId], [t0].[ThreeSkipSharedId]
 FROM (
-    SELECT [r1].[Id]
-    FROM [Roots] AS [r1]
+    SELECT [r].[Id]
+    FROM [Roots] AS [r]
     UNION ALL
-    SELECT [b1].[Id]
-    FROM [Branches] AS [b1]
+    SELECT [b].[Id]
+    FROM [Branches] AS [b]
     UNION ALL
-    SELECT [l3].[Id]
-    FROM [Leaves] AS [l3]
+    SELECT [l].[Id]
+    FROM [Leaves] AS [l]
     UNION ALL
-    SELECT [l4].[Id]
-    FROM [Leaf2s] AS [l4]
+    SELECT [l0].[Id]
+    FROM [Leaf2s] AS [l0]
 ) AS [t]
 INNER JOIN (
     SELECT [e0].[Id], [e0].[CollectionInverseId], [e0].[Name], [e0].[ReferenceInverseId], [e].[RootSkipSharedId], [e].[ThreeSkipSharedId]
@@ -1516,17 +1516,17 @@ ORDER BY [t].[Id], [t0].[RootSkipSharedId], [t0].[ThreeSkipSharedId], [t0].[Id]
             """
 SELECT [t1].[Id], [t1].[Name], [t].[Id], [t0].[RootSkipSharedId], [t0].[ThreeSkipSharedId], [t0].[Id]
 FROM (
-    SELECT [r2].[Id]
-    FROM [Roots] AS [r2]
+    SELECT [r].[Id]
+    FROM [Roots] AS [r]
     UNION ALL
-    SELECT [b2].[Id]
-    FROM [Branches] AS [b2]
+    SELECT [b].[Id]
+    FROM [Branches] AS [b]
     UNION ALL
-    SELECT [l5].[Id]
-    FROM [Leaves] AS [l5]
+    SELECT [l].[Id]
+    FROM [Leaves] AS [l]
     UNION ALL
-    SELECT [l6].[Id]
-    FROM [Leaf2s] AS [l6]
+    SELECT [l0].[Id]
+    FROM [Leaf2s] AS [l0]
 ) AS [t]
 INNER JOIN (
     SELECT [e0].[Id], [e].[RootSkipSharedId], [e].[ThreeSkipSharedId]
@@ -1569,17 +1569,17 @@ ORDER BY [t].[Id]
             """
 SELECT [t0].[Key1], [t0].[Key2], [t0].[Key3], [t0].[Name], [t].[Id], [t0].[RootSkipSharedId], [t0].[CompositeKeySkipSharedKey1], [t0].[CompositeKeySkipSharedKey2], [t0].[CompositeKeySkipSharedKey3]
 FROM (
-    SELECT [r1].[Id]
-    FROM [Roots] AS [r1]
+    SELECT [r].[Id]
+    FROM [Roots] AS [r]
     UNION ALL
-    SELECT [b1].[Id]
-    FROM [Branches] AS [b1]
+    SELECT [b].[Id]
+    FROM [Branches] AS [b]
     UNION ALL
-    SELECT [l3].[Id]
-    FROM [Leaves] AS [l3]
+    SELECT [l].[Id]
+    FROM [Leaves] AS [l]
     UNION ALL
-    SELECT [l4].[Id]
-    FROM [Leaf2s] AS [l4]
+    SELECT [l0].[Id]
+    FROM [Leaf2s] AS [l0]
 ) AS [t]
 INNER JOIN (
     SELECT [e0].[Key1], [e0].[Key2], [e0].[Key3], [e0].[Name], [e].[RootSkipSharedId], [e].[CompositeKeySkipSharedKey1], [e].[CompositeKeySkipSharedKey2], [e].[CompositeKeySkipSharedKey3]
@@ -1592,17 +1592,17 @@ ORDER BY [t].[Id], [t0].[RootSkipSharedId], [t0].[CompositeKeySkipSharedKey1], [
             """
 SELECT [t2].[Id], [t2].[CollectionInverseId], [t2].[Name], [t2].[ReferenceInverseId], [t].[Id], [t0].[RootSkipSharedId], [t0].[CompositeKeySkipSharedKey1], [t0].[CompositeKeySkipSharedKey2], [t0].[CompositeKeySkipSharedKey3], [t0].[Key1], [t0].[Key2], [t0].[Key3]
 FROM (
-    SELECT [r2].[Id]
-    FROM [Roots] AS [r2]
+    SELECT [r].[Id]
+    FROM [Roots] AS [r]
     UNION ALL
-    SELECT [b2].[Id]
-    FROM [Branches] AS [b2]
+    SELECT [b].[Id]
+    FROM [Branches] AS [b]
     UNION ALL
-    SELECT [l5].[Id]
-    FROM [Leaves] AS [l5]
+    SELECT [l].[Id]
+    FROM [Leaves] AS [l]
     UNION ALL
-    SELECT [l6].[Id]
-    FROM [Leaf2s] AS [l6]
+    SELECT [l0].[Id]
+    FROM [Leaf2s] AS [l0]
 ) AS [t]
 INNER JOIN (
     SELECT [e0].[Key1], [e0].[Key2], [e0].[Key3], [e].[RootSkipSharedId], [e].[CompositeKeySkipSharedKey1], [e].[CompositeKeySkipSharedKey2], [e].[CompositeKeySkipSharedKey3]
@@ -1852,11 +1852,11 @@ INNER JOIN (
     SELECT [t].[Id], [t].[Name], [t].[Number], [t].[IsGreen], [t].[Discriminator], [j1].[EntityOneId]
     FROM [JoinOneToBranch] AS [j1]
     INNER JOIN (
-        SELECT [b0].[Id], [b0].[Name], [b0].[Number], NULL AS [IsGreen], N'EntityBranch' AS [Discriminator]
-        FROM [Branches] AS [b0]
+        SELECT [b].[Id], [b].[Name], [b].[Number], NULL AS [IsGreen], N'EntityBranch' AS [Discriminator]
+        FROM [Branches] AS [b]
         UNION ALL
-        SELECT [l0].[Id], [l0].[Name], [l0].[Number], [l0].[IsGreen], N'EntityLeaf' AS [Discriminator]
-        FROM [Leaves] AS [l0]
+        SELECT [l].[Id], [l].[Name], [l].[Number], [l].[IsGreen], N'EntityLeaf' AS [Discriminator]
+        FROM [Leaves] AS [l]
     ) AS [t] ON [j1].[EntityBranchId] = [t].[Id]
     WHERE [t].[Id] < 20
 ) AS [t3] ON [t0].[Id] = [t3].[EntityOneId]
@@ -2319,19 +2319,19 @@ ORDER BY [u].[Key1], [u0].[Key1], [u].[Key2], [u0].[Key2]
             """
 SELECT [t0].[Id], [t0].[CollectionInverseId], [t0].[Name], [t0].[ReferenceInverseId]
 FROM (
+    SELECT [u].[Id]
+    FROM [UnidirectionalRoots] AS [u]
+    UNION ALL
+    SELECT [u0].[Id]
+    FROM [UnidirectionalBranches] AS [u0]
+    UNION ALL
     SELECT [u1].[Id]
-    FROM [UnidirectionalRoots] AS [u1]
-    UNION ALL
-    SELECT [u2].[Id]
-    FROM [UnidirectionalBranches] AS [u2]
-    UNION ALL
-    SELECT [u3].[Id]
-    FROM [UnidirectionalLeaves] AS [u3]
+    FROM [UnidirectionalLeaves] AS [u1]
 ) AS [t]
 INNER JOIN (
-    SELECT [u0].[Id], [u0].[CollectionInverseId], [u0].[Name], [u0].[ReferenceInverseId], [u].[UnidirectionalEntityRootId]
-    FROM [UnidirectionalEntityRootUnidirectionalEntityThree] AS [u]
-    INNER JOIN [UnidirectionalEntityThrees] AS [u0] ON [u].[ThreeSkipSharedId] = [u0].[Id]
+    SELECT [u3].[Id], [u3].[CollectionInverseId], [u3].[Name], [u3].[ReferenceInverseId], [u2].[UnidirectionalEntityRootId]
+    FROM [UnidirectionalEntityRootUnidirectionalEntityThree] AS [u2]
+    INNER JOIN [UnidirectionalEntityThrees] AS [u3] ON [u2].[ThreeSkipSharedId] = [u3].[Id]
 ) AS [t0] ON [t].[Id] = [t0].[UnidirectionalEntityRootId]
 """);
     }
