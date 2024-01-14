@@ -175,6 +175,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
             translatedSetters = tempTranslatedSetters;
 
             Check.DebugAssert(targetTableAlias is not null, "Target table alias should have a value");
+            var selectExpression = (SelectExpression)source.QueryExpression;
             targetTable = selectExpression.Tables.First(t => t.GetRequiredAlias() == targetTableAlias);
 
             return true;

@@ -122,7 +122,7 @@ public abstract class TableExpressionBase : Expression, IPrintableExpression
 
     /// <inheritdoc />
     public override int GetHashCode()
-        => 0;
+        => Alias?.GetHashCode() ?? 0;
 
     /// <summary>
     ///     Adds an annotation to this object. Throws if an annotation with the specified name already exists.

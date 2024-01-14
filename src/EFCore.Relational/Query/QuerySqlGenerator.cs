@@ -197,7 +197,7 @@ public class QuerySqlGenerator : SqlExpressionVisitor
             && selectExpression.Orderings.Count == 0
             && selectExpression.GroupBy.Count == 0
             && selectExpression.Tables.Count == 1
-            && selectExpression.Tables[0] == deleteExpression.Table
+            && selectExpression.Tables[0].Equals(deleteExpression.Table)
             && selectExpression.Projection.Count == 0)
         {
             _relationalCommandBuilder.Append("DELETE FROM ");

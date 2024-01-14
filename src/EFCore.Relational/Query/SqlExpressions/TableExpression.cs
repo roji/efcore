@@ -81,8 +81,14 @@ public sealed class TableExpression : TableExpressionBase, ITableBasedExpression
 
     /// <inheritdoc />
     public override bool Equals(object? obj)
-        // This should be reference equal only.
-        => obj != null && ReferenceEquals(this, obj);
+        => obj != null
+            && (ReferenceEquals(this, obj)
+                || obj is TableExpression fromSqlExpression
+                && Equals(fromSqlExpression));
+
+    private bool Equals(TableExpression fromSqlExpression)
+        => base.Equals(fromSqlExpression)
+            && Table == fromSqlExpression.Table;
 
     /// <inheritdoc />
     public override int GetHashCode()

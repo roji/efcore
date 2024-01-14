@@ -86,7 +86,7 @@ public sealed class UpdateExpression : Expression, IPrintableExpression
             var newValue = (SqlExpression)visitor.Visit(columnValueSetter.Value);
             if (columnValueSetters != null)
             {
-                columnValueSetters.Add(new ColumnValueSetter(columnValueSetter.Column, newValue));
+                columnValueSetters.Add(columnValueSetter with { Value = newValue });
             }
             else if (!ReferenceEquals(newValue, columnValueSetter.Value))
             {
@@ -96,13 +96,15 @@ public sealed class UpdateExpression : Expression, IPrintableExpression
                     columnValueSetters.Add(ColumnValueSetters[j]);
                 }
 
-                columnValueSetters.Add(new ColumnValueSetter(columnValueSetter.Column, newValue));
+                columnValueSetters.Add(columnValueSetter with { Value = newValue });
             }
         }
 
+        var table = (TableExpression)visitor.Visit(Table);
+
         return selectExpression != SelectExpression
             || columnValueSetters != null
-                ? new UpdateExpression(Table, selectExpression, columnValueSetters ?? ColumnValueSetters)
+                ? new UpdateExpression(table, selectExpression, columnValueSetters ?? ColumnValueSetters)
                 : this;
     }
 
