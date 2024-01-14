@@ -20,7 +20,7 @@ public sealed class TableExpression : TableExpressionBase, ITableBasedExpression
     {
     }
 
-    private TableExpression(string alias, ITableBase table, IEnumerable<IAnnotation>? annotations)
+    private TableExpression(string alias, ITableBase table, IReadOnlyDictionary<string, IAnnotation>? annotations)
         : base(alias, annotations)
     {
         Name = table.Name;
@@ -50,10 +50,6 @@ public sealed class TableExpression : TableExpressionBase, ITableBasedExpression
     public ITableBase Table { get; }
 
     /// <inheritdoc />
-    protected override TableExpressionBase CreateWithAnnotations(IEnumerable<IAnnotation> annotations)
-        => new TableExpression(Alias, Table, annotations);
-
-    /// <inheritdoc />
     ITableBase ITableBasedExpression.Table
         => Table;
 
@@ -73,7 +69,15 @@ public sealed class TableExpression : TableExpressionBase, ITableBasedExpression
 
     /// <inheritdoc />
     public override TableExpressionBase Clone(string? alias, ExpressionVisitor cloningExpressionVisitor)
-        => new TableExpression(alias!, Table, GetAnnotations());
+        => new TableExpression(alias!, Table, Annotations);
+
+    /// <inheritdoc />
+    protected override TableExpression WithAnnotations(IReadOnlyDictionary<string, IAnnotation> annotations)
+        => new(Alias, Table, annotations);
+
+    /// <inheritdoc />
+    public override TableExpression WithAlias(string newAlias)
+        => new(newAlias, Table, Annotations);
 
     /// <inheritdoc />
     public override bool Equals(object? obj)
