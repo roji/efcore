@@ -1003,7 +1003,7 @@ WHERE [t].[Rank] & (
         SELECT [o0].[Nickname], [o0].[SquadId], [o0].[Rank]
         FROM [Officers] AS [o0]
     ) AS [t0]
-    ORDER BY [t0].[Nickname], [t0].[SquadId]) OR (
+    ORDER BY [t0].[Nickname], [t0].[SquadId]) OR ((
     SELECT TOP(1) [t0].[Rank]
     FROM (
         SELECT [g0].[Nickname], [g0].[SquadId], [g0].[Rank]
@@ -1012,7 +1012,16 @@ WHERE [t].[Rank] & (
         SELECT [o0].[Nickname], [o0].[SquadId], [o0].[Rank]
         FROM [Officers] AS [o0]
     ) AS [t0]
-    ORDER BY [t0].[Nickname], [t0].[SquadId]) IS NULL
+    ORDER BY [t0].[Nickname], [t0].[SquadId]) IS NULL AND (
+    SELECT TOP(1) [t0].[Rank]
+    FROM (
+        SELECT [g0].[Nickname], [g0].[SquadId], [g0].[Rank]
+        FROM [Gears] AS [g0]
+        UNION ALL
+        SELECT [o0].[Nickname], [o0].[SquadId], [o0].[Rank]
+        FROM [Officers] AS [o0]
+    ) AS [t0]
+    ORDER BY [t0].[Nickname], [t0].[SquadId]) IS NULL)
 """);
     }
 

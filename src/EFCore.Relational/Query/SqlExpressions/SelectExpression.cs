@@ -35,9 +35,6 @@ public sealed partial class SelectExpression : TableExpressionBase
     private readonly List<(ColumnExpression Column, ValueComparer Comparer)> _identifier = [];
     private readonly List<(ColumnExpression Column, ValueComparer Comparer)> _childIdentifiers = [];
 
-    private readonly Dictionary<TpcTablesExpression, (ColumnExpression, List<string>)> _tpcDiscriminatorValues
-        = new(ReferenceEqualityComparer.Instance);
-
     private readonly SqlAliasManager _sqlAliasManager;
 
     internal bool IsMutable { get; private set; } = true;
@@ -81,19 +78,13 @@ public sealed partial class SelectExpression : TableExpressionBase
         List<TableExpressionBase> tables,
         Expression projection,
         List<(ColumnExpression Column, ValueComparer Comparer)> identifier,
-        SqlAliasManager sqlAliasManager,
-        Dictionary<TpcTablesExpression, (ColumnExpression, List<string>)>? tpcDiscriminatorValues = null)
+        SqlAliasManager sqlAliasManager)
         : base(null)
     {
         _tables = tables;
         _projectionMapping[new ProjectionMember()] = projection;
         _identifier = identifier;
         _sqlAliasManager = sqlAliasManager;
-
-        if (tpcDiscriminatorValues is not null)
-        {
-            _tpcDiscriminatorValues = tpcDiscriminatorValues;
-        }
     }
 
     /// <summary>
@@ -1482,13 +1473,17 @@ public sealed partial class SelectExpression : TableExpressionBase
                         Left: ColumnExpression leftColumn,
                         Right: SqlConstantExpression { Value: string s1 }
                     }
-                    when GetTable(leftColumn) is TpcTablesExpression leftTpc
-                    && _tpcDiscriminatorValues.TryGetValue(leftTpc, out var leftTuple) && leftTuple.Item1.Equals(leftColumn):
+                    when GetTable(leftColumn) is TpcTablesExpression
+                    {
+                        DiscriminatorColumn: var discriminatorColumn,
+                        DiscriminatorValues: var discriminatorValues
+                    } tpcExpression
+                    && leftColumn.Equals(discriminatorColumn):
                 {
-                    var newList = leftTuple.Item2.Intersect(new List<string> { s1 }).ToList();
+                    var newList = discriminatorValues.Intersect(new List<string> { s1 }).ToList();
                     if (newList.Count > 0)
                     {
-                        _tpcDiscriminatorValues[leftTpc] = (leftColumn, newList);
+                        tpcExpression.DiscriminatorValues = newList;
                         return;
                     }
 
@@ -1501,14 +1496,17 @@ public sealed partial class SelectExpression : TableExpressionBase
                         Left: SqlConstantExpression { Value: string s2 },
                         Right: ColumnExpression rightColumn
                     }
-                    when GetTable(rightColumn) is TpcTablesExpression rightTpc
-                    && _tpcDiscriminatorValues.TryGetValue(rightTpc, out var rightTuple)
-                    && rightTuple.Item1.Equals(rightColumn):
+                    when GetTable(rightColumn) is TpcTablesExpression
+                    {
+                        DiscriminatorColumn: var discriminatorColumn,
+                        DiscriminatorValues: var discriminatorValues
+                    } tpcExpression
+                    && rightColumn.Equals(discriminatorColumn):
                 {
-                    var newList = rightTuple.Item2.Intersect(new List<string> { s2 }).ToList();
+                    var newList = discriminatorValues.Intersect(new List<string> { s2 }).ToList();
                     if (newList.Count > 0)
                     {
-                        _tpcDiscriminatorValues[rightTpc] = (rightColumn, newList);
+                        tpcExpression.DiscriminatorValues = newList;
                         return;
                     }
 
@@ -1522,9 +1520,12 @@ public sealed partial class SelectExpression : TableExpressionBase
                         Item: ColumnExpression itemColumn,
                         Values: IReadOnlyList<SqlExpression> valueExpressions
                     }
-                    when GetTable(itemColumn) is TpcTablesExpression itemTpc
-                    && _tpcDiscriminatorValues.TryGetValue(itemTpc, out var itemTuple)
-                    && itemTuple.Item1.Equals(itemColumn):
+                    when GetTable(itemColumn) is TpcTablesExpression
+                    {
+                        DiscriminatorColumn: var discriminatorColumn,
+                        DiscriminatorValues: var discriminatorValues
+                    } tpcExpression
+                    && itemColumn.Equals(discriminatorColumn):
                 {
                     var constantValues = new string[valueExpressions.Count];
                     for (var i = 0; i < constantValues.Length; i++)
@@ -1539,10 +1540,10 @@ public sealed partial class SelectExpression : TableExpressionBase
                         }
                     }
 
-                    var newList = itemTuple.Item2.Intersect(constantValues).ToList();
+                    var newList = discriminatorValues.Intersect(constantValues).ToList();
                     if (newList.Count > 0)
                     {
-                        _tpcDiscriminatorValues[itemTpc] = (itemColumn, newList);
+                        tpcExpression.DiscriminatorValues = newList;
                         return;
                     }
 
@@ -1894,12 +1895,6 @@ public sealed partial class SelectExpression : TableExpressionBase
         _projectionMapping.Clear();
         select1._identifier.AddRange(_identifier);
         _identifier.Clear();
-        foreach (var kvp in _tpcDiscriminatorValues)
-        {
-            select1._tpcDiscriminatorValues[kvp.Key] = kvp.Value;
-        }
-
-        _tpcDiscriminatorValues.Clear();
 
         var outerIdentifiers = select1._identifier.Count == select2._identifier.Count
             ? new ColumnExpression?[select1._identifier.Count]
@@ -2882,11 +2877,6 @@ public sealed partial class SelectExpression : TableExpressionBase
             innerPushdownOccurred = true;
         }
 
-        foreach (var kvp in innerSelectExpression._tpcDiscriminatorValues)
-        {
-            _tpcDiscriminatorValues[kvp.Key] = kvp.Value;
-        }
-
         if (_identifier.Count > 0
             && innerSelectExpression._identifier.Count > 0)
         {
@@ -3360,14 +3350,8 @@ public sealed partial class SelectExpression : TableExpressionBase
         Offset = null;
         Limit = null;
         _preGroupByIdentifier = null;
-        foreach (var kvp in _tpcDiscriminatorValues)
-        {
-            subquery._tpcDiscriminatorValues[kvp.Key] = kvp.Value;
-        }
 
-        _tpcDiscriminatorValues.Clear();
-
-        _tables.Add(subquery);
+_tables.Add(subquery);
 
         var projectionMap = new Dictionary<SqlExpression, ColumnExpression>(ReferenceEqualityComparer.Instance);
 
@@ -3737,13 +3721,6 @@ public sealed partial class SelectExpression : TableExpressionBase
             IsMutable = IsMutable
         };
 
-        // The below contain ColumnExpressions which need to be recreated if a table's alias is modified during cloning
-        foreach (var (tpcTablesExpression, (column, discriminatorValues)) in _tpcDiscriminatorValues)
-        {
-            newSelectExpression._tpcDiscriminatorValues[tpcTablesMap[tpcTablesExpression]] =
-                ((ColumnExpression)cloningExpressionVisitor.Visit(column), discriminatorValues);
-        }
-
         foreach (var (column, comparer) in _identifier)
         {
             newSelectExpression._identifier.Add(((ColumnExpression)cloningExpressionVisitor.Visit(column), comparer));
@@ -3960,10 +3937,6 @@ public sealed partial class SelectExpression : TableExpressionBase
                 .ToList();
             _childIdentifiers.Clear();
             _childIdentifiers.AddRange(childIdentifier);
-            foreach (var kvp in _tpcDiscriminatorValues)
-            {
-                _tpcDiscriminatorValues[kvp.Key] = ((ColumnExpression)visitor.Visit(kvp.Value.Item1), kvp.Value.Item2);
-            }
 
             return this;
         }
@@ -4033,13 +4006,6 @@ public sealed partial class SelectExpression : TableExpressionBase
             var childIdentifier = VisitList(
                 _childIdentifiers.Select(e => e.Column).ToList(), inPlace: false, out var childIdentifierChanged);
             changed |= childIdentifierChanged;
-            var newTpcDiscriminatorValues = new Dictionary<TpcTablesExpression, (ColumnExpression, List<string>)>();
-            foreach (var kvp in _tpcDiscriminatorValues)
-            {
-                var newDiscriminatorColumnForTpc = (ColumnExpression)visitor.Visit(kvp.Value.Item1);
-                changed |= newDiscriminatorColumnForTpc != kvp.Value.Item1;
-                newTpcDiscriminatorValues[kvp.Key] = (newDiscriminatorColumnForTpc, kvp.Value.Item2);
-            }
 
             if (changed)
             {
@@ -4056,10 +4022,6 @@ public sealed partial class SelectExpression : TableExpressionBase
                     Tags = Tags,
                     IsMutable = false
                 };
-                foreach (var kvp in newTpcDiscriminatorValues)
-                {
-                    newSelectExpression._tpcDiscriminatorValues[kvp.Key] = kvp.Value;
-                }
 
                 newSelectExpression._identifier.AddRange(identifier.Zip(_identifier).Select(e => (e.First, e.Second.Comparer)));
                 newSelectExpression._childIdentifiers.AddRange(
