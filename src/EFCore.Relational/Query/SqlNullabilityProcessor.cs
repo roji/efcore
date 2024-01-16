@@ -250,26 +250,43 @@ public class SqlNullabilityProcessor
     /// <param name="selectExpression">A select expression to visit.</param>
     /// <returns>An optimized select expression.</returns>
     protected virtual SelectExpression Visit(SelectExpression selectExpression)
+        => Visit(selectExpression, visitProjection: true);
+
+    /// <summary>
+    ///     Visits a <see cref="SelectExpression" />.
+    /// </summary>
+    /// <param name="selectExpression">A select expression to visit.</param>
+    /// <param name="visitProjection">Allows skipping visiting the projection, for when it will be visited outside.</param>
+    /// <returns>An optimized select expression.</returns>
+    private SelectExpression Visit(SelectExpression selectExpression, bool visitProjection)
     {
-        var projections = (List<ProjectionExpression>)selectExpression.Projection;
-        for (var i = 0; i < selectExpression.Projection.Count; i++)
+        List<ProjectionExpression> projections;
+        if (visitProjection)
         {
-            var item = selectExpression.Projection[i];
-            var projection = item.Update(Visit(item.Expression, out _));
-            if (projection != item
-                && projections == selectExpression.Projection)
+            projections = (List<ProjectionExpression>)selectExpression.Projection;
+            for (var i = 0; i < selectExpression.Projection.Count; i++)
             {
-                projections = [];
-                for (var j = 0; j < i; j++)
+                var item = selectExpression.Projection[i];
+                var projection = item.Update(Visit(item.Expression, out _));
+                if (projection != item
+                    && projections == selectExpression.Projection)
                 {
-                    projections.Add(selectExpression.Projection[j]);
+                    projections = [];
+                    for (var j = 0; j < i; j++)
+                    {
+                        projections.Add(selectExpression.Projection[j]);
+                    }
+                }
+
+                if (projections != selectExpression.Projection)
+                {
+                    projections.Add(projection);
                 }
             }
-
-            if (projections != selectExpression.Projection)
-            {
-                projections.Add(projection);
-            }
+        }
+        else
+        {
+            projections = [];
         }
 
         var tables = (List<TableExpressionBase>)selectExpression.Tables;
@@ -1140,9 +1157,21 @@ public class SqlNullabilityProcessor
         bool allowOptimizedExpansion,
         out bool nullable)
     {
-        nullable = true;
+        // Separate the single projection separately, so we know its nullability and bubble it up as the scalar subquery's nullability.
+        var visitedSubquery = Visit(scalarSubqueryExpression.Subquery, visitProjection: false);
 
-        return scalarSubqueryExpression.Update(Visit(scalarSubqueryExpression.Subquery));
+        Check.DebugAssert(visitedSubquery.Projection.Count == 1, "Scalar subquery with bad projection");
+        var projection = visitedSubquery.Projection[0];
+        var visitedProjectionExpression = Visit(projection.Expression, allowOptimizedExpansion, out nullable);
+        if (visitedProjectionExpression != projection.Expression)
+        {
+            visitedSubquery = visitedSubquery.Update(
+                [projection.Update(visitedProjectionExpression)],
+                visitedSubquery.Tables, visitedSubquery.Predicate, visitedSubquery.GroupBy, visitedSubquery.Having,
+                visitedSubquery.Orderings, visitedSubquery.Limit, visitedSubquery.Offset);
+        }
+
+        return scalarSubqueryExpression.Update(visitedSubquery);
     }
 
     /// <summary>
