@@ -112,13 +112,26 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                         return expression;
 
                     case ParameterExpression parameterExpression:
-                        return parameterExpression.Name?.StartsWith(QueryCompilationContext.QueryParameterPrefix, StringComparison.Ordinal)
-                            == true
-                                ? Expression.Call(
+                        return parameterExpression switch
+                        {
+                            // Lambda parameter
+                            _ when _queryableMethodTranslatingExpressionVisitor.TranslationContext.ParameterMap.TryGetValue(
+                                    parameterExpression, out var shaper)
+                                => shaper,
+
+                            // Originally a captured variable that was extracted out of the query tree
+                            // TODO: Stop matching by name, match by ParameterExpression reference instead.
+                            // TODO: Possibly have a single parameters table, with all ParameterExpressions: query ones are mapped to
+                            // SqlParameterExpression, lambda ones to the shaper expression?
+                            { Name: string parameterName } when parameterName.StartsWith(
+                                    QueryCompilationContext.QueryParameterPrefix, StringComparison.Ordinal)
+                                => Expression.Call(
                                     GetParameterValueMethodInfo.MakeGenericMethod(parameterExpression.Type),
                                     QueryCompilationContext.QueryContextParameter,
-                                    Expression.Constant(parameterExpression.Name))
-                                : throw new InvalidOperationException(CoreStrings.TranslationFailed(parameterExpression.Print()));
+                                    Expression.Constant(parameterExpression.Name)),
+
+                            _ => throw new InvalidOperationException(CoreStrings.TranslationFailed(parameterExpression.Print()))
+                        };
 
                     case ProjectionBindingExpression projectionBindingExpression:
                         return _selectExpression.GetProjection(projectionBindingExpression) switch

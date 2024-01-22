@@ -33,7 +33,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
         QueryableMethodTranslatingExpressionVisitorDependencies dependencies,
         RelationalQueryableMethodTranslatingExpressionVisitorDependencies relationalDependencies,
         RelationalQueryCompilationContext queryCompilationContext)
-        : base(dependencies, queryCompilationContext, subquery: false)
+        : base(dependencies, queryCompilationContext)
     {
         RelationalDependencies = relationalDependencies;
 
@@ -60,7 +60,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
     /// <param name="parentVisitor">A parent visitor to create subquery visitor for.</param>
     protected RelationalQueryableMethodTranslatingExpressionVisitor(
         RelationalQueryableMethodTranslatingExpressionVisitor parentVisitor)
-        : base(parentVisitor.Dependencies, parentVisitor.QueryCompilationContext, subquery: true)
+        : base(parentVisitor)
+        // : base(parentVisitor.Dependencies, parentVisitor.QueryCompilationContext, subquery: true)
     {
         RelationalDependencies = parentVisitor.RelationalDependencies;
         _queryCompilationContext = parentVisitor._queryCompilationContext;
@@ -1350,12 +1351,19 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
     protected virtual bool IsNaturallyOrdered(SelectExpression selectExpression)
         => false;
 
+    // TODO: Rename, possibly refactor
     private Expression RemapLambdaBody(ShapedQueryExpression shapedQueryExpression, LambdaExpression lambdaExpression)
     {
-        var lambdaBody = ReplacingExpressionVisitor.Replace(
-            lambdaExpression.Parameters.Single(), shapedQueryExpression.ShaperExpression, lambdaExpression.Body);
+        // TODO: Need to remove when done. So refactor
+        // TranslationContext.ParameterMap.Add(lambdaExpression.Parameters.Single(), shapedQueryExpression.ShaperExpression);
 
-        return ExpandSharedTypeEntities((SelectExpression)shapedQueryExpression.QueryExpression, lambdaBody);
+        // TODO: Also remove this pass.
+        return ExpandSharedTypeEntities((SelectExpression)shapedQueryExpression.QueryExpression, lambdaExpression.Body);
+
+        // var lambdaBody = ReplacingExpressionVisitor.Replace(
+        //     lambdaExpression.Parameters.Single(), shapedQueryExpression.ShaperExpression, lambdaExpression.Body);
+
+        // return ExpandSharedTypeEntities((SelectExpression)shapedQueryExpression.QueryExpression, lambdaBody);
     }
 
     private Expression ExpandSharedTypeEntities(SelectExpression selectExpression, Expression lambdaBody)

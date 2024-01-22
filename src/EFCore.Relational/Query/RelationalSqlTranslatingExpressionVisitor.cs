@@ -4,6 +4,7 @@
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 namespace Microsoft.EntityFrameworkCore.Query;
@@ -60,6 +61,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     private static readonly MethodInfo GetTypeMethodInfo = typeof(object).GetTypeInfo().GetDeclaredMethod(nameof(GetType))!;
 
     private readonly QueryCompilationContext _queryCompilationContext;
+    private readonly TranslationContext _translationContext;
     private readonly IModel _model;
     private readonly ISqlExpressionFactory _sqlExpressionFactory;
     private readonly QueryableMethodTranslatingExpressionVisitor _queryableMethodTranslatingExpressionVisitor;
@@ -82,6 +84,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
         _queryCompilationContext = queryCompilationContext;
         _model = queryCompilationContext.Model;
         _queryableMethodTranslatingExpressionVisitor = queryableMethodTranslatingExpressionVisitor;
+        _translationContext = _queryableMethodTranslatingExpressionVisitor.TranslationContext;
         _throwForNotTranslatedEfProperty = true;
     }
 
@@ -1046,9 +1049,22 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
     /// <inheritdoc />
     protected override Expression VisitParameter(ParameterExpression parameterExpression)
-        => parameterExpression.Name?.StartsWith(QueryCompilationContext.QueryParameterPrefix, StringComparison.Ordinal) == true
-            ? new SqlParameterExpression(parameterExpression.Name, parameterExpression.Type, null)
-            : throw new InvalidOperationException(CoreStrings.TranslationFailed(parameterExpression.Print()));
+        => parameterExpression switch
+        {
+            // Lambda parameter
+            _ when _translationContext.ParameterMap.TryGetValue(parameterExpression, out var shaper)
+                => Visit(shaper),
+
+            // Originally a captured variable that was extracted out of the query tree
+            // TODO: Stop matching by name, match by ParameterExpression reference instead.
+            // TODO: Possibly have a single parameters table, with all ParameterExpressions: query ones are mapped to
+            // SqlParameterExpression, lambda ones to the shaper expression?
+            { Name: string parameterName } when parameterName.StartsWith(
+                    QueryCompilationContext.QueryParameterPrefix, StringComparison.Ordinal)
+                => new SqlParameterExpression(parameterExpression.Name, parameterExpression.Type, null),
+
+            _ => throw new InvalidOperationException(CoreStrings.TranslationFailed(parameterExpression.Print()))
+        };
 
     /// <inheritdoc />
     protected override Expression VisitTypeBinary(TypeBinaryExpression typeBinaryExpression)

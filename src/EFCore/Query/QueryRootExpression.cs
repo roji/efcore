@@ -82,6 +82,10 @@ public abstract class QueryRootExpression : Expression, IPrintableExpression
         => Print(expressionPrinter);
 
     /// <inheritdoc />
+    public override string ToString()
+        => ExpressionPrinter.Print(this);
+
+    /// <inheritdoc />
     public override bool Equals(object? obj)
         => obj != null
             && (ReferenceEquals(this, obj)
