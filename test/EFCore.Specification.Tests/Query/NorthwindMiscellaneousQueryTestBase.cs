@@ -637,6 +637,22 @@ public abstract class NorthwindMiscellaneousQueryTestBase<TFixture> : QueryTestB
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
+    public virtual Task OrderBy_Skip_Where(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<Customer>().OrderBy(c => c.ContactName).Skip(5).Where(c => c.City == "London"),
+            assertOrder: true);
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task OrderBy_Take_Where(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<Customer>().OrderBy(c => c.ContactName).Take(30).Where(c => c.City == "London"),
+            assertOrder: true);
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
     public virtual Task Join_Customers_Orders_Skip_Take(bool async)
         => AssertQuery(
             async,

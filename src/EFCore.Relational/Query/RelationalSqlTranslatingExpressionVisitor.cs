@@ -491,20 +491,9 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                 {
                     var shaper = (StructuralTypeShaperExpression)typeReference.Subquery.ShaperExpression;
                     var projection = (StructuralTypeProjectionExpression)Visit(shaper.ValueBufferExpression);
-                    var subSelectExpression = (SelectExpression)typeReference.Subquery.QueryExpression;
-
-                    var predicate = GeneratePredicateTpt(projection);
-
-                    subSelectExpression.ApplyPredicate(predicate);
-                    subSelectExpression.ReplaceProjection(new List<Expression>());
-                    subSelectExpression.ApplyProjection();
-                    if (subSelectExpression.Limit == null
-                        && subSelectExpression.Offset == null)
-                    {
-                        subSelectExpression.ClearOrdering();
-                    }
-
-                    return _sqlExpressionFactory.Exists(subSelectExpression);
+                    var subquery = (SelectExpression)typeReference.Subquery.QueryExpression;
+                    subquery = subquery.ApplyPredicate2(GeneratePredicateTpt(projection));
+                    return _sqlExpressionFactory.Exists(subquery);
                 }
 
                 if (typeReference.Parameter != null)
@@ -702,8 +691,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                     return sqlExpression;
                 }
 
-                subquery.ReplaceProjection(new List<Expression> { sqlExpression });
-                subquery.ApplyProjection();
+                subquery = subquery.ApplyProjection([sqlExpression]);
 
                 SqlExpression scalarSubqueryExpression = new ScalarSubqueryExpression(subquery);
 
@@ -1093,20 +1081,9 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             {
                 var shaper = (StructuralTypeShaperExpression)typeReference.Subquery.ShaperExpression;
                 var projection = (StructuralTypeProjectionExpression)Visit(shaper.ValueBufferExpression);
-                var subSelectExpression = (SelectExpression)typeReference.Subquery.QueryExpression;
-
-                var predicate = GeneratePredicateTpt(projection);
-
-                subSelectExpression.ApplyPredicate(predicate);
-                subSelectExpression.ReplaceProjection(new List<Expression>());
-                subSelectExpression.ApplyProjection();
-                if (subSelectExpression.Limit == null
-                    && subSelectExpression.Offset == null)
-                {
-                    subSelectExpression.ClearOrdering();
-                }
-
-                return _sqlExpressionFactory.Exists(subSelectExpression);
+                var subquery = (SelectExpression)typeReference.Subquery.QueryExpression;
+                subquery = subquery.ApplyPredicate2(GeneratePredicateTpt(projection));
+                return _sqlExpressionFactory.Exists(subquery);
             }
 
             if (typeReference.Parameter != null)
@@ -1366,8 +1343,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                 var projectionBindingExpression = (ProjectionBindingExpression)entityShaper.ValueBufferExpression;
                 var projection = (StructuralTypeProjectionExpression)subSelectExpression.GetProjection(projectionBindingExpression);
                 var innerProjection = projection.BindProperty(property);
-                subSelectExpression.ReplaceProjection(new List<Expression> { innerProjection });
-                subSelectExpression.ApplyProjection();
+                subSelectExpression = subSelectExpression.ApplyProjection([innerProjection]);
 
                 return new ScalarSubqueryExpression(subSelectExpression);
             }

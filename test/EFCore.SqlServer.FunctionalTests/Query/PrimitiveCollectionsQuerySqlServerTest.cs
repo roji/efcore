@@ -1225,7 +1225,6 @@ WHERE (
     {
         await base.Parameter_collection_in_subquery_Count_as_compiled_query(async);
 
-        // TODO: the subquery projection contains extra columns which we should remove
         AssertSql(
             """
 @__ints='[10,111]' (Size = 4000)

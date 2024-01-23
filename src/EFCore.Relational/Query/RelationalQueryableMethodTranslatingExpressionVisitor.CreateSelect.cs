@@ -15,8 +15,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
     protected virtual SelectExpression CreateSelect(IEntityType entityType)
     {
         var select = CreateRootSelectExpressionCore(entityType);
-        AddEntitySelectConditions(select, entityType);
-        return select;
+        return AddEntitySelectConditions(select, entityType);
 
         SelectExpression CreateRootSelectExpressionCore(IEntityType entityType)
         {
@@ -401,10 +400,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
         }
 
         var select = new SelectExpression([tableExpressionBase], projection, identifier, _sqlAliasManager);
-
-        AddEntitySelectConditions(select, entityType);
-
-        return select;
+        return AddEntitySelectConditions(select, entityType);
     }
 
     /***
@@ -417,7 +413,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
          *  - Principal can be any type in TPH/TPT or leaf type in TPC
          *  - Dependent side can be TPH or TPT but not TPC
          ***/
-    private void AddEntitySelectConditions(SelectExpression selectExpression, IEntityType entityType)
+    private SelectExpression AddEntitySelectConditions(SelectExpression selectExpression, IEntityType entityType)
     {
         // First add condition for discriminator mapping
         var discriminatorProperty = entityType.FindDiscriminatorProperty();
@@ -435,23 +431,21 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                     discriminatorColumn,
                     concreteEntityTypes.Select(et => _sqlExpressionFactory.Constant(et.GetDiscriminatorValue())).ToArray());
 
-            selectExpression.ApplyPredicate(predicate);
-
             // If discriminator predicate is added then it will also serve as condition for existence of dependents in table sharing
-            return;
+            return selectExpression.ApplyPredicate2(predicate);
         }
 
         // Keyless entities cannot be table sharing
         if (entityType.FindPrimaryKey() == null)
         {
-            return;
+            return selectExpression;
         }
 
         // Add conditions if this is optional dependent with table sharing
         if (entityType.GetRootType() != entityType // Non-root cannot be dependent
             || entityType.GetMappingStrategy() == RelationalAnnotationNames.TpcMappingStrategy) // Dependent cannot be TPC
         {
-            return;
+            return selectExpression;
         }
 
         var table = (selectExpression.Tables[0] as ITableBasedExpression)?.Table;
@@ -482,11 +476,12 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                     : _sqlExpressionFactory.AndAlso(predicate, atLeastOneNonNullValueInNullablePropertyCondition);
             }
 
-            if (predicate != null)
-            {
-                selectExpression.ApplyPredicate(predicate);
-            }
+            return predicate is null
+                ? selectExpression
+                : selectExpression.ApplyPredicate2(predicate);
         }
+
+        return selectExpression;
 
         bool HasSiblings(IEntityType entityType)
             => entityType.BaseType?.GetDirectlyDerivedTypes().Any(i => i != entityType) == true;

@@ -25,10 +25,7 @@ public class ProjectionBindingExpression : Expression, IPrintableExpression
     /// <param name="queryExpression">The query expression to get the value from.</param>
     /// <param name="projectionMember">The projection member to bind with query expression.</param>
     /// <param name="type">The clr type of value being read.</param>
-    public ProjectionBindingExpression(
-        Expression queryExpression,
-        ProjectionMember projectionMember,
-        Type type)
+    public ProjectionBindingExpression(Expression queryExpression, ProjectionMember projectionMember, Type type)
     {
         QueryExpression = queryExpression;
         ProjectionMember = projectionMember;
@@ -41,10 +38,7 @@ public class ProjectionBindingExpression : Expression, IPrintableExpression
     /// <param name="queryExpression">The query expression to get the value from.</param>
     /// <param name="index">The index to bind with query expression projection.</param>
     /// <param name="type">The clr type of value being read.</param>
-    public ProjectionBindingExpression(
-        Expression queryExpression,
-        int index,
-        Type type)
+    public ProjectionBindingExpression(Expression queryExpression, int index, Type type)
     {
         QueryExpression = queryExpression;
         Index = index;
@@ -76,6 +70,20 @@ public class ProjectionBindingExpression : Expression, IPrintableExpression
     /// <inheritdoc />
     protected override Expression VisitChildren(ExpressionVisitor visitor)
         => this;
+        // => Update(visitor.Visit(QueryExpression));
+
+    /// <summary>
+    ///     Creates a new expression that is like this one, but using the supplied children. If all of the children are the same, it will
+    ///     return this expression.
+    /// </summary>
+    /// <param name="queryExpression">The query expression property of the result.</param>
+    /// <returns>This expression if no children changed, or an expression with the updated children.</returns>
+    public virtual ProjectionBindingExpression Update(Expression queryExpression)
+        => queryExpression == QueryExpression
+            ? this
+            : ProjectionMember is null
+                ? new ProjectionBindingExpression(queryExpression, Index!.Value, Type)
+                : new ProjectionBindingExpression(queryExpression, ProjectionMember, Type);
 
     /// <inheritdoc />
     void IPrintableExpression.Print(ExpressionPrinter expressionPrinter)

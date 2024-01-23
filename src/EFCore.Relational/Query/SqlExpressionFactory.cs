@@ -670,7 +670,21 @@ public class SqlExpressionFactory : ISqlExpressionFactory
 
     /// <inheritdoc />
     public virtual ExistsExpression Exists(SelectExpression subquery)
-        => new(subquery, _boolTypeMapping);
+    {
+        subquery = subquery.Update(
+            projections: [],
+            subquery.Tables,
+            subquery.Predicate,
+            subquery.GroupBy,
+            subquery.Having,
+            orderings: subquery.Limit is null && subquery.Offset is null ? [] : subquery.Orderings,
+            subquery.Limit,
+            subquery.Offset);
+
+        subquery.IsMutable = false;
+
+        return new ExistsExpression(subquery, _boolTypeMapping);
+    }
 
     /// <inheritdoc />
     public virtual InExpression In(SqlExpression item, SelectExpression subquery)

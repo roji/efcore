@@ -72,8 +72,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
         var selectExpression = (SelectExpression)source.QueryExpression;
         if (IsValidSelectExpressionForExecuteUpdate(selectExpression, targetTable, out var tableExpression))
         {
-            selectExpression.ReplaceProjection(new List<Expression>());
-            selectExpression.ApplyProjection();
+            selectExpression = selectExpression.WithProjections([]);
+            selectExpression.IsMutable = false;
 
             return new NonQueryExpression(new UpdateExpression(tableExpression, selectExpression, translatedSetters));
         }
@@ -480,8 +480,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 return null;
             }
 
-            outerSelectExpression.ReplaceProjection(new List<Expression>());
-            outerSelectExpression.ApplyProjection();
+            outerSelectExpression = outerSelectExpression.WithProjections([]);
+            outerSelectExpression.IsMutable = false;
             return new NonQueryExpression(new UpdateExpression(tableExpression, outerSelectExpression, translatedSetters));
         }
 

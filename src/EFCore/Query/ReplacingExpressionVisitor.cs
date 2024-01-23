@@ -48,22 +48,43 @@ public class ReplacingExpressionVisitor : ExpressionVisitor
     [return: NotNullIfNotNull("expression")]
     public override Expression? Visit(Expression? expression)
     {
-        if (expression is null or ShapedQueryExpression or StructuralTypeShaperExpression or GroupByShaperExpression)
+        switch (expression)
         {
-            return expression;
+            case null or ShapedQueryExpression /* or StructuralTypeShaperExpression */ or GroupByShaperExpression:
+                return expression;
+
+            // ProjectionBindingExpression.QueryExpression (in the shaper) references the SelectExpression from the query part of the
+            // shaped query. We don't want to visit that, since that would visit the query part even when visitors want to only visit
+            // the shaper part (and would also mean double visitation for when a visitor visits both).
+            // But we do need to be able to replace the SelectExpression referenced by the ProjectionBindingExpression when it's replaced.
+            // Eventually, the shaper and query sides should be totally separate with no cross-references, at which point this becomes
+            // unnecessary.
+            case ProjectionBindingExpression projectionBinding:
+                return TryReplace(projectionBinding.QueryExpression, out var replacedQuery)
+                    ? projectionBinding.Update(replacedQuery)
+                    : projectionBinding;
         }
 
-        // We use two arrays rather than a dictionary because hash calculation here can be prohibitively expensive
-        // for deep trees. Locality of reference makes arrays better for the small number of replacements anyway.
-        for (var i = 0; i < _originals.Count; i++)
+        return TryReplace(expression, out var replaced)
+            ? replaced
+            : base.Visit(expression);
+
+        bool TryReplace(Expression expression, [NotNullWhen(true)] out Expression? replaced)
         {
-            if (expression.Equals(_originals[i]))
+            // We use two arrays rather than a dictionary because hash calculation here can be prohibitively expensive
+            // for deep trees. Locality of reference makes arrays better for the small number of replacements anyway.
+            for (var i = 0; i < _originals.Count; i++)
             {
-                return _replacements[i];
+                if (expression.Equals(_originals[i]))
+                {
+                    replaced = _replacements[i];
+                    return true;
+                }
             }
-        }
 
-        return base.Visit(expression);
+            replaced = null;
+            return false;
+        }
     }
 
     /// <inheritdoc />

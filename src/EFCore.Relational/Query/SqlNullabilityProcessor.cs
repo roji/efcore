@@ -774,26 +774,13 @@ public class SqlNullabilityProcessor
                     }
 
                     TransformToExists:
-                    // We unfortunately need to rewrite to EXISTS. We'll need to mutate the subquery to introduce the predicate inside it,
-                    // but it might be referenced by other places in the tree, so we create a copy to work on.
-
-                    // No need for a projection with EXISTS, clear it to get SELECT 1
-                    subquery = subquery.Update(
-                        [],
-                        subquery.Tables,
-                        subquery.Predicate,
-                        subquery.GroupBy,
-                        subquery.Having,
-                        subquery.Orderings,
-                        subquery.Limit,
-                        subquery.Offset);
+                    // We unfortunately need to rewrite to EXISTS.
 
                     var predicate = VisitSqlBinary(
                         _sqlExpressionFactory.Equal(subqueryProjection, item), allowOptimizedExpansion: true, out _);
-                    subquery.ApplyPredicate(predicate);
-                    subquery.ClearOrdering();
 
-                    return _sqlExpressionFactory.Exists(subquery);
+                    // No need for a projection with EXISTS, clear it to get SELECT 1
+                    return _sqlExpressionFactory.Exists(subquery.ApplyPredicate2(predicate));
             }
         }
 
@@ -2070,13 +2057,7 @@ public class SqlNullabilityProcessor
             mutableParameterValues[rewrittenParameter.Name] = processedValues;
             var rewrittenCollectionTable = UpdateParameterCollection(collectionTable, rewrittenParameter);
 
-            // We clone the select expression since Update below doesn't create a pure copy, mutating the original as well (because of
-            // TableReferenceExpression). TODO: Remove this after #31327.
-#pragma warning disable EF1001
-            rewrittenSelectExpression = selectExpression.Clone();
-#pragma warning restore EF1001
-
-            rewrittenSelectExpression = rewrittenSelectExpression.Update(
+            rewrittenSelectExpression = selectExpression.Update(
                 projection, // TODO: We should change the project column to be non-nullable, but it's too closed down for that.
                 new[] { rewrittenCollectionTable },
                 selectExpression.Predicate,

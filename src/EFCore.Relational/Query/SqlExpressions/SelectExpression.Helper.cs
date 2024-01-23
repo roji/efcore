@@ -260,6 +260,109 @@ public sealed partial class SelectExpression
         }
     }
 
+    private sealed class SqlRemappingVisitor2(
+        Dictionary<SqlExpression, ColumnExpression> mappings,
+        SelectExpression subquery,
+        string tableAlias)
+        : ExpressionVisitor
+    {
+        private readonly string _tableAlias = tableAlias;
+        private readonly Dictionary<SqlExpression, ColumnExpression> _mappings = mappings;
+        private readonly HashSet<SqlExpression> _correlatedTerms = new(ReferenceEqualityComparer.Instance);
+        private SelectExpression _subquery = subquery;
+        private bool _groupByDiscovery = subquery._groupBy.Count > 0;
+
+        public (SqlExpression, SelectExpression) Remap(SqlExpression sqlExpression)
+            => ((SqlExpression)Visit(sqlExpression), _subquery);
+
+        public (SelectExpression, SelectExpression) Remap(SelectExpression selectExpression)
+        {
+            var result = (SelectExpression)Visit(selectExpression);
+
+            if (_correlatedTerms.Count > 0)
+            {
+                new EnclosingTermFindingVisitor(_correlatedTerms).Visit(selectExpression);
+                _groupByDiscovery = false;
+                result = (SelectExpression)Visit(selectExpression);
+            }
+
+            return (result, _subquery);
+        }
+
+        [return: NotNullIfNotNull("expression")]
+        public override Expression? Visit(Expression? expression)
+        {
+            switch (expression)
+            {
+                case SqlExpression sqlExpression
+                    when _mappings.TryGetValue(sqlExpression, out var outer):
+                    return outer;
+
+                case ColumnExpression columnExpression
+                    when _groupByDiscovery && _subquery.ContainsReferencedTable(columnExpression):
+                    _correlatedTerms.Add(columnExpression);
+                    return columnExpression;
+
+                case SqlExpression sqlExpression
+                    when !_groupByDiscovery
+                    && sqlExpression is not SqlConstantExpression and not SqlParameterExpression
+                    && _correlatedTerms.Contains(sqlExpression):
+                    var outerColumn = _subquery.GenerateOuterColumn2(_tableAlias, sqlExpression, out _subquery);
+                    _mappings[sqlExpression] = outerColumn;
+                    return outerColumn;
+
+                case ColumnExpression columnExpression
+                    when !_groupByDiscovery && _subquery.ContainsReferencedTable(columnExpression):
+                    var outerColumn1 = _subquery.GenerateOuterColumn2(_tableAlias, columnExpression, out _subquery);
+                    _mappings[columnExpression] = outerColumn1;
+                    return outerColumn1;
+
+                default:
+                    return base.Visit(expression);
+            }
+        }
+
+        private sealed class EnclosingTermFindingVisitor : ExpressionVisitor
+        {
+            private readonly HashSet<SqlExpression> _correlatedTerms;
+            private bool _doesNotContainLocalTerms;
+
+            public EnclosingTermFindingVisitor(HashSet<SqlExpression> correlatedTerms)
+            {
+                _correlatedTerms = correlatedTerms;
+                _doesNotContainLocalTerms = true;
+            }
+
+            [return: NotNullIfNotNull("expression")]
+            public override Expression? Visit(Expression? expression)
+            {
+                if (expression is SqlExpression sqlExpression)
+                {
+                    if (_correlatedTerms.Contains(sqlExpression)
+                        || sqlExpression is SqlConstantExpression or SqlParameterExpression)
+                    {
+                        _correlatedTerms.Add(sqlExpression);
+                        return sqlExpression;
+                    }
+
+                    var parentDoesNotContainLocalTerms = _doesNotContainLocalTerms;
+                    _doesNotContainLocalTerms = sqlExpression is not ColumnExpression;
+                    base.Visit(expression);
+                    if (_doesNotContainLocalTerms)
+                    {
+                        _correlatedTerms.Add(sqlExpression);
+                    }
+
+                    _doesNotContainLocalTerms = _doesNotContainLocalTerms && parentDoesNotContainLocalTerms;
+
+                    return expression;
+                }
+
+                return base.Visit(expression);
+            }
+        }
+    }
+
     private sealed class IdentifierComparer : IEqualityComparer<(ColumnExpression Column, ValueComparer Comparer)>
     {
         public bool Equals((ColumnExpression Column, ValueComparer Comparer) x, (ColumnExpression Column, ValueComparer Comparer) y)

@@ -1099,6 +1099,45 @@ OFFSET @__p_0 ROWS FETCH NEXT @__p_1 ROWS ONLY
 """);
     }
 
+    public override async Task OrderBy_Skip_Where(bool async)
+    {
+        await base.OrderBy_Skip_Where(async);
+
+        AssertSql(
+            """
+@__p_0='5'
+
+SELECT [c0].[CustomerID], [c0].[Address], [c0].[City], [c0].[CompanyName], [c0].[ContactName], [c0].[ContactTitle], [c0].[Country], [c0].[Fax], [c0].[Phone], [c0].[PostalCode], [c0].[Region]
+FROM (
+    SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+    FROM [Customers] AS [c]
+    ORDER BY [c].[ContactName]
+    OFFSET @__p_0 ROWS
+) AS [c0]
+WHERE [c0].[City] = N'London'
+ORDER BY [c0].[ContactName]
+""");
+    }
+
+    public override async Task OrderBy_Take_Where(bool async)
+    {
+        await base.OrderBy_Take_Where(async);
+
+        AssertSql(
+            """
+@__p_0='30'
+
+SELECT [c0].[CustomerID], [c0].[Address], [c0].[City], [c0].[CompanyName], [c0].[ContactName], [c0].[ContactTitle], [c0].[Country], [c0].[Fax], [c0].[Phone], [c0].[PostalCode], [c0].[Region]
+FROM (
+    SELECT TOP(@__p_0) [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+    FROM [Customers] AS [c]
+    ORDER BY [c].[ContactName]
+) AS [c0]
+WHERE [c0].[City] = N'London'
+ORDER BY [c0].[ContactName]
+""");
+    }
+
     public override async Task Join_Customers_Orders_Skip_Take(bool async)
     {
         await base.Join_Customers_Orders_Skip_Take(async);

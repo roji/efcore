@@ -64,8 +64,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 return null;
             }
 
-            selectExpression.ReplaceProjection(new List<Expression>());
-            selectExpression.ApplyProjection();
+            selectExpression = selectExpression.WithProjections([]);
+            selectExpression.IsMutable = false;
 
             return new NonQueryExpression(new DeleteExpression(tableExpression, selectExpression));
 
