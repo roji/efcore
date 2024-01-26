@@ -356,4 +356,86 @@ N'e1')");
     }
 
     #endregion
+
+    #region #32910
+
+    [ConditionalFact]
+    public virtual async Task Update_on_multi_referenced_select()
+    {
+        var contextFactory = await InitializeAsync<MyContext32910>();
+        await using var context = contextFactory.CreateContext();
+
+        _ = context.Parents
+            .Select
+            (
+                x => new
+                {
+                    CalculatedValue2 = x.Child.InfoData.Fields.FirstOrDefault(x => x.Code == "Total2").Value,
+                    x.Phone.FullNumber
+                }
+            )
+            .OrderBy(x => x.CalculatedValue2)
+            .Take(10)
+            .ToList();
+    }
+
+    private class MyContext32910(DbContextOptions options) : DbContext(options)
+    {
+        public DbSet<Parent> Parents { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+            => modelBuilder.Entity<Child>().ToTable(nameof(Child)).OwnsOne
+            (
+                child => child.InfoData, builder =>
+                {
+                    builder.ToJson();
+                    builder.OwnsMany(x => x.Fields);
+                }
+            );
+
+        public class Parent
+        {
+            public long Id { get; set; }
+
+            public long? ChildId { get; set; }
+            public long? PhoneId { get; set; }
+
+            public Child Child { get; set; }
+            public Phone Phone { get; set; }
+        }
+
+        public class Child
+        {
+            public long Id { get; set; }
+            public InfoData InfoData { get; set; }
+        }
+
+        public class Phone
+        {
+            public long Id { get; set; }
+            public string FullNumber { get; set; }
+        }
+
+        public class InfoData
+        {
+            public List<Field> Fields { get; set; }
+        }
+
+        public class Field
+        {
+            public string Code { get; set; }
+            public int? Value { get; set; }
+        }
+
+        public class ParentDto
+        {
+            public long ParentId { get; set; }
+
+            public int? CalculatedValue2 { get; set; }
+
+            public string FullNumber { get; set; }
+        }
+    }
+
+    #endregion #32910
 }

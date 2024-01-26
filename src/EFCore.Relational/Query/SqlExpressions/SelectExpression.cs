@@ -30,6 +30,8 @@ public sealed partial class SelectExpression : TableExpressionBase
         AppContext.TryGetSwitch("Microsoft.EntityFrameworkCore.Issue31107", out var enabled31107) && enabled31107;
     private static readonly bool UseOldBehavior32234 =
         AppContext.TryGetSwitch("Microsoft.EntityFrameworkCore.Issue32234", out var enabled32234) && enabled32234;
+    private static readonly bool UseOldBehavior32910 =
+        AppContext.TryGetSwitch("Microsoft.EntityFrameworkCore.Issue32910", out var enabled32910) && enabled32910;
 
     private static readonly IdentifierComparer IdentifierComparerInstance = new();
 
@@ -4938,13 +4940,26 @@ public sealed partial class SelectExpression : TableExpressionBase
         // Update method should not be used pre-projection application. There are other methods to change SelectExpression.
 
         // Remap tableReferences in new select expression
-        foreach (var tableReference in newTableReferences)
+        if (tables == Tables || UseOldBehavior32910)
         {
-            tableReference.UpdateTableReference(this, newSelectExpression);
-        }
+            foreach (var tableReference in newTableReferences)
+            {
+                tableReference.UpdateTableReference(this, newSelectExpression);
+            }
 
-        var tableReferenceUpdatingExpressionVisitor = new TableReferenceUpdatingExpressionVisitor(this, newSelectExpression);
-        tableReferenceUpdatingExpressionVisitor.Visit(newSelectExpression);
+            var tableReferenceUpdatingExpressionVisitor = new TableReferenceUpdatingExpressionVisitor(this, newSelectExpression);
+            tableReferenceUpdatingExpressionVisitor.Visit(newSelectExpression);
+        }
+        else
+        {
+            for (var i = 0; i < newTableReferences.Count; i++)
+            {
+                newTableReferences[i] = new TableReferenceExpression(newSelectExpression, _tableReferences[i].Alias);
+            }
+
+            var columnTableReferenceUpdater = new ColumnTableReferenceUpdater(this, newSelectExpression);
+            newSelectExpression = (SelectExpression)columnTableReferenceUpdater.Visit(newSelectExpression);
+        }
 
         return newSelectExpression;
     }
