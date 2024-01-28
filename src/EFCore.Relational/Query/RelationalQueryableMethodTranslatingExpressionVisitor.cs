@@ -826,11 +826,9 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
         var joinPredicate = CreateJoinPredicate(outer, outerKeySelector, inner, innerKeySelector);
         if (joinPredicate != null)
         {
-            var outerSelectExpression = (SelectExpression)outer.QueryExpression;
-            var outerShaperExpression = outerSelectExpression.AddInnerJoin(inner, joinPredicate, outer.ShaperExpression);
-            outer = outer.UpdateShaperExpression(outerShaperExpression);
+            var result = SelectExpression.AddInnerJoin(outer, inner, joinPredicate);
 
-            return TranslateTwoParameterSelector(outer, resultSelector);
+            return TranslateTwoParameterSelector(result, resultSelector);
         }
 
         return null;
@@ -847,11 +845,9 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
         var joinPredicate = CreateJoinPredicate(outer, outerKeySelector, inner, innerKeySelector);
         if (joinPredicate != null)
         {
-            var outerSelectExpression = (SelectExpression)outer.QueryExpression;
-            var outerShaperExpression = outerSelectExpression.AddLeftJoin(inner, joinPredicate, outer.ShaperExpression);
-            outer = outer.UpdateShaperExpression(outerShaperExpression);
+            var result = SelectExpression.AddLeftJoin(outer, inner, joinPredicate);
 
-            return TranslateTwoParameterSelector(outer, resultSelector);
+            return TranslateTwoParameterSelector(result, resultSelector);
         }
 
         return null;
@@ -1061,12 +1057,11 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
             var collectionSelectorBody = RemapLambdaBody(source, newCollectionSelector);
             if (Visit(collectionSelectorBody) is ShapedQueryExpression inner)
             {
-                var innerSelectExpression = (SelectExpression)source.QueryExpression;
-                var shaper = defaultIfEmpty
-                    ? innerSelectExpression.AddOuterApply(inner, source.ShaperExpression)
-                    : innerSelectExpression.AddCrossApply(inner, source.ShaperExpression);
+                var result = defaultIfEmpty
+                    ? SelectExpression.AddOuterApply(source, inner)
+                    : SelectExpression.AddCrossApply(source, inner);
 
-                return TranslateTwoParameterSelector(source.UpdateShaperExpression(shaper), resultSelector);
+                return TranslateTwoParameterSelector(result, resultSelector);
             }
         }
         else
@@ -1084,10 +1079,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
                     inner = translatedInner;
                 }
 
-                var innerSelectExpression = (SelectExpression)source.QueryExpression;
-                var shaper = innerSelectExpression.AddCrossJoin(inner, source.ShaperExpression);
-
-                return TranslateTwoParameterSelector(source.UpdateShaperExpression(shaper), resultSelector);
+                var result = SelectExpression.AddCrossJoin(source, inner);
+                return TranslateTwoParameterSelector(result, resultSelector);
             }
         }
 

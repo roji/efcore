@@ -442,9 +442,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
 
             Check.DebugAssert(joinPredicate != null, "Join predicate shouldn't be null");
 
-            var outerSelectExpression = (SelectExpression)outer.QueryExpression;
-            var outerShaperExpression = outerSelectExpression.AddInnerJoin(inner, joinPredicate, outer.ShaperExpression);
-            outer = outer.UpdateShaperExpression(outerShaperExpression);
+            outer = SelectExpression.AddInnerJoin(outer, inner, joinPredicate);
             var transparentIdentifierType = outer.ShaperExpression.Type;
             var transparentIdentifierParameter = Expression.Parameter(transparentIdentifierType);
 
@@ -471,6 +469,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 setters[i] = (propertyExpression, valueExpression);
             }
 
+            var outerSelectExpression = (SelectExpression)outer.QueryExpression;
             tableExpression = (TableExpression)outerSelectExpression.Tables[0];
 
             // Re-translate the property selectors to get column expressions pointing to the new outer select expression (the original one
