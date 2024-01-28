@@ -1648,7 +1648,7 @@ public sealed partial class SelectExpression : TableExpressionBase
         if (Limit is not null || Offset is not null)
         {
             (select, var remapper) = PushdownIntoSubqueryInternal2();
-            (sqlExpression, var subquery) = remapper.Remap(sqlExpression);
+            sqlExpression = remapper.Remap(sqlExpression, out var subquery);
             select = select.Update(
                 select.Projection,
                 [subquery],
@@ -1790,60 +1790,18 @@ public sealed partial class SelectExpression : TableExpressionBase
     }
 
     /// <summary>
-    ///     Applies grouping from given key selector.
-    /// </summary>
-    /// <param name="keySelector">An key selector expression for the GROUP BY.</param>
-    public void ApplyGrouping(Expression keySelector)
-    {
-        ClearOrdering();
-
-        var groupByTerms = new List<SqlExpression>();
-        var groupByAliases = new List<string?>();
-        PopulateGroupByTerms(keySelector, groupByTerms, groupByAliases, "Key");
-
-        if (groupByTerms.Any(e => e is not ColumnExpression))
-        {
-            var sqlRemappingVisitor = PushdownIntoSubqueryInternal();
-            var newGroupByTerms = new List<SqlExpression>(groupByTerms.Count);
-            var subquery = (SelectExpression)_tables[0];
-            for (var i = 0; i < groupByTerms.Count; i++)
-            {
-                var item = groupByTerms[i];
-                var newItem = subquery._projection.Any(e => e.Expression.Equals(item))
-                    ? sqlRemappingVisitor.Remap(item)
-                    : subquery.GenerateOuterColumn(subquery.Alias!, item, groupByAliases[i] ?? "Key");
-                newGroupByTerms.Add(newItem);
-            }
-
-            new ReplacingExpressionVisitor(groupByTerms, newGroupByTerms).Visit(keySelector);
-            groupByTerms = newGroupByTerms;
-        }
-
-        _groupBy.AddRange(groupByTerms);
-
-        if (!_identifier.All(e => _groupBy.Contains(e.Column)))
-        {
-            _identifier.Clear();
-            if (_groupBy.All(e => e is ColumnExpression))
-            {
-                _identifier.AddRange(_groupBy.Select(e => ((ColumnExpression)e, e.TypeMapping!.KeyComparer)));
-            }
-        }
-    }
-
-    /// <summary>
     ///     Applies grouping from given key selector and generate <see cref="RelationalGroupByShaperExpression" /> to shape results.
     /// </summary>
     /// <param name="keySelector">An key selector expression for the GROUP BY.</param>
     /// <param name="shaperExpression">The shaper expression for current query.</param>
     /// <param name="sqlExpressionFactory">The sql expression factory to use.</param>
     /// <returns>A <see cref="RelationalGroupByShaperExpression" /> which represents the result of the grouping operation.</returns>
-    public RelationalGroupByShaperExpression ApplyGrouping(
+    public ShapedQueryExpression ApplyGrouping(
         Expression keySelector,
         Expression shaperExpression,
         ISqlExpressionFactory sqlExpressionFactory)
     {
-        ClearOrdering();
+        var select = WithOrderings([]);
 
         var keySelectorToAdd = keySelector;
         var emptyKey = keySelector is NewExpression { Arguments.Count: 0 };
@@ -1859,15 +1817,33 @@ public sealed partial class SelectExpression : TableExpressionBase
         if (groupByTerms.Any(e => e is not ColumnExpression))
         {
             // emptyKey will always hit this path.
-            var sqlRemappingVisitor = PushdownIntoSubqueryInternal();
+            (select, var sqlRemappingVisitor) = select.PushdownIntoSubqueryInternal2();
             var newGroupByTerms = new List<SqlExpression>(groupByTerms.Count);
-            var subquery = (SelectExpression)_tables[0];
+            var subquery = (SelectExpression)select.Tables[0];
             for (var i = 0; i < groupByTerms.Count; i++)
             {
                 var item = groupByTerms[i];
-                var newItem = subquery._projection.Any(e => e.Expression.Equals(item))
-                    ? sqlRemappingVisitor.Remap(item)
-                    : subquery.GenerateOuterColumn(subquery.Alias!, item, groupByAliases[i] ?? "Key");
+
+                SqlExpression newItem;
+                if (subquery._projection.Any(e => e.Expression.Equals(item)))
+                {
+                    newItem = sqlRemappingVisitor.Remap(item, out subquery);
+                }
+                else
+                {
+                    newItem = subquery.GenerateOuterColumn2(subquery.Alias!, item, out subquery, groupByAliases[i] ?? "Key");
+                    sqlRemappingVisitor.Subquery = subquery;
+                }
+
+                select = select.Update(
+                    select.Projection,
+                    [subquery],
+                    select.Predicate,
+                    select.GroupBy,
+                    select.Having,
+                    select.Orderings,
+                    select.Limit,
+                    select.Offset);
                 newGroupByTerms.Add(newItem);
             }
 
@@ -1880,31 +1856,52 @@ public sealed partial class SelectExpression : TableExpressionBase
             groupByTerms = newGroupByTerms;
         }
 
-        _groupBy.AddRange(groupByTerms);
+        select = select.Update(
+            select.Projection,
+            select.Tables,
+            select.Predicate,
+            groupBy: [..select.GroupBy, ..groupByTerms],
+            select.Having,
+            select.Orderings,
+            select.Limit,
+            select.Offset);
 
-        var clonedSelectExpression = Clone();
+        var clonedSelectExpression = select.Clone(); // TODO: Remove
         var correlationPredicate = groupByTerms.Zip(clonedSelectExpression._groupBy)
             .Select(e => sqlExpressionFactory.Equal(e.First, e.Second))
             .Aggregate(sqlExpressionFactory.AndAlso);
-        clonedSelectExpression._groupBy.Clear();
-        clonedSelectExpression.ApplyPredicate(correlationPredicate);
 
-        if (!_identifier.All(e => _groupBy.Contains(e.Column)))
+        clonedSelectExpression = clonedSelectExpression
+            .Update(
+                clonedSelectExpression.Projection,
+                clonedSelectExpression.Tables,
+                clonedSelectExpression.Predicate,
+                groupBy: [],
+                clonedSelectExpression.Having,
+                clonedSelectExpression.Orderings,
+                clonedSelectExpression.Limit,
+                clonedSelectExpression.Offset)
+            .ApplyPredicate2(correlationPredicate);
+
+        // TODO: Remove mutability
+        if (!select._identifier.All(e => select._groupBy.Contains(e.Column)))
         {
-            _preGroupByIdentifier = _identifier.ToList();
-            _identifier.Clear();
-            if (_groupBy.All(e => e is ColumnExpression))
+            select._preGroupByIdentifier = select._identifier.ToList();
+            select._identifier.Clear();
+            if (select._groupBy.All(e => e is ColumnExpression))
             {
-                _identifier.AddRange(_groupBy.Select(e => ((ColumnExpression)e, e.TypeMapping!.KeyComparer)));
+                select._identifier.AddRange(select._groupBy.Select(e => ((ColumnExpression)e, e.TypeMapping!.KeyComparer)));
             }
         }
 
-        return new RelationalGroupByShaperExpression(
-            keySelector,
-            shaperExpression,
-            new ShapedQueryExpression(
-                clonedSelectExpression,
-                new QueryExpressionReplacingExpressionVisitor(this, clonedSelectExpression).Visit(shaperExpression)));
+        return new ShapedQueryExpression(
+            select,
+            new RelationalGroupByShaperExpression(
+                keySelector,
+                new QueryExpressionReplacingExpressionVisitor(this, select).Visit(shaperExpression),
+                new ShapedQueryExpression(
+                    clonedSelectExpression,
+                    new QueryExpressionReplacingExpressionVisitor(this, clonedSelectExpression).Visit(shaperExpression))));
     }
 
     private static void PopulateGroupByTerms(
@@ -1973,7 +1970,7 @@ public sealed partial class SelectExpression : TableExpressionBase
         if (IsDistinct || Limit is not null || Offset is not null)
         {
             (select, var remapper) = PushdownIntoSubqueryInternal2();
-            var (expression, subquery) = remapper.Remap(orderingExpression.Expression);
+            var expression = remapper.Remap(orderingExpression.Expression, out var subquery);
             select = select.Update(
                 select.Projection,
                 [subquery],
@@ -3621,7 +3618,7 @@ public sealed partial class SelectExpression : TableExpressionBase
                 (innerSelectExpression, var subquery) = sqlRemappingVisitor.Remap(innerSelectExpression);
                 if (joinPredicate is not null)
                 {
-                    (joinPredicate, subquery) = sqlRemappingVisitor.Remap(joinPredicate);
+                    joinPredicate = sqlRemappingVisitor.Remap(joinPredicate, out subquery);
                 }
 
                 outerSelectExpression = outerSelectExpression.Update(
@@ -3996,43 +3993,6 @@ public sealed partial class SelectExpression : TableExpressionBase
             }
         }
     }
-
-    /// <summary>
-    ///     Adds the given <see cref="SelectExpression" /> to table sources using INNER JOIN.
-    /// </summary>
-    /// <param name="innerSelectExpression">A <see cref="SelectExpression" /> to join with.</param>
-    /// <param name="joinPredicate">A predicate to use for the join.</param>
-    public void AddInnerJoin(SelectExpression innerSelectExpression, SqlExpression joinPredicate)
-        => AddJoin(JoinType.InnerJoin, ref innerSelectExpression, out _, joinPredicate);
-
-    /// <summary>
-    ///     Adds the given <see cref="SelectExpression" /> to table sources using LEFT JOIN.
-    /// </summary>
-    /// <param name="innerSelectExpression">A <see cref="SelectExpression" /> to join with.</param>
-    /// <param name="joinPredicate">A predicate to use for the join.</param>
-    public void AddLeftJoin(SelectExpression innerSelectExpression, SqlExpression joinPredicate)
-        => AddJoin(JoinType.LeftJoin, ref innerSelectExpression, out _, joinPredicate);
-
-    /// <summary>
-    ///     Adds the given <see cref="SelectExpression" /> to table sources using CROSS JOIN.
-    /// </summary>
-    /// <param name="innerSelectExpression">A <see cref="SelectExpression" /> to join with.</param>
-    public void AddCrossJoin(SelectExpression innerSelectExpression)
-        => AddJoin(JoinType.CrossJoin, ref innerSelectExpression, out _);
-
-    /// <summary>
-    ///     Adds the given <see cref="SelectExpression" /> to table sources using CROSS APPLY.
-    /// </summary>
-    /// <param name="innerSelectExpression">A <see cref="SelectExpression" /> to join with.</param>
-    public void AddCrossApply(SelectExpression innerSelectExpression)
-        => AddJoin(JoinType.CrossApply, ref innerSelectExpression, out _);
-
-    /// <summary>
-    ///     Adds the given <see cref="SelectExpression" /> to table sources using OUTER APPLY.
-    /// </summary>
-    /// <param name="innerSelectExpression">A <see cref="SelectExpression" /> to join with.</param>
-    public void AddOuterApply(SelectExpression innerSelectExpression)
-        => AddJoin(JoinType.OuterApply, ref innerSelectExpression, out _);
 
     /// <summary>
     ///     Adds the query expression of the given <see cref="ShapedQueryExpression" /> to table sources using INNER JOIN and combine shapers.
@@ -4444,7 +4404,6 @@ public sealed partial class SelectExpression : TableExpressionBase
             .Update(
                 projections: [], select.Tables, select.Predicate, select.GroupBy, select.Having, select.Orderings, select.Limit,
                 select.Offset);
-        subquery.IsMutable = false;
 
         var innerOuterProjectionMap = new Dictionary<SqlExpression, ColumnExpression>(ReferenceEqualityComparer.Instance);
 
@@ -4602,8 +4561,10 @@ public sealed partial class SelectExpression : TableExpressionBase
             }
         }
 
-        // TODO: For now we still mutate the outer select as we populate it throughout this function (e.g. because of how
-        // TODO: AddToProjection works). Improve this in the future.
+        subquery._identifier = [];
+        subquery._childIdentifiers = [];
+        subquery.IsMutable = false;
+
         var outerSelect = new SelectExpression(
             alias: null, // TODO
             tables: [subquery],
@@ -4748,16 +4709,10 @@ public sealed partial class SelectExpression : TableExpressionBase
     /// <summary>
     ///     Prepares the <see cref="SelectExpression" /> to apply aggregate operation over it.
     /// </summary>
-    public void PrepareForAggregate(bool liftOrderings = true)
-    {
-        if (IsDistinct
-            || Limit != null
-            || Offset != null
-            || _groupBy.Count > 0)
-        {
-            PushdownIntoSubqueryInternal(liftOrderings);
-        }
-    }
+    public SelectExpression PrepareForAggregate(bool liftOrderings = true)
+        => IsDistinct || Limit is not null || Offset is not null || _groupBy.Count > 0
+            ? PushdownIntoSubqueryInternal2(liftOrderings).Item1
+            : this;
 
     // TODO: Remove
     /// <summary>

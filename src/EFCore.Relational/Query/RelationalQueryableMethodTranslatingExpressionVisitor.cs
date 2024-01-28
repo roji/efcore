@@ -693,7 +693,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
         LambdaExpression? resultSelector)
     {
         var selectExpression = (SelectExpression)source.QueryExpression;
-        selectExpression.PrepareForAggregate();
+        selectExpression = selectExpression.PrepareForAggregate();
+        source = source.UpdateQueryExpression(selectExpression);
 
         var remappedKeySelector = RemapLambdaBody(source, keySelector);
         var translatedKey = TranslateGroupingKey(remappedKeySelector);
@@ -718,12 +719,14 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
             source = TranslateSelect(source, elementSelector);
         }
 
-        var groupByShaper = selectExpression.ApplyGrouping(translatedKey, source.ShaperExpression, _sqlExpressionFactory);
+        source = selectExpression.ApplyGrouping(translatedKey, source.ShaperExpression, _sqlExpressionFactory);
         if (resultSelector == null)
         {
-            return source.UpdateShaperExpression(groupByShaper);
+            return source;
         }
 
+        selectExpression = (SelectExpression)source.QueryExpression;
+        var groupByShaper = (GroupByShaperExpression)source.ShaperExpression;
         var original1 = resultSelector.Parameters[0];
         var original2 = resultSelector.Parameters[1];
 
@@ -1900,7 +1903,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
             selectExpression.ReplaceProjection(new List<Expression>());
         }
 
-        selectExpression.PrepareForAggregate(liftOrderings);
+        selectExpression = selectExpression.PrepareForAggregate(liftOrderings);
         var selector = _sqlExpressionFactory.Fragment("*");
         var methodCall = Expression.Call(
             predicateLessMethodInfo.MakeGenericMethod(selector.Type),
@@ -1918,10 +1921,12 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
         selectExpression.ReplaceProjection(projectionMapping);
         var resultType = predicateLessMethodInfo.ReturnType;
 
-        return source.UpdateShaperExpression(
-            Expression.Convert(
-                new ProjectionBindingExpression(source.QueryExpression, new ProjectionMember(), resultType.MakeNullable()),
-                resultType));
+        return source
+            .Update(
+                selectExpression,
+                Expression.Convert(
+                    new ProjectionBindingExpression(selectExpression, new ProjectionMember(), resultType.MakeNullable()),
+                    resultType));
     }
 
     private ShapedQueryExpression? TranslateAggregateWithSelector(
@@ -1932,7 +1937,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
         Type resultType)
     {
         var selectExpression = (SelectExpression)source.QueryExpression;
-        selectExpression.PrepareForAggregate();
+        selectExpression = selectExpression.PrepareForAggregate();
+        source = source.UpdateQueryExpression(selectExpression);
 
         Expression? selector = null;
         if (selectorLambda == null

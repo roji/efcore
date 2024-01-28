@@ -269,11 +269,15 @@ public sealed partial class SelectExpression
         private readonly string _tableAlias = tableAlias;
         private readonly Dictionary<SqlExpression, ColumnExpression> _mappings = mappings;
         private readonly HashSet<SqlExpression> _correlatedTerms = new(ReferenceEqualityComparer.Instance);
-        private SelectExpression _subquery = subquery;
+        internal SelectExpression Subquery = subquery;
         private bool _groupByDiscovery = subquery._groupBy.Count > 0;
 
-        public (SqlExpression, SelectExpression) Remap(SqlExpression sqlExpression)
-            => ((SqlExpression)Visit(sqlExpression), _subquery);
+        public SqlExpression Remap(SqlExpression sqlExpression, out SelectExpression subquery)
+        {
+            var result = (SqlExpression)Visit(sqlExpression);
+            subquery = Subquery;
+            return result;
+        }
 
         public (SelectExpression, SelectExpression) Remap(SelectExpression selectExpression)
         {
@@ -286,7 +290,7 @@ public sealed partial class SelectExpression
                 result = (SelectExpression)Visit(selectExpression);
             }
 
-            return (result, _subquery);
+            return (result, Subquery);
         }
 
         [return: NotNullIfNotNull("expression")]
@@ -299,7 +303,7 @@ public sealed partial class SelectExpression
                     return outer;
 
                 case ColumnExpression columnExpression
-                    when _groupByDiscovery && _subquery.ContainsReferencedTable(columnExpression):
+                    when _groupByDiscovery && Subquery.ContainsReferencedTable(columnExpression):
                     _correlatedTerms.Add(columnExpression);
                     return columnExpression;
 
@@ -307,13 +311,13 @@ public sealed partial class SelectExpression
                     when !_groupByDiscovery
                     && sqlExpression is not SqlConstantExpression and not SqlParameterExpression
                     && _correlatedTerms.Contains(sqlExpression):
-                    var outerColumn = _subquery.GenerateOuterColumn2(_tableAlias, sqlExpression, out _subquery);
+                    var outerColumn = Subquery.GenerateOuterColumn2(_tableAlias, sqlExpression, out Subquery);
                     _mappings[sqlExpression] = outerColumn;
                     return outerColumn;
 
                 case ColumnExpression columnExpression
-                    when !_groupByDiscovery && _subquery.ContainsReferencedTable(columnExpression):
-                    var outerColumn1 = _subquery.GenerateOuterColumn2(_tableAlias, columnExpression, out _subquery);
+                    when !_groupByDiscovery && Subquery.ContainsReferencedTable(columnExpression):
+                    var outerColumn1 = Subquery.GenerateOuterColumn2(_tableAlias, columnExpression, out Subquery);
                     _mappings[columnExpression] = outerColumn1;
                     return outerColumn1;
 
