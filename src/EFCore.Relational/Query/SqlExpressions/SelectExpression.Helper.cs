@@ -279,7 +279,7 @@ public sealed partial class SelectExpression
             return result;
         }
 
-        public (SelectExpression, SelectExpression) Remap(SelectExpression selectExpression)
+        public SelectExpression Remap(SelectExpression selectExpression, out SelectExpression subquery)
         {
             var result = (SelectExpression)Visit(selectExpression);
 
@@ -290,7 +290,8 @@ public sealed partial class SelectExpression
                 result = (SelectExpression)Visit(selectExpression);
             }
 
-            return (result, Subquery);
+            subquery = Subquery;
+            return result;
         }
 
         [return: NotNullIfNotNull("expression")]

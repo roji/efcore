@@ -67,6 +67,12 @@ public class ShapedQueryExpression : Expression, IPrintableExpression
     public sealed override ExpressionType NodeType
         => ExpressionType.Extension;
 
+    /// <summary>
+    ///     Deconstructs this <see cref="ShapedQueryExpression" /> into its contained query and shaper expressions/
+    /// </summary>
+    public virtual void Deconstruct(out Expression queryExpression, out Expression shaperExpression)
+        => (queryExpression, shaperExpression) = (QueryExpression, ShaperExpression);
+
     /// <inheritdoc />
     protected override Expression VisitChildren(ExpressionVisitor visitor)
         => throw new InvalidOperationException(

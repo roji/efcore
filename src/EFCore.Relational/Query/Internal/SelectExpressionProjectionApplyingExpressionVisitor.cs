@@ -36,12 +36,11 @@ public class SelectExpressionProjectionApplyingExpressionVisitor : ExpressionVis
         => extensionExpression switch
         {
             ShapedQueryExpression { QueryExpression: SelectExpression selectExpression } shapedQueryExpression
-                => shapedQueryExpression.UpdateShaperExpression(
-                    selectExpression.ApplyProjection(
-                        shapedQueryExpression.ShaperExpression, shapedQueryExpression.ResultCardinality, _querySplittingBehavior)),
+                => selectExpression.ApplyProjection(
+                    shapedQueryExpression.ShaperExpression, shapedQueryExpression.ResultCardinality, _querySplittingBehavior),
 
             NonQueryExpression nonQueryExpression => nonQueryExpression,
 
-            _ => base.VisitExtension(extensionExpression),
+            _ => base.VisitExtension(extensionExpression)
         };
 }

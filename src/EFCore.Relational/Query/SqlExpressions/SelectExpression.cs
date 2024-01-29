@@ -420,7 +420,7 @@ public sealed partial class SelectExpression : TableExpressionBase
     /// <param name="resultCardinality">The result cardinality of this query expression.</param>
     /// <param name="querySplittingBehavior">The query splitting behavior to use when applying projection for nested collections.</param>
     /// <returns>Returns modified shaper expression to shape results of this select expression.</returns>
-    public Expression ApplyProjection(
+    public ShapedQueryExpression ApplyProjection(
         Expression shaperExpression,
         ResultCardinality resultCardinality,
         QuerySplittingBehavior querySplittingBehavior)
@@ -431,16 +431,19 @@ public sealed partial class SelectExpression : TableExpressionBase
         }
 
         IsMutable = false;
+        var select = this;
+        var finalProjections = new List<ProjectionExpression>();
+
         if (shaperExpression is RelationalGroupByShaperExpression relationalGroupByShaperExpression)
         {
             // This is final GroupBy operation
-            Check.DebugAssert(_groupBy.Count > 0, "The selectExpression doesn't have grouping terms.");
+            Check.DebugAssert(select._groupBy.Count > 0, "The selectExpression doesn't have grouping terms.");
 
-            if (_clientProjections.Count == 0)
+            if (select._clientProjections.Count == 0)
             {
                 // Force client projection because we would be injecting keys and client-side key comparison
-                var mapping = ConvertProjectionMappingToClientProjections(_projectionMapping);
-                var innerShaperExpression = new ProjectionMemberToIndexConvertingExpressionVisitor(this, mapping).Visit(
+                var mapping = ConvertProjectionMappingToClientProjections(select._projectionMapping);
+                var innerShaperExpression = new ProjectionMemberToIndexConvertingExpressionVisitor(select, mapping).Visit(
                     relationalGroupByShaperExpression.ElementSelector);
                 shaperExpression = new RelationalGroupByShaperExpression(
                     relationalGroupByShaperExpression.KeySelector,
@@ -449,17 +452,25 @@ public sealed partial class SelectExpression : TableExpressionBase
             }
 
             // Convert GroupBy to OrderBy
-            foreach (var groupingTerm in _groupBy)
+            foreach (var groupingTerm in select._groupBy)
             {
                 AppendOrdering(new OrderingExpression(groupingTerm, ascending: true));
             }
 
-            _groupBy.Clear();
+            select = select.Update(
+                select.Projection,
+                select.Tables,
+                select.Predicate,
+                groupBy: [],
+                select.Having,
+                select.Orderings,
+                select.Limit,
+                select.Offset);
             // We do processing of adding key terms to projection when applying projection so we can move offsets for other
             // projections correctly
         }
 
-        if (_clientProjections.Count > 0)
+        if (select._clientProjections.Count > 0)
         {
             EntityShaperNullableMarkingExpressionVisitor? entityShaperNullableMarkingExpressionVisitor = null;
             CloningExpressionVisitor? cloningExpressionVisitor = null;
@@ -468,7 +479,7 @@ public sealed partial class SelectExpression : TableExpressionBase
             var containsSingleResult = false;
             var jsonClientProjectionsCount = 0;
 
-            foreach (var projection in _clientProjections)
+            foreach (var projection in select._clientProjections)
             {
                 if (projection is ShapedQueryExpression sqe)
                 {
@@ -494,12 +505,12 @@ public sealed partial class SelectExpression : TableExpressionBase
             {
                 // Pushdown outer since we will be adding join to this
                 // For grouping query pushdown will not occur since we don't allow this terms to compose (yet!).
-                if (Limit != null
-                    || Offset != null
-                    || IsDistinct
-                    || GroupBy.Count > 0)
+                if (select.Limit != null
+                    || select.Offset != null
+                    || select.IsDistinct
+                    || select.GroupBy.Count > 0)
                 {
-                    PushdownIntoSubqueryInternal();
+                    select = PushdownIntoSubquery2();
                     pushdownOccurred = true;
                 }
 
@@ -521,7 +532,7 @@ public sealed partial class SelectExpression : TableExpressionBase
                 cloningExpressionVisitor = new CloningExpressionVisitor(sqlAliasManager: null, cloneClientProjections: false);
             }
 
-            var earlierClientProjectionCount = _clientProjections.Count;
+            var earlierClientProjectionCount = select._clientProjections.Count;
             var newClientProjections = new List<Expression>();
             var clientProjectionIndexMap = new List<object>();
             var remappingRequired = false;
@@ -530,13 +541,14 @@ public sealed partial class SelectExpression : TableExpressionBase
             {
                 // We need to add key to projection and generate key selector in terms of projectionBindings
                 var projectionBindingMap = new Dictionary<SqlExpression, Expression>();
+                // TODO: This mutates
                 var keySelector = AddGroupByKeySelectorToProjection(
                     this, newClientProjections, projectionBindingMap, groupByShaper.KeySelector);
                 var (keyIdentifier, keyIdentifierValueComparers) = GetIdentifierAccessor(
-                    this, newClientProjections, projectionBindingMap, _identifier);
-                _identifier.Clear();
-                _identifier.AddRange(_preGroupByIdentifier!);
-                _preGroupByIdentifier!.Clear();
+                    this, newClientProjections, projectionBindingMap, select._identifier);
+                select._identifier.Clear();
+                select._identifier.AddRange(select._preGroupByIdentifier!);
+                select._preGroupByIdentifier!.Clear();
 
                 Expression AddGroupByKeySelectorToProjection(
                     SelectExpression selectExpression,
@@ -679,39 +691,37 @@ public sealed partial class SelectExpression : TableExpressionBase
                     // Update limit since split queries don't need limit 2
                     if (pushdownOccurred)
                     {
-                        UpdateLimit((SelectExpression)baseSelectExpression.Tables[0]);
-                    }
-                    else
-                    {
-                        UpdateLimit(baseSelectExpression);
-                    }
-
-                    static void UpdateLimit(SelectExpression selectExpression)
-                    {
-                        if (selectExpression.Limit is SqlConstantExpression { Value: 2 } limitConstantExpression)
+                        var subquery = (SelectExpression)select.Tables[0];
+                        if (subquery.Limit is SqlConstantExpression { Value: 2 } limitConstantExpression)
                         {
-                            selectExpression.Limit = new SqlConstantExpression(Constant(1), limitConstantExpression.TypeMapping);
+                            select = select.WithTables(
+                                [subquery.WithLimit(new SqlConstantExpression(Constant(1), limitConstantExpression.TypeMapping))]);
                         }
+                    }
+                    else if (select.Limit is SqlConstantExpression { Value: 2 } limitConstantExpression)
+                    {
+                        select = select.WithLimit(new SqlConstantExpression(Constant(1), limitConstantExpression.TypeMapping));
                     }
                 }
             }
 
-            for (var i = 0; i < _clientProjections.Count; i++)
+            for (var i = 0; i < select._clientProjections.Count; i++)
             {
                 if (i == earlierClientProjectionCount)
                 {
                     // Since we lift nested client projections for single results up, we may need to re-clone the baseSelectExpression
                     // again so it does contain the single result subquery too. We erase projections for it since it would be non-empty.
-                    earlierClientProjectionCount = _clientProjections.Count;
+                    earlierClientProjectionCount = select._clientProjections.Count;
                     if (cloningExpressionVisitor != null)
                     {
-                        baseSelectExpression = (SelectExpression)cloningExpressionVisitor.Visit(this);
+                        // TODO: Remove cloning etc.
+                        baseSelectExpression = (SelectExpression)cloningExpressionVisitor.Visit(select);
                         baseSelectExpression.IsMutable = true;
-                        baseSelectExpression._projection.Clear();
+                        baseSelectExpression = baseSelectExpression.WithProjections([]);
                     }
                 }
 
-                var value = _clientProjections[i];
+                var value = select._clientProjections[i];
                 switch (value)
                 {
                     case StructuralTypeProjectionExpression projection:
@@ -734,7 +744,8 @@ public sealed partial class SelectExpression : TableExpressionBase
 
                     case SqlExpression sqlExpression:
                     {
-                        var result = Constant(AddToProjection(sqlExpression, _aliasForClientProjections[i]));
+                        var result = Constant(
+                            AddToProjection2(finalProjections, sqlExpression, generateAlias: false, _aliasForClientProjections[i]));
                         newClientProjections.Add(result);
                         clientProjectionIndexMap.Add(newClientProjections.Count - 1);
 
@@ -790,16 +801,16 @@ public sealed partial class SelectExpression : TableExpressionBase
                         }
 
                         AddJoin(JoinType.OuterApply, ref innerSelectExpression, out _);
-                        var offset = _clientProjections.Count;
+                        var offset = select._clientProjections.Count;
                         var count = innerSelectExpression._clientProjections.Count;
 
-                        _clientProjections.AddRange(
+                        select._clientProjections.AddRange(
                             innerSelectExpression._clientProjections.Select(e => MakeNullable(e, nullable: true)));
 
-                        _aliasForClientProjections.AddRange(innerSelectExpression._aliasForClientProjections);
+                        select._aliasForClientProjections.AddRange(innerSelectExpression._aliasForClientProjections);
                         innerShaperExpression = new ProjectionIndexRemappingExpressionVisitor(
                                 innerSelectExpression,
-                                this,
+                                select,
                                 Enumerable.Range(offset, count).ToArray())
                             .Visit(innerShaperExpression);
                         innerShaperExpression = entityShaperNullableMarkingExpressionVisitor!.Visit(innerShaperExpression);
@@ -816,7 +827,7 @@ public sealed partial class SelectExpression : TableExpressionBase
                     case ShapedQueryExpression { ResultCardinality: ResultCardinality.Enumerable } shapedQueryExpression:
                     {
                         var innerSelectExpression = (SelectExpression)shapedQueryExpression.QueryExpression;
-                        if (_identifier.Count == 0
+                        if (select._identifier.Count == 0
                             || innerSelectExpression._identifier.Count == 0)
                         {
                             throw new InvalidOperationException(
@@ -844,11 +855,12 @@ public sealed partial class SelectExpression : TableExpressionBase
                             {
                                 // We do pushdown after making sure that inner contains references to outer only
                                 // so that when we do pushdown, we can update inner and maintain graph
-                                var sqlRemappingVisitor = outerSelectExpression.PushdownIntoSubqueryInternal();
-                                innerSelectExpression = sqlRemappingVisitor.Remap(innerSelectExpression);
+                                (outerSelectExpression, var sqlRemappingVisitor) = outerSelectExpression.PushdownIntoSubqueryInternal2();
+                                innerSelectExpression = sqlRemappingVisitor.Remap(innerSelectExpression, out var subquery);
+                                outerSelectExpression = outerSelectExpression.WithTables([subquery]);
                             }
 
-                            var actualParentIdentifier = _identifier.Take(outerSelectExpression._identifier.Count).ToList();
+                            var actualParentIdentifier = select._identifier.Take(outerSelectExpression._identifier.Count).ToList();
                             var containsOrdering = innerSelectExpression.Orderings.Count > 0;
                             List<OrderingExpression>? orderingsToBeErased = null;
                             if (containsOrdering
@@ -858,26 +870,31 @@ public sealed partial class SelectExpression : TableExpressionBase
                                 orderingsToBeErased = innerSelectExpression.Orderings.ToList();
                             }
 
-                            var parentIdentifier = GetIdentifierAccessor(this, newClientProjections, actualParentIdentifier).Item1;
+                            var parentIdentifier = GetIdentifierAccessor(select, newClientProjections, actualParentIdentifier).Item1;
 
-                            outerSelectExpression.AddJoin(
+                            outerSelectExpression = outerSelectExpression.AddJoin2(
                                 JoinType.CrossApply, ref innerSelectExpression, out var pushdownOccurredWhenJoining);
                             outerSelectExpression._clientProjections.AddRange(innerSelectExpression._clientProjections);
                             outerSelectExpression._aliasForClientProjections.AddRange(innerSelectExpression._aliasForClientProjections);
                             innerSelectExpression = outerSelectExpression;
 
+                            var parentOrderings = new List<OrderingExpression>(select.Orderings);
+                            var innerOrderings = new List<OrderingExpression>(innerSelectExpression.Orderings);
+
                             for (var j = 0; j < actualParentIdentifier.Count; j++)
                             {
-                                AppendOrdering(new OrderingExpression(actualParentIdentifier[j].Column, ascending: true));
-                                innerSelectExpression.AppendOrdering(
-                                    new OrderingExpression(innerSelectExpression._identifier[j].Column, ascending: true));
+                                AppendOrdering(
+                                    parentOrderings, new OrderingExpression(actualParentIdentifier[j].Column, ascending: true));
+                                AppendOrdering(
+                                    innerOrderings, new OrderingExpression(innerSelectExpression._identifier[j].Column, ascending: true));
                             }
+
+                            select = select.WithOrderings(parentOrderings);
 
                             // Copy over any nested ordering if there were any
                             if (containsOrdering)
                             {
                                 var collectionJoinedInnerTable = ((JoinExpressionBase)innerSelectExpression._tables[^1]).Table;
-                                var innerOrderingExpressions = new List<OrderingExpression>();
                                 if (orderingsToBeErased != null)
                                 {
                                     // Ordering was present but erased so we add again
@@ -887,7 +904,7 @@ public sealed partial class SelectExpression : TableExpressionBase
                                         var subquery = (SelectExpression)collectionJoinedInnerTable;
                                         foreach (var ordering in orderingsToBeErased)
                                         {
-                                            innerOrderingExpressions.Add(
+                                            innerOrderings.Add(
                                                 new OrderingExpression(
                                                     subquery.GenerateOuterColumn(
                                                         collectionJoinedInnerTable.GetRequiredAlias(), ordering.Expression),
@@ -898,23 +915,23 @@ public sealed partial class SelectExpression : TableExpressionBase
                                     {
                                         // We copy from inner if pushdown did not happen but ordering was left behind when
                                         // generating join
-                                        innerOrderingExpressions.AddRange(orderingsToBeErased);
+                                        innerOrderings.AddRange(orderingsToBeErased);
                                     }
                                 }
                                 else
                                 {
                                     // If orderings were not erased then they must be present in inner
-                                    GetOrderingsFromInnerTable(collectionJoinedInnerTable, innerOrderingExpressions);
-                                }
-
-                                foreach (var ordering in innerOrderingExpressions)
-                                {
-                                    innerSelectExpression.AppendOrdering(ordering);
+                                    GetOrderingsFromInnerTable(collectionJoinedInnerTable, innerOrderings);
                                 }
                             }
 
-                            innerShaperExpression = innerSelectExpression.ApplyProjection(
+                            innerSelectExpression = innerSelectExpression.WithOrderings(innerOrderings);
+
+                            var innerShapedQuery = innerSelectExpression.ApplyProjection(
                                 innerShaperExpression, shapedQueryExpression.ResultCardinality, querySplittingBehavior);
+
+                            innerSelectExpression = (SelectExpression)innerShapedQuery.QueryExpression;
+                            innerShaperExpression = innerShapedQuery.ShaperExpression;
 
                             var (childIdentifier, childIdentifierValueComparers) = GetIdentifierAccessor(
                                 innerSelectExpression,
@@ -926,18 +943,22 @@ public sealed partial class SelectExpression : TableExpressionBase
                                 innerSelectExpression, innerShaperExpression);
                             clientProjectionIndexMap.Add(result);
                         }
-                        else
+                        else // Single query
                         {
-                            var parentIdentifierList = _identifier.Except(_childIdentifiers, IdentifierComparerInstance).ToList();
+                            var parentIdentifierList =
+                                select._identifier.Except(select._childIdentifiers, IdentifierComparerInstance).ToList();
                             var (parentIdentifier, parentIdentifierValueComparers) = GetIdentifierAccessor(
-                                this, newClientProjections, parentIdentifierList);
+                                select, newClientProjections, parentIdentifierList);
                             var (outerIdentifier, outerIdentifierValueComparers) = GetIdentifierAccessor(
-                                this, newClientProjections, _identifier);
+                                select, newClientProjections, select._identifier);
 
-                            foreach (var identifier in _identifier)
+                            var orderings = new List<OrderingExpression>(select.Orderings);
+                            foreach (var identifier in select._identifier)
                             {
-                                AppendOrdering(new OrderingExpression(identifier.Column, ascending: true));
+                                AppendOrdering(orderings, new OrderingExpression(identifier.Column, ascending: true));
                             }
+
+                            select = select.WithOrderings(orderings);
 
                             innerShaperExpression = innerSelectExpression.ApplyProjection(
                                 innerShaperExpression, shapedQueryExpression.ResultCardinality, querySplittingBehavior);
@@ -951,7 +972,7 @@ public sealed partial class SelectExpression : TableExpressionBase
                                 orderingsToBeErased = innerSelectExpression.Orderings.ToList();
                             }
 
-                            AddJoin(JoinType.OuterApply, ref innerSelectExpression, out var pushdownOccurredWhenJoining);
+                            select = AddJoin2(JoinType.OuterApply, ref innerSelectExpression, out var pushdownOccurredWhenJoining);
 
                             // Copy over any nested ordering if there were any
                             if (containsOrdering)
@@ -987,10 +1008,13 @@ public sealed partial class SelectExpression : TableExpressionBase
                                     GetOrderingsFromInnerTable(collectionJoinedInnerTable, innerOrderingExpressions);
                                 }
 
-                                foreach (var ordering in innerOrderingExpressions)
+                                for (var j = 0; j < innerOrderingExpressions.Count; j++)
                                 {
-                                    AppendOrdering(ordering.Update(MakeNullable(ordering.Expression, nullable: true)));
+                                    var ordering = innerOrderingExpressions[j];
+                                    innerOrderingExpressions[j] = ordering.Update(MakeNullable(ordering.Expression, nullable: true));
                                 }
+
+                                select = select.WithOrderings(innerOrderingExpressions);
                             }
 
                             innerShaperExpression = CopyProjectionToOuter(innerSelectExpression, innerShaperExpression);
@@ -1272,7 +1296,8 @@ public sealed partial class SelectExpression : TableExpressionBase
                 foreach (var property in entityType.FindPrimaryKey()!.Properties.Take(keyPropertyCount)
                              .Concat(entityType.GetDeclaredProperties().Where(p => p.GetJsonPropertyName() is not null)))
                 {
-                    propertyIndexMap[property] = AddToProjection(projection.BindProperty(property), null);
+                    propertyIndexMap[property] = AddToProjection2(
+                        finalProjections, projection.BindProperty(property), generateAlias: false);
                 }
 
                 var childrenProjectionInfo = new List<(JsonProjectionInfo, INavigation)>();
@@ -1331,14 +1356,14 @@ public sealed partial class SelectExpression : TableExpressionBase
                 jsonQueryExpression.JsonColumn.TypeMapping!,
                 jsonQueryExpression.IsNullable);
 
-            _projection.Add(new ProjectionExpression(jsonScalarExpression, ""));
-            var jsonColumnIndex = _projection.Count - 1;
+            finalProjections.Add(new ProjectionExpression(jsonScalarExpression, ""));
+            var jsonColumnIndex = select._projection.Count - 1;
             var keyAccessInfo = new List<(IProperty?, int?, int?)>();
             var keyProperties = GetMappedKeyProperties(jsonQueryExpression.EntityType.FindPrimaryKey()!);
             foreach (var keyProperty in keyProperties)
             {
                 var keyColumn = jsonQueryExpression.BindProperty(keyProperty);
-                keyAccessInfo.Add((keyProperty, null, AddToProjection(keyColumn)));
+                keyAccessInfo.Add((keyProperty, null, AddToProjection2(finalProjections, keyColumn, generateAlias: false)));
             }
 
             foreach (var elementAccessSegment in jsonScalarExpression.Path.Where(x => x.ArrayIndex != null))
@@ -1349,7 +1374,8 @@ public sealed partial class SelectExpression : TableExpressionBase
                 }
                 else
                 {
-                    keyAccessInfo.Add((null, null, AddToProjection(elementAccessSegment.ArrayIndex!)));
+                    keyAccessInfo.Add(
+                        (null, null, AddToProjection2(finalProjections, elementAccessSegment.ArrayIndex!, generateAlias: false)));
                 }
             }
 
@@ -1380,6 +1406,14 @@ public sealed partial class SelectExpression : TableExpressionBase
             var count = currentEntity.FindPrimaryKey()!.Properties.Count;
 
             return key.Properties.Take(count).ToList();
+        }
+
+        static void AppendOrdering(List<OrderingExpression> orderings, OrderingExpression ordering)
+        {
+            if (!orderings.Any(o => o.Expression.Equals(ordering.Expression)))
+            {
+                orderings.Add(ordering);
+            }
         }
     }
 
@@ -3615,21 +3649,13 @@ public sealed partial class SelectExpression : TableExpressionBase
                 || outerSelectExpression.GroupBy.Count > 0)
             {
                 (outerSelectExpression, var sqlRemappingVisitor) = outerSelectExpression.PushdownIntoSubqueryInternal2();
-                (innerSelectExpression, var subquery) = sqlRemappingVisitor.Remap(innerSelectExpression);
+                innerSelectExpression = sqlRemappingVisitor.Remap(innerSelectExpression, out var subquery);
                 if (joinPredicate is not null)
                 {
                     joinPredicate = sqlRemappingVisitor.Remap(joinPredicate, out subquery);
                 }
 
-                outerSelectExpression = outerSelectExpression.Update(
-                    outerSelectExpression.Projection,
-                    [subquery],
-                    outerSelectExpression.Predicate,
-                    outerSelectExpression.GroupBy,
-                    outerSelectExpression.Having,
-                    outerSelectExpression.Orderings,
-                    outerSelectExpression.Limit,
-                    outerSelectExpression.Offset);
+                outerSelectExpression = outerSelectExpression.WithTables([subquery]);
             }
 
             if (innerSelectExpression.Limit != null
@@ -4554,8 +4580,7 @@ public sealed partial class SelectExpression : TableExpressionBase
             {
                 if (outerClientProjections[i] is ShapedQueryExpression shapedQueryExpression)
                 {
-                    (var projectedSelect, subquery) =
-                        sqlRemappingVisitor.Remap((SelectExpression)shapedQueryExpression.QueryExpression);
+                    var projectedSelect = sqlRemappingVisitor.Remap((SelectExpression)shapedQueryExpression.QueryExpression, out subquery);
                     outerClientProjections[i] = shapedQueryExpression.UpdateQueryExpression(projectedSelect);
                 }
             }
@@ -5225,8 +5250,20 @@ public sealed partial class SelectExpression : TableExpressionBase
     /// <summary>
     ///     Returns a copy of this <see cref="SelectExpression" />, replacing the orderings with the provided ones.
     /// </summary>
+    public SelectExpression WithTables(IReadOnlyList<TableExpressionBase> tables)
+        => Update(Projection, tables, Predicate, GroupBy, Having, Orderings, Limit, Offset);
+
+    /// <summary>
+    ///     Returns a copy of this <see cref="SelectExpression" />, replacing the orderings with the provided ones.
+    /// </summary>
     public SelectExpression WithOrderings(IReadOnlyList<OrderingExpression> orderings)
         => Update(Projection, Tables, Predicate, GroupBy, Having, orderings, Limit, Offset);
+
+    /// <summary>
+    ///     Returns a copy of this <see cref="SelectExpression" />, replacing the projections with the provided ones.
+    /// </summary>
+    public SelectExpression WithLimit(SqlExpression limit)
+        => Update(Projection, Tables, Predicate, GroupBy, Having, Orderings, limit, Offset);
 
     /// <summary>
     ///     Returns a copy of this <see cref="SelectExpression" />, replacing the projections with the provided ones.
