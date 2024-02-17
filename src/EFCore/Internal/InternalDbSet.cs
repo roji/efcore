@@ -20,7 +20,8 @@ public class InternalDbSet<[DynamicallyAccessedMembers(IEntityType.DynamicallyAc
     IQueryable<TEntity>,
     IAsyncEnumerable<TEntity>,
     IInfrastructure<IServiceProvider>,
-    IResettableService
+    IResettableService,
+    IDbContextContainer
     where TEntity : class
 {
     private readonly string? _entityTypeName;

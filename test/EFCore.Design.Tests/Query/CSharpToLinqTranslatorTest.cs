@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore.Query.Internal;
+using static System.Linq.Expressions.Expression;
 
 namespace Microsoft.EntityFrameworkCore.Query;
 
@@ -34,14 +35,18 @@ public class CSharpToLinqTranslatorTest
     public void As()
         => AssertExpression(
             () => "foo" as String,
-            @"""foo"" as String");
+            """
+                "foo" as String
+                """);
     // ReSharper restore BuiltInTypeReferenceStyle
 
     [Fact]
     public void As_with_predefined_type()
         => AssertExpression(
             () => "foo" as string,
-            @"""foo"" as string");
+            """
+                "foo" as string
+                """);
 
     // TODO
 //     [Theory]
@@ -84,7 +89,7 @@ public class CSharpToLinqTranslatorTest
     [InlineData("1 != 2", ExpressionType.NotEqual)]
     public void Binary_int(string code, ExpressionType binaryType)
         => AssertExpression(
-            Expression.MakeBinary(binaryType, Expression.Constant(1), Expression.Constant(2)),
+            MakeBinary(binaryType, Constant(1), Constant(2)),
             code);
 
     [Theory]
@@ -93,45 +98,47 @@ public class CSharpToLinqTranslatorTest
     [InlineData("true ^ false", ExpressionType.ExclusiveOr)]
     public void Binary_bool(string code, ExpressionType binaryType)
         => AssertExpression(
-            Expression.Lambda<Func<bool>>(
-                Expression.MakeBinary(binaryType, Expression.Constant(true), Expression.Constant(false))),
+            Lambda<Func<bool>>(
+                MakeBinary(binaryType, Constant(true), Constant(false))),
             code);
 
     [Fact]
     public void Binary_add_string()
         => AssertExpression(
             () => new[] { "foo", "bar" }.Select(s => s + "foo"),
-            @"new[] { ""foo"", ""bar"" }.Select(s => s + ""foo"")");
+            """new[] { "foo", "bar" }.Select(s => s + "foo")""");
 
     [Fact]
     public void Coalesce()
         => AssertExpression(
             () => (object?)"foo" ?? (object)"bar",
-            @"(object?)""foo"" ?? (object)""bar""");
+            """
+                (object?)"foo" ?? (object)"bar"
+                """);
 
     [Fact]
     public void Convert()
         => AssertExpression(
             () => (object)1,
-            @"(object)1");
+            "(object)1");
 
     [Fact]
     public void ElementAccess_over_array()
         => AssertExpression(
             () => new[] { 1, 2, 3 }[1],
-            @"new[] { 1, 2, 3 } [1]");
+            "new[] { 1, 2, 3 } [1]");
 
     [Fact]
     public void ElementAccess_over_list()
         => AssertExpression(
             () => new List<int> { 1, 2, 3 }[1],
-            @"new List<int> { 1, 2, 3 }[1]");
+            "new List<int> { 1, 2, 3 }[1]");
 
     [Fact]
     public void IdentifierName_for_lambda_parameter()
         => AssertExpression(
             () => new[] { 1, 2, 3 }.Where(i => i == 2),
-            @"new[] { 1, 2, 3 }.Where(i => i == 2);");
+            "new[] { 1, 2, 3 }.Where(i => i == 2);");
 
     [Fact]
     public void IdentifierName_for_captured_variable()
@@ -144,25 +151,90 @@ public class CSharpToLinqTranslatorTest
             "new[] { 1, 2 }");
 
     [Fact]
+    public void Index_over_array()
+        => AssertExpression(
+            () => new[] { 1, 2 }[0],
+            "new[] { 1, 2 }[0]");
+
+    [Fact]
+    public void Index_over_List()
+        => AssertExpression(
+            () => new List<int> { 1, 2 }[0],
+            "new List<int> { 1, 2 }[0]");
+
+    [Fact]
     public void Invocation_instance_method()
         => AssertExpression(
             () => "foo".Substring(2),
-            @"""foo"".Substring(2)");
+            """
+                "foo".Substring(2)
+                """);
 
     [Fact]
     public void Invocation_method_with_optional_parameter()
         => AssertExpression(
-            Expression.Call(
-                typeof(File).GetMethod(nameof(File.ReadAllTextAsync), new[] { typeof(string), typeof(CancellationToken) })!,
-                Expression.Constant("/tmp/foo"),
-                Expression.Constant(default(CancellationToken))),
-            @"System.IO.File.ReadAllTextAsync(""/tmp/foo"")");
+            Call(
+                typeof(CSharpToLinqTranslatorTest).GetMethod(nameof(ParamsAndOptionalMethod), [typeof(int), typeof(int), typeof(int[])])!,
+                Constant(1),
+                Constant(4),
+                NewArrayInit(typeof(int))),
+            @"CSharpToLinqTranslatorTest.ParamsAndOptionalMethod(1, 4)");
+
+    [Fact]
+    public void Invocation_method_with_optional_parameter_missing_argument()
+        => AssertExpression(
+            Call(
+                typeof(CSharpToLinqTranslatorTest).GetMethod(nameof(ParamsAndOptionalMethod), [typeof(int), typeof(int), typeof(int[])])!,
+                Constant(1),
+                Constant(3),
+                NewArrayInit(typeof(int))),
+            @"CSharpToLinqTranslatorTest.ParamsAndOptionalMethod(1)");
+
+    [Fact]
+    public void Invocation_method_with_params_parameter_no_arguments()
+        => AssertExpression(
+            Call(
+                typeof(CSharpToLinqTranslatorTest).GetMethod(nameof(ParamsAndOptionalMethod), [typeof(int), typeof(int), typeof(int[])])!,
+                Constant(1),
+                Constant(4),
+                NewArrayInit(typeof(int))),
+            @"CSharpToLinqTranslatorTest.ParamsAndOptionalMethod(1, 4)");
+
+    [Fact]
+    public void Invocation_method_with_params_parameter_one_argument()
+        => AssertExpression(
+            Call(
+                typeof(CSharpToLinqTranslatorTest).GetMethod(nameof(ParamsAndOptionalMethod), [typeof(int), typeof(int), typeof(int[])])!,
+                Constant(1),
+                Constant(4),
+                NewArrayInit(typeof(int), Constant(5))),
+            @"CSharpToLinqTranslatorTest.ParamsAndOptionalMethod(1, 4, 5)");
+
+    [Fact]
+    public void Invocation_method_with_params_parameter_multiple_arguments()
+        => AssertExpression(
+            Call(
+                typeof(CSharpToLinqTranslatorTest).GetMethod(nameof(ParamsAndOptionalMethod), [typeof(int), typeof(int), typeof(int[])])!,
+                Constant(1),
+                Constant(4),
+                NewArrayInit(typeof(int), Constant(5), Constant(6))),
+            @"CSharpToLinqTranslatorTest.ParamsAndOptionalMethod(1, 4, 5, 6)");
+
+    [Fact]
+    public void Invocation_method_with_params_parameter_missing_argument()
+        => AssertExpression(
+            Call(
+                typeof(CSharpToLinqTranslatorTest).GetMethod(nameof(ParamsAndOptionalMethod), [typeof(int), typeof(int), typeof(int[])])!,
+                Constant(1),
+                Constant(3),
+                NewArrayInit(typeof(int))),
+            "CSharpToLinqTranslatorTest.ParamsAndOptionalMethod(1)");
 
     [Fact]
     public void Invocation_static_method()
         => AssertExpression(
             () => DateTime.Parse("2020-01-01"),
-            @"DateTime.Parse(""2020-01-01"")");
+            """DateTime.Parse("2020-01-01")""");
 
     [Fact]
     public void Invocation_extension_method()
@@ -182,7 +254,7 @@ public class CSharpToLinqTranslatorTest
     public void Invocation_generic_method()
         => AssertExpression(
             () => Enumerable.Repeat("foo", 5),
-            @"Enumerable.Repeat(""foo"", 5)");
+            """Enumerable.Repeat("foo", 5)""");
 
     [Fact]
     public void Invocation_generic_extension_method()
@@ -206,10 +278,12 @@ public class CSharpToLinqTranslatorTest
     public void Invocation_generic_method_on_generic_type()
         => AssertExpression(
             () => SomeGenericType<int>.SomeGenericFunction<string>(1, "foo"),
-            @"CSharpToLinqTranslatorTest.SomeGenericType<int>.SomeGenericFunction<string>(1, ""foo"")");
+            """CSharpToLinqTranslatorTest.SomeGenericType<int>.SomeGenericFunction<string>(1, "foo")""");
 
     [Theory]
-    [InlineData(@"""hello""", "hello")]
+    [InlineData("""
+        "hello"
+        """, "hello")]
     [InlineData("1", 1)]
     [InlineData("1L", 1L)]
     [InlineData("1U", 1U)]
@@ -219,7 +293,7 @@ public class CSharpToLinqTranslatorTest
     [InlineData("true", true)]
     public void Literal(string csharpLiteral, object expectedValue)
         => AssertExpression(
-            Expression.Constant(expectedValue),
+            Constant(expectedValue),
             csharpLiteral);
 
     [Fact]
@@ -265,7 +339,9 @@ public class CSharpToLinqTranslatorTest
     public void MemberAccess_instance_property()
         => AssertExpression(
             () => "foo".Length,
-            @"""foo"".Length;");
+            """
+                "foo".Length;
+                """);
 
     [Fact]
     public void MemberAccess_static_property()
@@ -284,7 +360,7 @@ public class CSharpToLinqTranslatorTest
     [Fact]
     public void Not_boolean()
         => AssertExpression(
-            Expression.Not(Expression.Constant(true)),
+            Not(Constant(true)),
             "!true");
 
     [Fact]
@@ -303,7 +379,7 @@ public class CSharpToLinqTranslatorTest
     public void ObjectCreation_with_initializers()
         => AssertExpression(
             () => new Blog(8) { Name = "foo" },
-            @"new CSharpToLinqTranslatorTest.Blog(8) { Name = ""foo"" }");
+            """new CSharpToLinqTranslatorTest.Blog(8) { Name = "foo" }""");
 
     [Fact]
     public void ObjectCreation_with_parameterless_struct_constructor()
@@ -323,7 +399,7 @@ public class CSharpToLinqTranslatorTest
     [InlineData("~8", 8, ExpressionType.Not)]
     public void PrefixUnary(string code, object operandValue, ExpressionType expectedNodeType)
         => AssertExpression(
-            Expression.MakeUnary(expectedNodeType, Expression.Constant(8), typeof(int)),
+            MakeUnary(expectedNodeType, Constant(8), typeof(int)),
             code);
 
     // ReSharper disable RedundantSuppressNullableWarningExpression
@@ -331,7 +407,9 @@ public class CSharpToLinqTranslatorTest
     public void SuppressNullableWarningExpression()
         => AssertExpression(
             () => "foo"!,
-            @"""foo""!");
+            """
+                "foo"!
+                """);
     // ReSharper restore RedundantSuppressNullableWarningExpression
 
     [ConditionalFact]
@@ -353,15 +431,16 @@ public class CSharpToLinqTranslatorTest
 
     protected virtual void AssertExpression(Expression expected, string code)
     {
-        code =
-            "using System;" + Environment.NewLine +
-            "using System.Collections.Generic;" + Environment.NewLine +
-            "using System.Linq;" + Environment.NewLine +
-            "using System.Linq.Expressions;" + Environment.NewLine +
-            "using System.Reflection;" + Environment.NewLine +
-            "using Microsoft.EntityFrameworkCore.Query;" + Environment.NewLine +
-            Environment.NewLine +
-            $"_ = {code};";
+        code = $"""
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+using Microsoft.EntityFrameworkCore.Query;
+
+_ = {code};
+""";
 
         var compilation = Compile(code);
 
@@ -455,9 +534,7 @@ public class CSharpToLinqTranslatorTest
         Two = 2
     }
 
-    private class BlogContext : DbContext
-    {
-    }
+    private class BlogContext : DbContext;
 
     public class Blog
     {
@@ -480,4 +557,7 @@ public class CSharpToLinqTranslatorTest
         public static int SomeGenericFunction<T2>(T1 t1, T2 t2)
             => 0;
     }
+
+    public static int ParamsAndOptionalMethod(int a, int b = 3, params int[] c)
+        => throw new NotSupportedException();
 }

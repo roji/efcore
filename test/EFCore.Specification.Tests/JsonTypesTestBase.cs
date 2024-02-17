@@ -3489,7 +3489,6 @@ public abstract class JsonTypesTestBase : NonSharedModelTestBase
     {
         var contextFactory = CreateContextFactory<DbContext>(
             buildModel,
-            addServices: AddServices,
             configureConventions: configureConventions);
         using var context = contextFactory.CreateContext();
 
@@ -3566,9 +3565,6 @@ public abstract class JsonTypesTestBase : NonSharedModelTestBase
     }
 
     protected override string StoreName => "JsonTypesTest";
-
-    protected virtual IServiceCollection AddServices(IServiceCollection serviceCollection)
-        => serviceCollection;
 
     protected virtual void AssertElementFacets(IElementType element, Dictionary<string, object?>? facets)
     {

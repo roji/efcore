@@ -35,6 +35,7 @@ public static class SingleQueryingEnumerable
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
 public class SingleQueryingEnumerable<T> : IEnumerable<T>, IAsyncEnumerable<T>, IRelationalQueryingEnumerable
+    // IQueryable<T> // TODO: Only needed in order to call async terminating operators in precompiled mode
 {
     private readonly RelationalQueryContext _relationalQueryContext;
     private readonly RelationalCommandCache _relationalCommandCache;
@@ -455,4 +456,13 @@ public class SingleQueryingEnumerable<T> : IEnumerable<T>, IAsyncEnumerable<T>, 
             return default;
         }
     }
+
+    // public Type ElementType
+    //     => throw new UnreachableException();
+    //
+    // public Expression Expression
+    //     => throw new UnreachableException();
+    //
+    // public IQueryProvider Provider
+    //     => throw new UnreachableException();
 }

@@ -279,26 +279,42 @@ public class CSharpToLinqTranslator : CSharpSyntaxVisitor<Expression>, ICSharpTo
     /// </summary>
     public override Expression VisitElementAccessExpression(ElementAccessExpressionSyntax elementAccessExpression)
     {
+        var arguments = elementAccessExpression.ArgumentList.Arguments;
         var visitedExpression = Visit(elementAccessExpression.Expression);
 
-        var expressionType = _semanticModel.GetTypeInfo(elementAccessExpression.Expression).ConvertedType;
-        if (expressionType is null)
+        switch (_semanticModel.GetTypeInfo(elementAccessExpression.Expression).ConvertedType)
         {
-            throw new InvalidOperationException(
-                $"No type for expression {elementAccessExpression.Expression} in {nameof(ElementAccessExpressionSyntax)}");
+            case IArrayTypeSymbol:
+                Check.DebugAssert(elementAccessExpression.ArgumentList.Arguments.Count == 1,
+                    $"ElementAccessExpressionSyntax over array with {arguments.Count} arguments");
+                return ArrayIndex(visitedExpression, Visit(arguments[0].Expression));
+
+            case INamedTypeSymbol:
+                var property = visitedExpression.Type
+                    .GetProperties()
+                    .Select(p => new { Property = p, IndexParameters = p.GetIndexParameters() })
+                    .Where(
+                        t => t.IndexParameters.Length == arguments.Count
+                            && t.IndexParameters
+                                .Select(p => p.ParameterType)
+                                .SequenceEqual(arguments.Select(a => ResolveType(a.Expression))))
+                    .Select(t => t.Property)
+                    .FirstOrDefault();
+
+                if (property is null)
+                {
+                    throw new UnreachableException("No matching property found for ElementAccessExpressionSyntax");
+                }
+
+                return Property(visitedExpression, property, arguments.Select(a => Visit(a)));
+
+            case null:
+                throw new InvalidOperationException(
+                    $"No type for expression {elementAccessExpression.Expression} in {nameof(ElementAccessExpressionSyntax)}");
+
+            default:
+                throw new NotImplementedException($"{nameof(ElementAccessExpressionSyntax)} over non-array");
         }
-
-        if (expressionType is IArrayTypeSymbol)
-        {
-            Check.DebugAssert(elementAccessExpression.ArgumentList.Arguments.Count == 1,
-                $"ElementAccessExpressionSyntax over array with {elementAccessExpression.ArgumentList.Arguments.Count} arguments");
-
-            var visitedArgument = Visit(elementAccessExpression.ArgumentList.Arguments[0].Expression);
-
-            return ArrayIndex(visitedExpression, visitedArgument);
-        }
-
-        throw new NotImplementedException($"{nameof(ElementAccessExpressionSyntax)} over non-array");
     }
 
     /// <summary>
@@ -341,21 +357,27 @@ public class CSharpToLinqTranslator : CSharpSyntaxVisitor<Expression>, ICSharpTo
         // The Translate entry point into the translator uses Roslyn's data flow analysis to locate all captured variables, and populates
         // the _capturedVariable dictionary with them (with null values).
         // TODO: Test closure over class member (not local variable)
-        if (!_capturedVariables.TryGetValue(localSymbol, out var memberExpression))
+        if (_capturedVariables.TryGetValue(localSymbol, out var memberExpression))
         {
-            throw new InvalidOperationException(
-                $"Encountered unknown identifier name '{identifierName}', which doesn't correspond to a lambda parameter or captured variable");
+            // The first time we see a captured variable, we create MemberExpression for it and cache it in _capturedVariables.
+            return memberExpression
+                ?? (_capturedVariables[localSymbol] =
+                    Field(
+                        Constant(new FakeClosureFrameClass()),
+                        new FakeFieldInfo(
+                            typeof(FakeClosureFrameClass),
+                            ResolveType(localSymbol.Type),
+                            localSymbol.Name)));
         }
 
-        // The first time we see a captured variable, we create MemberExpression for it and cache it in _capturedVariables.
-        return memberExpression
-            ?? (_capturedVariables[localSymbol] =
-                Field(
-                    Constant(new FakeClosureFrameClass()),
-                    new FakeFieldInfo(
-                        typeof(FakeClosureFrameClass),
-                        ResolveType(localSymbol.Type),
-                        localSymbol.Name)));
+        if (localSymbol.Type.Equals(_userDbContextSymbol, SymbolEqualityComparer.Default))
+        {
+            // This is a local DbContext variable.
+            return Constant(_userDbContext);
+        }
+
+        throw new InvalidOperationException(
+            $"Encountered unknown identifier name '{identifierName}', which doesn't correspond to a lambda parameter or captured variable");
     }
 
     /// <summary>
@@ -382,6 +404,18 @@ public class CSharpToLinqTranslator : CSharpSyntaxVisitor<Expression>, ICSharpTo
         var initializers = implicitArrayCreation.Initializer.Expressions.Select(e => Visit(e));
 
         return NewArrayInit(elementType, initializers);
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public override Expression VisitInterpolatedStringExpression(InterpolatedStringExpressionSyntax interpolatedString)
+    {
+        // interpolatedString.Contents[0].
+        throw new NotImplementedException();
     }
 
     /// <summary>
@@ -522,32 +556,65 @@ public class CSharpToLinqTranslator : CSharpSyntaxVisitor<Expression>, ICSharpTo
 
         // We have the reflection MethodInfo for the method, prepare the arguments.
 
-        // We can have less arguments than parameters when the method has optional parameters.
-        // Fill in the missing ones with the default value
+        // We can have less arguments than parameters when the method has optional parameters; fill in the missing ones with the default
+        // value.
+        // If the method also has a "params" parameter, we also need to take care of that - the syntactic arguments will need to be packed
+        // into the "params" array etc.
         var parameters = methodInfo.GetParameters();
-        var arguments = new Expression?[parameters.Length];
-        var destArgBase = 0;
-        var destArgIndex = 0;
+        var sourceArguments = invocation.ArgumentList.Arguments;
+        var destArguments = new Expression?[parameters.Length];
+        var paramIndex = 0;
 
         // At the syntactic level, an extension method invocation looks like a normal instance's.
         // Prepend the instance to the argument list.
         // TODO: Test invoking extension without extension syntax (as static)
         if (methodSymbol is { IsExtensionMethod: true /*, ReceiverType: { } */ })
         {
-            arguments[0] = instance;
+            destArguments[0] = instance;
+            paramIndex = 1;
             instance = null;
-            destArgBase = destArgIndex = 1;
         }
 
-        var sourceArguments = invocation.ArgumentList.Arguments;
-        for (var sourceArgIndex = 0; sourceArgIndex < sourceArguments.Count; sourceArgIndex++, destArgIndex++)
+        for (var sourceArgIndex = 0; paramIndex < parameters.Length; paramIndex++)
         {
-            var argument = invocation.ArgumentList.Arguments[sourceArgIndex];
+            var parameter = parameters[paramIndex];
+            if (parameter.IsDefined(typeof(ParamArrayAttribute)))
+            {
+                // We've reached a "params" parameter; pack all the remaining args (possibly zero) into a NewArrayExpression
+                var elementType = parameter.ParameterType.GetElementType()!;
+                var paramsArguments = new Expression[sourceArguments.Count - sourceArgIndex];
+                for (var paramsArgIndex = 0; sourceArgIndex < sourceArguments.Count; sourceArgIndex++, paramsArgIndex++)
+                {
+                    var arg = invocation.ArgumentList.Arguments[sourceArgIndex];
+                    Check.DebugAssert(arg.NameColon is null, "Named argument in params");
+
+                    paramsArguments[paramsArgIndex] = Visit(arg);
+                }
+
+                destArguments[paramIndex] = NewArrayInit(elementType, paramsArguments);
+                Check.DebugAssert(paramIndex == parameters.Length - 1, "Parameters after params");
+                break;
+            }
+
+            if (sourceArgIndex >= sourceArguments.Count)
+            {
+                // Fewer arguments than there are parameters - we have optional parameters.
+                Check.DebugAssert(parameter.IsOptional, "Missing non-optional argument");
+
+                destArguments[paramIndex] = Constant(
+                    parameter.DefaultValue is null && parameter.ParameterType.IsValueType
+                        ? Activator.CreateInstance(parameter.ParameterType)
+                        : parameter.DefaultValue,
+                    parameter.ParameterType);
+                continue;
+            }
+
+            var argument = invocation.ArgumentList.Arguments[sourceArgIndex++];
 
             // Positional argument
             if (argument.NameColon is null)
             {
-                arguments[destArgIndex] = Visit(sourceArguments[sourceArgIndex]);
+                destArguments[paramIndex] = Visit(argument);
                 continue;
             }
 
@@ -555,29 +622,10 @@ public class CSharpToLinqTranslator : CSharpSyntaxVisitor<Expression>, ICSharpTo
             throw new NotImplementedException("Named argument");
         }
 
-        // We can have less arguments than parameters when the method has optional parameters.
-        // Fill in the missing ones with the default value
-        if (sourceArguments.Count < parameters.Length)
-        {
-            for (var paramIndex = destArgBase; paramIndex < parameters.Length; paramIndex++)
-            {
-                if (arguments[paramIndex] is null)
-                {
-                    var parameter = parameters[paramIndex];
-                    Check.DebugAssert(parameter.IsOptional, "Missing non-optional argument");
-                    arguments[paramIndex] = Constant(
-                        parameter.DefaultValue is null && parameter.ParameterType.IsValueType
-                            ? Activator.CreateInstance(parameter.ParameterType)
-                            : parameter.DefaultValue,
-                        parameter.ParameterType);
-                }
-            }
-        }
-
-        Check.DebugAssert(arguments.All(a => a is not null), "arguments.All(a => a is not null)");
+        Check.DebugAssert(destArguments.All(a => a is not null), "arguments.All(a => a is not null)");
 
         // TODO: Generic type arguments
-        return Call(instance, methodInfo, arguments!);
+        return Call(instance, methodInfo, destArguments!);
     }
 
     /// <summary>
@@ -587,15 +635,9 @@ public class CSharpToLinqTranslator : CSharpSyntaxVisitor<Expression>, ICSharpTo
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public override Expression VisitLiteralExpression(LiteralExpressionSyntax literal)
-    {
-        // We call GetTypeInfo to get the type for null literals
-        var typeInfo = _semanticModel.GetTypeInfo(literal);
-
-        return Constant(
-            literal.Token.Value,
-            ResolveType(
-                typeInfo.ConvertedType ?? throw new InvalidOperationException("No converted type for null literal")));
-    }
+        => _semanticModel.GetTypeInfo(literal) is { ConvertedType: ITypeSymbol type }
+            ? Constant(literal.Token.Value, ResolveType(type))
+            : Constant(literal.Token.Value);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -605,29 +647,29 @@ public class CSharpToLinqTranslator : CSharpSyntaxVisitor<Expression>, ICSharpTo
     /// </summary>
     public override Expression VisitMemberAccessExpression(MemberAccessExpressionSyntax memberAccess)
     {
-        // Identify DbSet property access on the user's context type
-        // TODO: support DbSet via DbContext.Set<T>() (and its STET counterpart)
-        // TODO: identify DbSet access on non-local context (e.g. new BlogContext().Blogs...
-        if (_semanticModel.GetSymbolInfo(memberAccess).Symbol is IPropertySymbol propertySymbol
-            && SymbolEqualityComparer.Default.Equals(propertySymbol.Type.OriginalDefinition, _dbSetSymbol)
-            && _semanticModel.GetSymbolInfo(memberAccess.Expression).Symbol is ILocalSymbol contextTypeSymbol
-            && SymbolEqualityComparer.Default.Equals(contextTypeSymbol.Type.OriginalDefinition, _userDbContextSymbol))
-        {
-            // TODO: Cache these properties?
-
-            // We have a DbSet property access.
-            if (_userDbContextType.GetProperty(propertySymbol.Name) is not { CanRead: true } propertyInfo)
-            {
-                throw new InvalidOperationException(
-                    $"Couldn't find referenced property {propertySymbol.Name} on context type {_userDbContextType.Name}");
-            }
-
-            var dbSet = propertyInfo.GetMethod!.Invoke(_userDbContext, null)!;
-            var entityType = (IEntityType)dbSet.GetType().GetProperty(nameof(DbSet<object>.EntityType))!.GetMethod!
-                .Invoke(dbSet, null)!;
-
-            return new EntityQueryRootExpression(entityType);
-        }
+        // // Identify DbSet property access on the user's context type
+        // // TODO: support DbSet via DbContext.Set<T>() (and its STET counterpart)
+        // // TODO: identify DbSet access on non-local context (e.g. new BlogContext().Blogs...
+        // if (_semanticModel.GetSymbolInfo(memberAccess).Symbol is IPropertySymbol propertySymbol
+        //     && SymbolEqualityComparer.Default.Equals(propertySymbol.Type.OriginalDefinition, _dbSetSymbol)
+        //     && _semanticModel.GetSymbolInfo(memberAccess.Expression).Symbol is ILocalSymbol contextTypeSymbol
+        //     && SymbolEqualityComparer.Default.Equals(contextTypeSymbol.Type.OriginalDefinition, _userDbContextSymbol))
+        // {
+        //     // TODO: Cache these properties?
+        //
+        //     // We have a DbSet property access.
+        //     if (_userDbContextType.GetProperty(propertySymbol.Name) is not { CanRead: true } propertyInfo)
+        //     {
+        //         throw new InvalidOperationException(
+        //             $"Couldn't find referenced property {propertySymbol.Name} on context type {_userDbContextType.Name}");
+        //     }
+        //
+        //     var dbSet = propertyInfo.GetMethod!.Invoke(_userDbContext, null)!;
+        //     var entityType = (IEntityType)dbSet.GetType().GetProperty(nameof(DbSet<object>.EntityType))!.GetMethod!
+        //         .Invoke(dbSet, null)!;
+        //
+        //     return new EntityQueryRootExpression(entityType);
+        // }
 
         var expression = Visit(memberAccess.Expression);
 
@@ -1096,19 +1138,10 @@ public class CSharpToLinqTranslator : CSharpSyntaxVisitor<Expression>, ICSharpTo
     private Dictionary<string[], Type>? _anonymousTypeDefinitions;
 
     [CompilerGenerated]
-    private class FakeClosureFrameClass
-    {
-    }
+    private class FakeClosureFrameClass;
 
-    private class FakeFieldInfo : FieldInfo
+    private class FakeFieldInfo(Type declaringType, Type fieldType, string name) : FieldInfo
     {
-        public FakeFieldInfo(Type declaringType, Type fieldType, string name)
-        {
-            DeclaringType = declaringType;
-            FieldType = fieldType;
-            Name = name;
-        }
-
         public override object[] GetCustomAttributes(bool inherit)
             => Array.Empty<object>();
 
@@ -1118,9 +1151,9 @@ public class CSharpToLinqTranslator : CSharpSyntaxVisitor<Expression>, ICSharpTo
         public override bool IsDefined(Type attributeType, bool inherit)
             => false;
 
-        public override Type DeclaringType { get; }
+        public override Type DeclaringType { get; } = declaringType;
 
-        public override string Name { get; }
+        public override string Name { get; } = name;
 
         public override Type? ReflectedType => null;
 
@@ -1140,7 +1173,7 @@ public class CSharpToLinqTranslator : CSharpSyntaxVisitor<Expression>, ICSharpTo
         public override RuntimeFieldHandle FieldHandle
             => throw new NotSupportedException();
 
-        public override Type FieldType { get; }
+        public override Type FieldType { get; } = fieldType;
     }
 
     private class FakeConstructorInfo : ConstructorInfo

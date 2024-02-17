@@ -89,7 +89,7 @@ public class QueryLocator : CSharpSyntaxRewriter, IQueryLocator
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public override SyntaxNode VisitInvocationExpression(InvocationExpressionSyntax invocation)
+    public override SyntaxNode? VisitInvocationExpression(InvocationExpressionSyntax invocation)
     {
         // TODO: Support non-extension invocation syntax: var blogs = ToList(ctx.Blogs);
         if (invocation.Expression is not MemberAccessExpressionSyntax
@@ -107,93 +107,82 @@ public class QueryLocator : CSharpSyntaxRewriter, IQueryLocator
         // Some terminating operators need to go into the query tree (Single), others not (ToList).
         // Note that checking whether the method's parameter is an IQueryable or not isn't sufficient (e.g.
         // ToListAsync accepts an IQueryable parameter but should not be part of the query tree).
-        switch (identifier)
+        return identifier switch
         {
             // Sync ToList, ToArray and AsEnumerable exist over IEnumerable only, so verify the actual argument is an
             // IQueryable (otherwise this is just LINQ to Objects)
-            // Also, the terminating operator in these cases should not be part of the expression tree.
-            case nameof(Enumerable.ToList):
-            case nameof(Enumerable.ToArray):
-            case nameof(Enumerable.AsEnumerable):
-                return IsOnEnumerable() && IsQueryable(innerExpression)
-                    // ? CheckAndAddQuery(innerExpression, async: false)
-                    ? CheckAndAddQuery(invocation, async: false)
-                    : invocation;
+            nameof(Enumerable.ToList)
+                or nameof(Enumerable.ToArray)
+                or nameof(Enumerable.AsEnumerable)
+                when IsOnEnumerable() && IsQueryable(innerExpression)
+                => CheckAndAddQuery(invocation, async: false),
 
-            case nameof(EntityFrameworkQueryableExtensions.ToListAsync):
-            case nameof(EntityFrameworkQueryableExtensions.ToArrayAsync):
-            case nameof(EntityFrameworkQueryableExtensions.AsAsyncEnumerable):
-                return IsOnEfQueryableExtensions()
-                    ? CheckAndAddQuery(innerExpression, async: true)
-                    : invocation;
+            nameof(EntityFrameworkQueryableExtensions.ToListAsync)
+                or nameof(EntityFrameworkQueryableExtensions.ToArrayAsync)
+                or nameof(EntityFrameworkQueryableExtensions.AsAsyncEnumerable)
+                when IsOnEfQueryableExtensions()
+                => CheckAndAddQuery(invocation, async: true),
 
-            case nameof(Queryable.All):
-            case nameof(Queryable.Any):
-            case nameof(Queryable.Average):
-            case nameof(Queryable.Contains):
-            case nameof(Queryable.Count):
-            case nameof(Queryable.DefaultIfEmpty):
-            case nameof(Queryable.ElementAt):
-            case nameof(Queryable.ElementAtOrDefault):
-            case nameof(Queryable.First):
-            case nameof(Queryable.FirstOrDefault):
-            case nameof(Queryable.Last):
-            case nameof(Queryable.LastOrDefault):
-            case nameof(Queryable.LongCount):
-            case nameof(Queryable.Max):
-            case nameof(Queryable.MaxBy):
-            case nameof(Queryable.Min):
-            case nameof(Queryable.MinBy):
-            case nameof(Queryable.Single):
-            case nameof(Queryable.SingleOrDefault):
-            case nameof(Queryable.Sum):
-                return IsOnQueryable()
-                    ? CheckAndAddQuery(invocation, async: false)
-                    : invocation;
+            nameof(Queryable.All)
+                or nameof(Queryable.Any)
+                or nameof(Queryable.Average)
+                or nameof(Queryable.Contains)
+                or nameof(Queryable.Count)
+                or nameof(Queryable.DefaultIfEmpty)
+                or nameof(Queryable.ElementAt)
+                or nameof(Queryable.ElementAtOrDefault)
+                or nameof(Queryable.First)
+                or nameof(Queryable.FirstOrDefault)
+                or nameof(Queryable.Last)
+                or nameof(Queryable.LastOrDefault)
+                or nameof(Queryable.LongCount)
+                or nameof(Queryable.Max)
+                or nameof(Queryable.MaxBy)
+                or nameof(Queryable.Min)
+                or nameof(Queryable.MinBy)
+                or nameof(Queryable.Single)
+                or nameof(Queryable.SingleOrDefault)
+                or nameof(Queryable.Sum)
+                when IsOnQueryable()
+                => CheckAndAddQuery(invocation, async: false),
 
-            case nameof(EntityFrameworkQueryableExtensions.AllAsync):
-            case nameof(EntityFrameworkQueryableExtensions.AnyAsync):
-            case nameof(EntityFrameworkQueryableExtensions.AverageAsync):
-            case nameof(EntityFrameworkQueryableExtensions.ContainsAsync):
-            case nameof(EntityFrameworkQueryableExtensions.CountAsync):
-            // case nameof(EntityFrameworkQueryableExtensions.DefaultIfEmptyAsync):
-            case nameof(EntityFrameworkQueryableExtensions.ElementAtAsync):
-            case nameof(EntityFrameworkQueryableExtensions.ElementAtOrDefaultAsync):
-            case nameof(EntityFrameworkQueryableExtensions.FirstAsync):
-            case nameof(EntityFrameworkQueryableExtensions.FirstOrDefaultAsync):
-            case nameof(EntityFrameworkQueryableExtensions.LastAsync):
-            case nameof(EntityFrameworkQueryableExtensions.LastOrDefaultAsync):
-            case nameof(EntityFrameworkQueryableExtensions.LongCountAsync):
-            case nameof(EntityFrameworkQueryableExtensions.MaxAsync):
-            // case nameof(EntityFrameworkQueryableExtensions.MaxByAsync):
-            case nameof(EntityFrameworkQueryableExtensions.MinAsync):
-            // case nameof(EntityFrameworkQueryableExtensions.MinByAsync):
-            case nameof(EntityFrameworkQueryableExtensions.SingleAsync):
-            case nameof(EntityFrameworkQueryableExtensions.SingleOrDefaultAsync):
-            case nameof(EntityFrameworkQueryableExtensions.SumAsync):
-            {
-                return IsOnEfQueryableExtensions() && TryRewriteInvocationToSync(out var rewrittenSyncInvocation)
-                    ? CheckAndAddQuery(rewrittenSyncInvocation, async: true)
-                    : invocation;
-            }
+            nameof(EntityFrameworkQueryableExtensions.AllAsync)
+                or nameof(EntityFrameworkQueryableExtensions.AnyAsync)
+                or nameof(EntityFrameworkQueryableExtensions.AverageAsync)
+                or nameof(EntityFrameworkQueryableExtensions.ContainsAsync)
+                or nameof(EntityFrameworkQueryableExtensions.CountAsync)
+                // or nameof(EntityFrameworkQueryableExtensions.DefaultIfEmptyAsync)
+                or nameof(EntityFrameworkQueryableExtensions.ElementAtAsync)
+                or nameof(EntityFrameworkQueryableExtensions.ElementAtOrDefaultAsync)
+                or nameof(EntityFrameworkQueryableExtensions.FirstAsync)
+                or nameof(EntityFrameworkQueryableExtensions.FirstOrDefaultAsync)
+                or nameof(EntityFrameworkQueryableExtensions.LastAsync)
+                or nameof(EntityFrameworkQueryableExtensions.LastOrDefaultAsync)
+                or nameof(EntityFrameworkQueryableExtensions.LongCountAsync)
+                or nameof(EntityFrameworkQueryableExtensions.MaxAsync)
+                // or nameof(EntityFrameworkQueryableExtensions.MaxByAsync)
+                or nameof(EntityFrameworkQueryableExtensions.MinAsync)
+                // or nameof(EntityFrameworkQueryableExtensions.MinByAsync)
+                or nameof(EntityFrameworkQueryableExtensions.SingleAsync)
+                or nameof(EntityFrameworkQueryableExtensions.SingleOrDefaultAsync)
+                or nameof(EntityFrameworkQueryableExtensions.SumAsync)
+                when IsOnEfQueryableExtensions()
+                => CheckAndAddQuery(invocation, async: true),
 
-            case nameof(RelationalQueryableExtensions.ExecuteDelete):
-            case nameof(RelationalQueryableExtensions.ExecuteUpdate):
-                return IsOnEfRelationalQueryableExtensions()
-                    ? CheckAndAddQuery(invocation, async: false)
-                    : invocation;
+            // return IsOnEfQueryableExtensions() && TryRewriteInvocationToSync(out var rewrittenSyncInvocation)
+            //     ? CheckAndAddQuery(rewrittenSyncInvocation, async: true)
+            //     : base.VisitInvocationExpression(invocation);
 
-            case nameof(RelationalQueryableExtensions.ExecuteDeleteAsync):
-            case nameof(RelationalQueryableExtensions.ExecuteUpdateAsync):
-            {
-                return IsOnEfRelationalQueryableExtensions() && TryRewriteInvocationToSync(out var rewrittenSyncInvocation)
-                    ? CheckAndAddQuery(rewrittenSyncInvocation, async: true)
-                    : invocation;
-            }
+            nameof(RelationalQueryableExtensions.ExecuteDelete) or nameof(RelationalQueryableExtensions.ExecuteUpdate)
+                when IsOnEfRelationalQueryableExtensions()
+                => CheckAndAddQuery(invocation, async: false),
 
-            default:
-                return base.VisitInvocationExpression(invocation)!;
-        }
+            nameof(RelationalQueryableExtensions.ExecuteDeleteAsync) or nameof(RelationalQueryableExtensions.ExecuteUpdateAsync)
+                when IsOnEfRelationalQueryableExtensions()
+                => CheckAndAddQuery(invocation, async: true),
+
+            _ => base.VisitInvocationExpression(invocation)
+        };
 
         bool IsOnEnumerable()
             => IsOnTypeSymbol(_enumerableSymbol);
@@ -216,36 +205,6 @@ public class QueryLocator : CSharpSyntaxRewriter, IQueryLocator
             }
 
             return SymbolEqualityComparer.Default.Equals(methodSymbol.ContainingType, typeSymbol);
-        }
-
-        bool TryRewriteInvocationToSync([NotNullWhen(true)] out InvocationExpressionSyntax? syncInvocation)
-        {
-            // Chop off the Async suffix
-            Debug.Assert(identifier.EndsWith("Async", StringComparison.Ordinal));
-            var syncMethodName = identifier.Substring(0, identifier.Length - "Async".Length);
-
-            // If the last argument is a cancellation token, chop it off
-            var arguments = invocation.ArgumentList.Arguments;
-            if (GetSymbol(invocation) is not IMethodSymbol methodSymbol)
-            {
-                syncInvocation = null;
-                return false;
-            }
-
-            if (SymbolEqualityComparer.Default.Equals(methodSymbol.Parameters[^1].Type, _cancellationTokenSymbol)
-                && invocation.ArgumentList.Arguments.Count == methodSymbol.Parameters.Length)
-            {
-                arguments = arguments.RemoveAt(arguments.Count - 1);
-            }
-
-            syncInvocation = invocation.Update(
-                    memberAccess.Update(
-                        memberAccess.Expression,
-                        memberAccess.OperatorToken,
-                        SyntaxFactory.IdentifierName(syncMethodName)),
-                    invocation.ArgumentList.WithArguments(arguments));
-
-            return true;
         }
     }
 

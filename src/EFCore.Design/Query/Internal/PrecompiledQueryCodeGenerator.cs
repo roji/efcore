@@ -30,10 +30,12 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal;
 public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
 {
     private readonly IQueryLocator _queryLocator;
+    private readonly PrecompiledQueryRewriter _queryRewriter;
     private readonly ICSharpToLinqTranslator _csharpToLinqTranslator;
 
     private SyntaxGenerator _g = null!;
     private INamedTypeSymbol _linqGenericLambdaType = null!;
+    private DbContext _dbContext = null!;
     private IQueryCompiler _queryCompiler = null!;
     private ExpressionTreeFuncletizer _funcletizer = null!;
     private LinqToCSharpSyntaxTranslator _linqToCSharpTranslator = null!;
@@ -41,6 +43,8 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
     private HashSet<string> _namespaces = new();
     private ExpressionPrinter _sqlExpressionPrinter = null!;
     private StringBuilder _stringBuilder = new();
+
+    private INamedTypeSymbol _genericEnumerableSymbol = null!;
 
     private static readonly ShaperPublicMethodVerifier ShaperPublicMethodVerifier = new();
 
@@ -56,6 +60,8 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
     public PrecompiledQueryCodeGenerator(IQueryLocator queryLocator, ICSharpToLinqTranslator csharpToLinqTranslator)
     {
         _queryLocator = queryLocator;
+        // TODO: Inject as a proper service
+        _queryRewriter = new();
         _csharpToLinqTranslator = csharpToLinqTranslator;
     }
 
@@ -168,10 +174,15 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
     {
         // TODO: check reference to EF, bail early if not found?
         _queryLocator.LoadCompilation(compilation);
+        _queryRewriter.LoadCompilation(compilation);
+
+        _genericEnumerableSymbol = compilation.GetTypeByMetadataName("System.Collections.Generic.IEnumerable`1")
+            ?? throw new InvalidOperationException("Couldn't found type symbol for IEnumerable<T> in the compilation");
 
         _g = syntaxGenerator;
         _linqToCSharpTranslator = new LinqToCSharpSyntaxTranslator(_g);
         _liftableConstantProcessor = new LiftableConstantProcessor(null!);
+        _dbContext = dbContext;
         _queryCompiler = dbContext.GetService<IQueryCompiler>();
         _sqlExpressionPrinter = new ExpressionPrinter();
         _funcletizer = new ExpressionTreeFuncletizer(
@@ -213,8 +224,7 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
             //    the tree.
             // So we'll work with two syntax tree/compilations/semantic models: the original one for generating the interceptors, and a
             // rewritten one for compiling the query with EF.
-            var queryRewriter = new PrecompiledQueryRewriter();
-            var rewrittenSyntaxTree = queryRewriter.RewriteQueries(annotatedSyntaxTree);
+            var rewrittenSyntaxTree = _queryRewriter.RewriteQueries(compilation, annotatedSyntaxTree);
 
             rewrittenCompilation = compilation.ReplaceSyntaxTree(annotatedSyntaxTree, rewrittenSyntaxTree);
             syntaxTreePairs.Add((annotatedSyntaxTree, rewrittenSyntaxTree));
@@ -268,7 +278,7 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
             var (query, rewrittenQuery) = (annotatedQueries[queryNum], rewrittenQueries[queryNum]);
 
             var async =
-                query.GetAnnotations(IQueryLocator.EfQueryCandidateAnnotationKind).Single().Data switch
+                rewrittenQuery.GetAnnotations(IQueryLocator.EfQueryCandidateAnnotationKind).Single().Data switch
                 {
                     "Async" => true,
                     "Sync" => false,
@@ -329,7 +339,6 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
                 .ThenBy(ns => ns)
                 .Select(_g.NamespaceImportDeclaration));
 
-        // TODO: Possibly change this to be a single global one for the project - but what happens if another source generator adds one...
         // sealed class InterceptsLocationAttribute : Attribute
         // {
         //     public InterceptsLocationAttribute(string filePath, int line, int column) { }
@@ -391,24 +400,46 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
             // We have a query lambda, as a Roslyn syntax tree. Translate to LINQ expression tree.
             // TODO: Add verification that this is an EF query over our user's context. If translation returns null the moment
             // there's another query root (another context or another LINQ provider), that's fine.
-            var linqExpression = _csharpToLinqTranslator.Translate(querySyntax, semanticModel);
+            var queryTree = _csharpToLinqTranslator.Translate(querySyntax, semanticModel);
+            Type returnType;
+
+            // We now have a LINQ representation of the query tree; we will now evaluate it to cause the queryable expression tree ot get
+            // built - just like the operators are evaluated in normal query processing. Note the difference between the expression tree
+            // representing the queryable operators (containing e.g. DbSet as the root), and the expression tree representing the result
+            // of evaluating those operators (containing e.g. EntityQueryRootExpression).
+            // However, we must not evaluate the last operator, since that would cause the query to get executed rather than produce the
+            // query tree. The exception to this is if the last operator returns IQueryable - this happens when the query is terminated by
+            // e.g. ToList(), which has already removed above by PrecompiledQueryRewriter (it isn't part of the query tree at all).
+            if (queryTree.Type.IsGenericType
+                && queryTree.Type.GetGenericTypeDefinition().IsAssignableTo(typeof(IQueryable)))
+            {
+                var queryable = Expression.Lambda<Func<IQueryable>>(queryTree).Compile(preferInterpretation: true)();
+                queryTree = queryable.Expression;
+                returnType = (async ? typeof(IAsyncEnumerable<>) : typeof(IEnumerable<>))
+                    .MakeGenericType(queryTree.Type.GetGenericArguments()[0]);
+            }
+            else
+            {
+                // The terminating operator doesn't return IQueryable, but rather a scalar (e.g. Max/Sum).
+                // Evaluate the penultimate operator to get the expression tree, then recompose the terminating operator on top of that.
+                var terminatingOperator = ((MethodCallExpression)queryTree);
+                var penultimateOperator = terminatingOperator.Arguments[0];
+                var queryable = Expression.Lambda<Func<IQueryable>>(penultimateOperator).Compile(preferInterpretation: true)();
+
+                queryTree = terminatingOperator.Update(
+                    terminatingOperator.Object,
+                    [queryable.Expression, .. terminatingOperator.Arguments.Skip(1)]);
+
+                // For async terminating operators, we replaced them with their sync counterparts above in PrecompiledQueryRewriter, since
+                // that's what the query pipeline expects. Rewrite the return type back to async.
+                returnType = async ? typeof(Task<>).MakeGenericType(queryTree.Type) : queryTree.Type;
+            }
 
             // We have the query as a LINQ expression tree.
 
             // We now need to figure out the return type of the query's executor.
             // Non-scalar query expressions return an IQueryable; the query executor will return an enumerable (sync or async).
             // Scalar query expressions just return the scalar type, wrap that in a Task for async.
-            var returnType = linqExpression.Type;
-            if (returnType.IsGenericType
-                && returnType.GetGenericTypeDefinition().IsAssignableTo(typeof(IQueryable)))
-            {
-                returnType = (async ? typeof(IAsyncEnumerable<>) : typeof(IEnumerable<>))
-                    .MakeGenericType(returnType.GetGenericArguments()[0]);
-            }
-            else if (async)
-            {
-                returnType = typeof(Task<>).MakeGenericType(returnType);
-            }
 
             // Compile the query, invoking CompileQueryToExpression on the IQueryCompiler from the user's context instance.
             try
@@ -416,7 +447,7 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
                 var queryExecutor = (Expression)_queryCompiler.GetType()
                     .GetMethod(nameof(IQueryCompiler.CompileQueryToExpression))
                     .MakeGenericMethod(returnType)
-                    .Invoke(_queryCompiler, new object[] { linqExpression, async })!;
+                    .Invoke(_queryCompiler, [queryTree, async])!;
 
                 ShaperPublicMethodVerifier.Visit(queryExecutor);
 
@@ -449,12 +480,27 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
             }
 
             // For extension methods, this provides the form which has the "this" as its first parameter.
+            // TODO: Validate the below, throw informative (e.g. top-level TVF fails here because non-generic)
             var reducedInterceptedMethodSymbol = interceptedMethodSymbol.GetConstructedReducedFrom() ?? interceptedMethodSymbol;
             var sourceParameterSymbol = reducedInterceptedMethodSymbol.Parameters[0];
             var queryableElementTypeParameter = interceptedMethodSymbol.OriginalDefinition.TypeParameters[0];
             var sourceParameterIdentifier = _g.IdentifierName(sourceParameterSymbol.Name);
+            // var returnType = ((INamedTypeSymbol)interceptedMethodSymbol.OriginalDefinition.ReturnType);
+            var returnType = interceptedMethodSymbol.OriginalDefinition.ReturnType;
+
+            // TODO: Move out, cache
+            // Unwrap Task<T> to get the element type (e.g. Task<List<int>>)
+            var genericTaskSymbol = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1");
+            var returnTypeWithoutTask = returnType is INamedTypeSymbol namedReturnType
+                && returnType.OriginalDefinition.Equals(genericTaskSymbol, SymbolEqualityComparer.Default)
+                    ? namedReturnType.TypeArguments[0]
+                    : returnType;
+
             var returnElementType =
-                ((INamedTypeSymbol)interceptedMethodSymbol.OriginalDefinition.ReturnType).TypeArguments[0];
+                returnTypeWithoutTask is INamedTypeSymbol namedReturnType2
+                && namedReturnType2.AllInterfaces.Any(i => i.OriginalDefinition.Equals(_genericEnumerableSymbol, SymbolEqualityComparer.Default))
+                    ? namedReturnType2.TypeArguments[0]
+                    : null;
 
             // TODO: Move out, cache
             var precompiledQueryContextSymbol = compilation
@@ -479,22 +525,21 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
             }
             else
             {
-                // This is the first query operator in the chain. Cast the input source to InternalDbSet and extract the EF
+                // This is the first query operator in the chain. Cast the input source to IDbContextContainer and extract the EF
                 // service provider, create a new QueryContext, and wrap it all in a PrecompiledQueryContext that will flow through to the
                 // terminating operator, where the query will actually get executed.
                 operatorNum = 1;
 
                 // TODO: Move out, cache
-                var queryableElementConcreteTypeSymbol = ((INamedTypeSymbol)sourceParameterSymbol.Type).TypeArguments[0];
-                var internalDbSetSymbol = compilation.GetTypeByMetadataName("Microsoft.EntityFrameworkCore.Internal.InternalDbSet`1")
-                    .Construct(queryableElementConcreteTypeSymbol);
+                var dbContextContainerSymbol =
+                    compilation.GetTypeByMetadataName("Microsoft.EntityFrameworkCore.Internal.IDbContextContainer")!;
 
-                // var dbContext = ((DbSet<Blog>)source).DbContext;
+                // var dbContext = ((IDbContextContainer)source).DbContext;
                 statements.Add(
                     _g.LocalDeclarationStatement(
                         "dbContext",
                         _g.MemberAccessExpression(
-                            _g.CastExpression(internalDbSetSymbol, sourceParameterIdentifier),
+                            _g.CastExpression(dbContextContainerSymbol, sourceParameterIdentifier),
                             nameof(InternalDbSet<string>.DbContext))));
 
                 // var precompiledQueryContext = new PrecompiledQueryContext<Blog>();
@@ -509,6 +554,7 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
             var declaredQueryContextVariable = false;
             var arguments = queryOperator.ArgumentList.Arguments;
             var variableCounter = 0;
+            // TODO: Skip 1st argument (source)?
             for (var i = 0; i < arguments.Count; i++)
             {
                 var argument = arguments[i];
@@ -669,51 +715,80 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
                                 _g.IdentifierName("precompiledQueryContext"), nameof(PrecompiledQueryContext<int>.QueryContext))));
                 }
 
-                // if (Query1_QueryingEnumerableFactory == null) {
-                //     Query1_QueryingEnumerableFactory = Query1_GenerateQueryingEnumerable(precompiledQueryContext.DbContext, precompiledQueryContext.QueryContext);
+                // if (Query1_Executor == null) {
+                //     Query1_Executor = Query1_GenerateExecutor(precompiledQueryContext.DbContext, precompiledQueryContext.QueryContext);
                 // }
-                var queryingEnumerableFactoryFieldIdentifier = _g.IdentifierName($"Query{queryNum}_QueryingEnumerableFactory");
+                var executorFieldIdentifier = _g.IdentifierName($"Query{queryNum}_Executor");
                 statements.Add(
                     _g.IfStatement(
                         _g.ReferenceEqualsExpression(
-                            queryingEnumerableFactoryFieldIdentifier,
+                            executorFieldIdentifier,
                             _g.NullLiteralExpression()),
                         new[]
                         {
                             _g.AssignmentStatement(
-                                queryingEnumerableFactoryFieldIdentifier,
+                                executorFieldIdentifier,
                                 _g.InvocationExpression(
-                                    _g.IdentifierName($"Query{queryNum}_GenerateQueryingEnumerable"),
+                                    _g.IdentifierName($"Query{queryNum}_GenerateExecutor"),
                                     _g.MemberAccessExpression(_g.IdentifierName("precompiledQueryContext"), "DbContext"),
                                     _g.IdentifierName("queryContext")))
                         }));
 
-                // return Query1_QueryingEnumerableFactory(queryContext);
-                // statements.Add(
-                //     _g.ReturnStatement(
-                //         _g.InvocationExpression(
-                //             queryingEnumerableFactoryFieldIdentifier,
-                //             _g.IdentifierName("queryContext"))));
-                // TODO: Hack, hard-coding sync ToList for now - figure this out for all the operators and for async
-                var queryingEnumerable = _g.InvocationExpression(
-                    queryingEnumerableFactoryFieldIdentifier,
-                    _g.IdentifierName("queryContext"));
+                // TODO: Look at merging the two code paths a bit more once everything works
+                if (returnElementType is null)
+                {
+                    // The query returns a scalar, not an enumerable (e.g. the terminating operator is Max()).
+                    // The executor directly returns the needed result (e.g. int), so just return that.
 
-                // // TODO: Just a hack to test that interceptors are actually getting called. Instead, allow configure EF to disable JIT query compilation.
-                // statements.Add(_g.ThrowStatement(_g.ObjectCreationExpression(compilation.GetTypeByMetadataName(typeof(Exception).FullName!)!)));
+                    // Func<QueryContext, TSource>
+                    var executorTypeSymbol = _g.TypeExpression(
+                        compilation.GetTypeByMetadataName(typeof(Func<,>).FullName!)
+                            .Construct(
+                                compilation.GetTypeByMetadataName(typeof(QueryContext).FullName!)!,
+                                returnType));
 
-                statements.Add(
-                    _g.ReturnStatement(
-                        _g.InvocationExpression(
-                            _g.MemberAccessExpression(
-                                _g.CastExpression(
-                                    compilation.GetTypeByMetadataName(typeof(IEnumerable<>).FullName!)!.Construct(returnElementType),
-                                    queryingEnumerable),
-                                "ToList"))));
+                    // return ((Func<QueryContext, TSource>)(Query1_Executor))(queryContext);
+                    statements.Add(
+                        _g.ReturnStatement(
+                            (ExpressionSyntax)_g.InvocationExpression(
+                                _g.CastExpression(executorTypeSymbol, executorFieldIdentifier),
+                                _g.IdentifierName("queryContext"))));
+                }
+                else
+                {
+                    // The query returns an IEnumerable, which is a bit trickier: the executor doesn't return a simple value as in the
+                    // scalar case, but rather e.g. SingleQueryingEnumerable; we need to compose the terminating operator (e.g. ToList())
+                    // on top of that. Cast the executor delegate to Func<QueryContext, IEnumerable<T>> (contravariance).
+
+                    // Func<QueryContext, TSource>
+                    var executorTypeSymbol = _g.TypeExpression(
+                        compilation.GetTypeByMetadataName(typeof(Func<,>).FullName!)
+                            .Construct(
+                                compilation.GetTypeByMetadataName(typeof(QueryContext).FullName!)!,
+                                _genericEnumerableSymbol.Construct(returnElementType)));
+
+                    // return ((Func<QueryContext, IEnumerable<TSource>>)(Query1_Executor))(queryContext);
+                    statements.Add(
+                        _g.ReturnStatement(
+                            queryOperator.WithExpression(
+                                memberAccess.WithExpression(
+                                    (ExpressionSyntax)_g.InvocationExpression(
+                                        _g.CastExpression(executorTypeSymbol, executorFieldIdentifier),
+                                        _g.IdentifierName("queryContext"))))));
+
+                    // statements.Add(
+                    //     _g.ReturnStatement(
+                    //         queryOperator.WithExpression(
+                    //             memberAccess.WithExpression(
+                    //                 (ExpressionSyntax)_g.CastExpression(
+                    //                     compilation.GetTypeByMetadataName(typeof(IQueryable<>).FullName!)!.Construct(returnElementType),
+                    //                     queryResult)))));
+                }
             }
             else
             {
                 // Non-terminating operator - we need to flow precompiledQueryContext forward.
+                Check.DebugAssert(returnElementType is not null, "Non-terminating operator must return IEnumerable<T>");
 
                 if (SymbolEqualityComparer.Default.Equals(queryableElementTypeParameter, returnElementType))
                 {
@@ -747,7 +822,7 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
             // name and adding our interceptor statements.
 
             // [InterceptsLocation("Program.cs", 15, 15)]
-            // public static IQueryable<TSource> Query1_Where2(this IQueryable<TSource> source, Expression<Func<TSource, bool>> predicate)
+            // public static IQueryable<TSource> Query1_Where2<TSource>(this IQueryable<TSource> source, Expression<Func<TSource, bool>> predicate)
             var interceptorMethodDeclaration =
                 _g.AddAttributes(
                     _g.WithName(
@@ -764,23 +839,23 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
             if (isTerminatingOperator)
             {
                 var variableNames = new HashSet<string>(); // TODO
-                GenerateQueryingEnumerableFactory(
+                GenerateQueryExecutor(
                     queryNum, queryExecutor!, _namespaces, variableNames,
-                    out var queryEnumerableFactoryFieldDeclaration,
-                    out var queryingEnumerableFactoryGeneratorMethodDeclaration);
+                    out var queryExecutorFieldDeclaration,
+                    out var queryExecutorGeneratorMethodDeclaration);
 
-                interceptors.Add(queryingEnumerableFactoryGeneratorMethodDeclaration);
-                interceptors.Add(queryEnumerableFactoryFieldDeclaration);
+                interceptors.Add(queryExecutorGeneratorMethodDeclaration);
+                interceptors.Add(queryExecutorFieldDeclaration);
             }
         }
 
-        void GenerateQueryingEnumerableFactory(
+        void GenerateQueryExecutor(
             int queryNum,
             Expression queryExecutor,
             HashSet<string> namespaces,
             HashSet<string> variableNames,
-            out SyntaxNode queryEnumerableFactoryFieldDeclaration,
-            out SyntaxNode queryingEnumerableFactoryGeneratorMethodDeclaration)
+            out SyntaxNode queryExecutorFieldDeclaration,
+            out SyntaxNode queryExecutorGeneratorMethodDeclaration)
         {
             var statements = new List<SyntaxNode>
             {
@@ -892,41 +967,35 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
             // return (QueryContext queryContext) => SingleQueryingEnumerable.Create(......);
             statements.Add(_g.ReturnStatement(queryExecutorSyntaxTree));
 
-            // We're done generating the method which will create the querying enumerable factory.
+            // We're done generating the method which will create the query executor (Func<QueryContext, TResult>).
+            // Note that the we store the executor itself (and return it) as object, not as a typed Func<QueryContext, TResult>.
+            // We can't strong-type it since it may return an anonymous type, which is unspeakable; so instead we cast down from object to
+            // the real strongly-typed signature inside the interceptor, where the return value is represented as a generic type parameter
+            // (which can be an anonymous type).
+            // TODO: We can use strong types instead of object (and avoid the downcast) for cases where there are no unspeakable types.
 
-            // Note that the type for the querying enumerable factory is Func<QueryContext, IQueryingEnumerable>; IQueryingEnumerable
-            // is not generic, since it needs to support anonymous types and those are unspeakable - we can't generate code that contains
-            // those type names.
-            // So we use the non-generic IQueryingEnumerable interface; the implementation of the terminating operator - which is generic -
-            // will cast this down into the concrete (generic) type.
-
-            // Func<QueryContext, IQueryingEnumerable>
-            var queryingEnumerableFactoryTypeSymbol = _g.TypeExpression(
-                compilation.GetTypeByMetadataName(typeof(Func<,>).FullName!)
-                    .Construct(
-                        compilation.GetTypeByMetadataName(typeof(QueryContext).FullName!)!,
-                        compilation.GetTypeByMetadataName(typeof(IQueryingEnumerable).FullName!)!));
-
-            // private static void Query1_GenerateQueryingEnumerable(BlogContext dbContext)
-            queryingEnumerableFactoryGeneratorMethodDeclaration = _g.MethodDeclaration(
+            // private static void Query1_GenerateExecutor(BlogContext dbContext)
+            queryExecutorGeneratorMethodDeclaration = _g.MethodDeclaration(
                 accessibility: Accessibility.Private,
                 modifiers: DeclarationModifiers.Static,
-                returnType: queryingEnumerableFactoryTypeSymbol,
-                name: $"Query{queryNum}_GenerateQueryingEnumerable",
-                parameters: new[]
-                {
-                    _g.ParameterDeclaration("dbContext", _g.TypeExpression(compilation.GetTypeByMetadataName(typeof(DbContext).FullName!)!)),
-                    _g.ParameterDeclaration("queryContext", _g.TypeExpression(compilation.GetTypeByMetadataName(typeof(QueryContext).FullName!)!))
-                },
+                returnType: _g.TypeExpression(SpecialType.System_Object),
+                name: $"Query{queryNum}_GenerateExecutor",
+                parameters:
+                [
+                    _g.ParameterDeclaration(
+                        "dbContext", _g.TypeExpression(compilation.GetTypeByMetadataName(typeof(DbContext).FullName!)!)),
+                    _g.ParameterDeclaration(
+                        "queryContext", _g.TypeExpression(compilation.GetTypeByMetadataName(typeof(QueryContext).FullName!)!))
+                ],
                 statements: statements);
 
-            // private static readonly Func<QueryContext, IQueryingEnumerable<Blog>> Query1_QueryingEnumerableFactory;
-            queryEnumerableFactoryFieldDeclaration =
+            // private static readonly object Query1_Executor;
+            queryExecutorFieldDeclaration =
                 _g.FieldDeclaration(
                     accessibility: Accessibility.Private,
                     modifiers: DeclarationModifiers.Static,
-                    name: $"Query{queryNum}_QueryingEnumerableFactory",
-                    type: queryingEnumerableFactoryTypeSymbol);
+                    name: $"Query{queryNum}_Executor",
+                    type: _g.TypeExpression(SpecialType.System_Object));
 
             SyntaxNode GenerateGetService(INamedTypeSymbol serviceType)
                 => _g.InvocationExpression(
