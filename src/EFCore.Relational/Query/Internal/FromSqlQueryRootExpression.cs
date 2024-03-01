@@ -70,6 +70,19 @@ public sealed class FromSqlQueryRootExpression : EntityQueryRootExpression
         => new FromSqlQueryRootExpression(EntityType, Sql, Argument);
 
     /// <summary>
+    ///     Creates a new expression that is like this one, but using the supplied children. If all of the children are the same, it will
+    ///     return this expression.
+    /// </summary>
+    /// <param name="argument">The <see cref="Argument" /> property of the result.</param>
+    /// <returns>This expression if no children changed, or an expression with the updated children.</returns>
+    public FromSqlQueryRootExpression Update(Expression argument)
+        => argument == Argument
+            ? this
+            : QueryProvider is null
+                ? new FromSqlQueryRootExpression(EntityType, Sql, argument)
+                : new FromSqlQueryRootExpression(QueryProvider, EntityType, Sql, argument);
+
+    /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
     ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
     ///     any release. You should only use it directly in your code with extreme caution and knowing that

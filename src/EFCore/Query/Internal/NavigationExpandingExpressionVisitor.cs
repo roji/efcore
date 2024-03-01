@@ -67,7 +67,7 @@ public partial class NavigationExpandingExpressionVisitor : ExpressionVisitor
     public NavigationExpandingExpressionVisitor(
         QueryTranslationPreprocessor queryTranslationPreprocessor,
         QueryCompilationContext queryCompilationContext,
-        IEvaluatableExpressionFilter evaluatableExpressionFilter,
+        IExpressionTreeFuncletizerFactory funcletizerFactory,
         INavigationExpansionExtensibilityHelper extensibilityHelper)
     {
         _queryTranslationPreprocessor = queryTranslationPreprocessor;
@@ -80,12 +80,13 @@ public partial class NavigationExpandingExpressionVisitor : ExpressionVisitor
         _entityReferenceOptionalMarkingExpressionVisitor = new EntityReferenceOptionalMarkingExpressionVisitor();
         _removeRedundantNavigationComparisonExpressionVisitor = new RemoveRedundantNavigationComparisonExpressionVisitor(
             queryCompilationContext.Logger);
-        _funcletizer = new ExpressionTreeFuncletizer(
-            _queryCompilationContext.Model,
-            evaluatableExpressionFilter,
-            _queryCompilationContext.ContextType,
-            generateContextAccessors: true,
-            _queryCompilationContext.Logger);
+        _funcletizer = funcletizerFactory.Create(_queryCompilationContext.ContextType, generateContextAccessors: true);
+        // _funcletizer = new ExpressionTreeFuncletizer(
+        //     _queryCompilationContext.Model,
+        //     evaluatableExpressionFilter,
+        //     _queryCompilationContext.ContextType,
+        //     generateContextAccessors: true,
+        //     _queryCompilationContext.Logger);
 
         _nonCyclicAutoIncludeEntityTypes = !_queryCompilationContext.IgnoreAutoIncludes ? [] : null!;
     }

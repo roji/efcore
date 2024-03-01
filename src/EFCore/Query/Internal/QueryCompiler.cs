@@ -14,13 +14,13 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal;
 public class QueryCompiler : IQueryCompiler
 {
     private readonly IQueryContextFactory _queryContextFactory;
+    private readonly IExpressionTreeFuncletizerFactory _funcletizerFactory;
     private readonly ICompiledQueryCache _compiledQueryCache;
     private readonly ICompiledQueryCacheKeyGenerator _compiledQueryCacheKeyGenerator;
     private readonly IDatabase _database;
     private readonly IDiagnosticsLogger<DbLoggerCategory.Query> _logger;
 
     private readonly Type _contextType;
-    private readonly IEvaluatableExpressionFilter _evaluatableExpressionFilter;
     private readonly IModel _model;
 
     /// <summary>
@@ -31,21 +31,21 @@ public class QueryCompiler : IQueryCompiler
     /// </summary>
     public QueryCompiler(
         IQueryContextFactory queryContextFactory,
+        IExpressionTreeFuncletizerFactory funcletizerFactory,
         ICompiledQueryCache compiledQueryCache,
         ICompiledQueryCacheKeyGenerator compiledQueryCacheKeyGenerator,
         IDatabase database,
         IDiagnosticsLogger<DbLoggerCategory.Query> logger,
         ICurrentDbContext currentContext,
-        IEvaluatableExpressionFilter evaluatableExpressionFilter,
         IModel model)
     {
         _queryContextFactory = queryContextFactory;
+        _funcletizerFactory = funcletizerFactory;
         _compiledQueryCache = compiledQueryCache;
         _compiledQueryCacheKeyGenerator = compiledQueryCacheKeyGenerator;
         _database = database;
         _logger = logger;
         _contextType = currentContext.Context.GetType();
-        _evaluatableExpressionFilter = evaluatableExpressionFilter;
         _model = model;
     }
 
@@ -149,6 +149,6 @@ public class QueryCompiler : IQueryCompiler
         IDiagnosticsLogger<DbLoggerCategory.Query> logger,
         bool compiledQuery = false,
         bool generateContextAccessors = false)
-        => new ExpressionTreeFuncletizer(_model, _evaluatableExpressionFilter, _contextType, generateContextAccessors: false, logger)
+        => _funcletizerFactory.Create(_contextType, generateContextAccessors: false)
             .ExtractParameters(query, parameterValues, parameterize: !compiledQuery, clearParameterizedValues: true);
 }

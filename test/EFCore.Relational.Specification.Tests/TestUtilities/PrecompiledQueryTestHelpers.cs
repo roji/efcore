@@ -213,15 +213,15 @@ public static class TestContainer
     // ReSharper disable once UnusedMember.Global
     public class NonCompilingQueryCompiler(
         IQueryContextFactory queryContextFactory,
+        IExpressionTreeFuncletizerFactory funcletizerFactory,
         ICompiledQueryCache compiledQueryCache,
         ICompiledQueryCacheKeyGenerator compiledQueryCacheKeyGenerator,
         IDatabase database,
         IDiagnosticsLogger<DbLoggerCategory.Query> logger,
         ICurrentDbContext currentContext,
-        IEvaluatableExpressionFilter evaluatableExpressionFilter,
         IModel model)
-        : QueryCompiler(queryContextFactory, compiledQueryCache, compiledQueryCacheKeyGenerator, database, logger,
-            currentContext, evaluatableExpressionFilter, model)
+        : QueryCompiler(queryContextFactory, funcletizerFactory, compiledQueryCache, compiledQueryCacheKeyGenerator, database, logger,
+            currentContext, model)
     {
         public const string ErrorMessage =
             "A query reached the query compilation pipeline, indicating that it was not intercepted as a precompiled query.";

@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Query.Internal;
+
 namespace Microsoft.EntityFrameworkCore.Query;
 
 /// <summary>
@@ -47,11 +49,11 @@ public sealed record QueryTranslationPreprocessorDependencies
     [EntityFrameworkInternal]
     public QueryTranslationPreprocessorDependencies(
         ITypeMappingSource typeMappingSource,
-        IEvaluatableExpressionFilter evaluatableExpressionFilter,
+        IExpressionTreeFuncletizerFactory expressionTreeFuncletizerFactory,
         INavigationExpansionExtensibilityHelper navigationExpansionExtensibilityHelper)
     {
         TypeMappingSource = typeMappingSource;
-        EvaluatableExpressionFilter = evaluatableExpressionFilter;
+        ExpressionTreeFuncletizerFactory = expressionTreeFuncletizerFactory;
         NavigationExpansionExtensibilityHelper = navigationExpansionExtensibilityHelper;
     }
 
@@ -61,9 +63,9 @@ public sealed record QueryTranslationPreprocessorDependencies
     public ITypeMappingSource TypeMappingSource { get; init; }
 
     /// <summary>
-    ///     Evaluatable expression filter.
+    ///     Funcletizer factory.
     /// </summary>
-    public IEvaluatableExpressionFilter EvaluatableExpressionFilter { get; init; }
+    public IExpressionTreeFuncletizerFactory ExpressionTreeFuncletizerFactory { get; init; }
 
     /// <summary>
     ///     Navigation expansion extensibility helper.

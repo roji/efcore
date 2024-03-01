@@ -107,6 +107,7 @@ public class EntityFrameworkServicesBuilder
             { typeof(IExecutionStrategy), new ServiceCharacteristics(ServiceLifetime.Scoped) },
             { typeof(IAsyncQueryProvider), new ServiceCharacteristics(ServiceLifetime.Scoped) },
             { typeof(IQueryCompiler), new ServiceCharacteristics(ServiceLifetime.Scoped) },
+            { typeof(IExpressionTreeFuncletizerFactory), new ServiceCharacteristics(ServiceLifetime.Scoped) },
             { typeof(ICompiledQueryCacheKeyGenerator), new ServiceCharacteristics(ServiceLifetime.Scoped) },
             { typeof(IModel), new ServiceCharacteristics(ServiceLifetime.Scoped) },
             { typeof(IDesignTimeModel), new ServiceCharacteristics(ServiceLifetime.Scoped) },
@@ -305,6 +306,7 @@ public class EntityFrameworkServicesBuilder
         TryAdd<IMemoryCache>(_ => new MemoryCache(new MemoryCacheOptions { SizeLimit = 10240 }));
         TryAdd<IUpdateAdapterFactory, UpdateAdapterFactory>();
         TryAdd<IQueryCompilationContextFactory, QueryCompilationContextFactory>();
+        TryAdd<IExpressionTreeFuncletizerFactory, ExpressionTreeFuncletizerFactory>();
         TryAdd<IQueryTranslationPreprocessorFactory, QueryTranslationPreprocessorFactory>();
         TryAdd<IQueryTranslationPostprocessorFactory, QueryTranslationPostprocessorFactory>();
         TryAdd<INavigationExpansionExtensibilityHelper, NavigationExpansionExtensibilityHelper>();
@@ -340,6 +342,7 @@ public class EntityFrameworkServicesBuilder
             .AddDependencySingleton<JsonValueReaderWriterSourceDependencies>()
             .AddDependencyScoped<ProviderConventionSetBuilderDependencies>()
             .AddDependencyScoped<QueryCompilationContextDependencies>()
+            .AddDependencyScoped<ExpressionTreeFuncletizerDependencies>()
             .AddDependencyScoped<StateManagerDependencies>()
             .AddDependencyScoped<ExecutionStrategyDependencies>()
             .AddDependencyScoped<CompiledQueryCacheKeyGeneratorDependencies>()

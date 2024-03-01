@@ -184,6 +184,7 @@ public class EntityFrameworkRelationalServicesBuilder : EntityFrameworkServicesB
         TryAdd<IQueryTranslationPostprocessorFactory, RelationalQueryTranslationPostprocessorFactory>();
         TryAdd<IRelationalSqlTranslatingExpressionVisitorFactory, RelationalSqlTranslatingExpressionVisitorFactory>();
         TryAdd<ISqlExpressionFactory, SqlExpressionFactory>();
+        TryAdd<IExpressionTreeFuncletizerFactory, RelationalExpressionTreeFuncletizerFactory>();
         TryAdd<IQueryTranslationPreprocessorFactory, RelationalQueryTranslationPreprocessorFactory>();
         TryAdd<IRelationalParameterBasedSqlProcessorFactory, RelationalParameterBasedSqlProcessorFactory>();
         TryAdd<IRelationalQueryStringFactory, RelationalQueryStringFactory>();

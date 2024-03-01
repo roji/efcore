@@ -58,7 +58,7 @@ public class QueryTranslationPreprocessor
         query = new NavigationExpandingExpressionVisitor(
                 this,
                 QueryCompilationContext,
-                Dependencies.EvaluatableExpressionFilter,
+                Dependencies.ExpressionTreeFuncletizerFactory,
                 Dependencies.NavigationExpansionExtensibilityHelper)
             .Expand(query);
         query = new QueryOptimizingExpressionVisitor().Visit(query);

@@ -35,7 +35,6 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
 
     private SyntaxGenerator _g = null!;
     private INamedTypeSymbol _linqGenericLambdaType = null!;
-    private DbContext _dbContext = null!;
     private IQueryCompiler _queryCompiler = null!;
     private ExpressionTreeFuncletizer _funcletizer = null!;
     private LinqToCSharpSyntaxTranslator _linqToCSharpTranslator = null!;
@@ -57,7 +56,9 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public PrecompiledQueryCodeGenerator(IQueryLocator queryLocator, ICSharpToLinqTranslator csharpToLinqTranslator)
+    public PrecompiledQueryCodeGenerator(
+        IQueryLocator queryLocator,
+        ICSharpToLinqTranslator csharpToLinqTranslator)
     {
         _queryLocator = queryLocator;
         // TODO: Inject as a proper service
@@ -182,15 +183,14 @@ public class PrecompiledQueryCodeGenerator : IPrecompiledQueryCodeGenerator
         _g = syntaxGenerator;
         _linqToCSharpTranslator = new LinqToCSharpSyntaxTranslator(_g);
         _liftableConstantProcessor = new LiftableConstantProcessor(null!);
-        _dbContext = dbContext;
         _queryCompiler = dbContext.GetService<IQueryCompiler>();
         _sqlExpressionPrinter = new ExpressionPrinter();
-        _funcletizer = new ExpressionTreeFuncletizer(
-            dbContext.Model,
-            dbContext.GetService<IEvaluatableExpressionFilter>(),
-            dbContext.GetType(),
-            generateContextAccessors: false,
-            dbContext.GetService<IDiagnosticsLogger<DbLoggerCategory.Query>>());
+        var funcletizerFactory = new ExpressionTreeFuncletizerFactory(
+            new(
+                dbContext.Model,
+                dbContext.GetService<IEvaluatableExpressionFilter>(),
+                dbContext.GetService<IDiagnosticsLogger<DbLoggerCategory.Query>>()));
+        _funcletizer = funcletizerFactory.Create(dbContext.GetType(), generateContextAccessors: false);
 
         _linqGenericLambdaType = compilation.GetTypeByMetadataName("System.Linq.Expressions.Expression`1")
             ?? throw new InvalidOperationException("System.Linq.Expressions.Expression`1 not found");
