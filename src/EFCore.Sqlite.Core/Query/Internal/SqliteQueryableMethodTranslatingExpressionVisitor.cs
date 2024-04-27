@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Immutable;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.EntityFrameworkCore.Sqlite.Internal;
@@ -49,8 +50,9 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
     public SqliteQueryableMethodTranslatingExpressionVisitor(
         QueryableMethodTranslatingExpressionVisitorDependencies dependencies,
         RelationalQueryableMethodTranslatingExpressionVisitorDependencies relationalDependencies,
-        RelationalQueryCompilationContext queryCompilationContext)
-        : base(dependencies, relationalDependencies, queryCompilationContext)
+        RelationalQueryCompilationContext queryCompilationContext,
+        ImmutableDictionary<ParameterExpression, Expression> parameterMap)
+        : base(dependencies, relationalDependencies, queryCompilationContext, parameterMap)
     {
         _typeMappingSource = relationalDependencies.TypeMappingSource;
         _sqlExpressionFactory = (SqliteSqlExpressionFactory)relationalDependencies.SqlExpressionFactory;
@@ -66,8 +68,9 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     protected SqliteQueryableMethodTranslatingExpressionVisitor(
-        SqliteQueryableMethodTranslatingExpressionVisitor parentVisitor)
-        : base(parentVisitor)
+        SqliteQueryableMethodTranslatingExpressionVisitor parentVisitor,
+        ImmutableDictionary<ParameterExpression, Expression> parameterMap)
+        : base(parentVisitor, parameterMap)
     {
         _typeMappingSource = parentVisitor._typeMappingSource;
         _sqlExpressionFactory = parentVisitor._sqlExpressionFactory;
@@ -82,8 +85,9 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    protected override QueryableMethodTranslatingExpressionVisitor CreateSubqueryVisitor()
-        => new SqliteQueryableMethodTranslatingExpressionVisitor(this);
+    protected override QueryableMethodTranslatingExpressionVisitor CreateSubqueryVisitor(
+        ImmutableDictionary<ParameterExpression, Expression> parameterMap)
+        => new SqliteQueryableMethodTranslatingExpressionVisitor(this, parameterMap);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to

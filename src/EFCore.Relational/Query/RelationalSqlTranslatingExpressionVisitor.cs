@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -65,6 +66,8 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     private readonly ISqlExpressionFactory _sqlExpressionFactory;
     private readonly QueryableMethodTranslatingExpressionVisitor _queryableMethodTranslatingExpressionVisitor;
 
+    private ImmutableDictionary<ParameterExpression, Expression> _parameterMap = null!;
+
     private bool _throwForNotTranslatedEfProperty;
 
     /// <summary>
@@ -124,6 +127,25 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     {
         TranslationErrorDetails = null;
 
+        return TranslateInternal(expression, applyDefaultTypeMapping) as SqlExpression;
+    }
+
+    /// <summary>
+    ///     Translates an expression to an equivalent SQL representation.
+    /// </summary>
+    /// <param name="expression">An expression to translate.</param>
+    /// <param name="applyDefaultTypeMapping">
+    ///     Whether to apply the default type mapping on the top-most element if it has none. Defaults to <see langword="true" />.
+    /// </param>
+    /// <returns>A SQL translation of the given expression.</returns>
+    public virtual SqlExpression? Translate(
+        Expression expression,
+        ImmutableDictionary<ParameterExpression, Expression> parameterMap,
+        bool applyDefaultTypeMapping = true)
+    {
+        TranslationErrorDetails = null;
+
+        _parameterMap = parameterMap;
         return TranslateInternal(expression, applyDefaultTypeMapping) as SqlExpression;
     }
 
@@ -1020,7 +1042,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
         // Subquery case
         SubqueryTranslation:
-        var subqueryTranslation = _queryableMethodTranslatingExpressionVisitor.TranslateSubquery(methodCallExpression);
+        var subqueryTranslation = _queryableMethodTranslatingExpressionVisitor.TranslateSubquery(methodCallExpression, _parameterMap);
 
         return subqueryTranslation == null
             ? QueryCompilationContext.NotTranslatedExpression
@@ -1047,9 +1069,20 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
     /// <inheritdoc />
     protected override Expression VisitParameter(ParameterExpression parameterExpression)
-        => parameterExpression.Name?.StartsWith(QueryCompilationContext.QueryParameterPrefix, StringComparison.Ordinal) == true
-            ? new SqlParameterExpression(parameterExpression.Name, parameterExpression.Type, null)
-            : throw new InvalidOperationException(CoreStrings.TranslationFailed(parameterExpression.Print()));
+    {
+        if (_parameterMap.TryGetValue(parameterExpression, out var expression))
+        {
+            // TODO: Think about this. Possibly get rid of StructuralTypeReferenceExpression altogether.
+            return Visit(expression);
+        }
+
+        if (parameterExpression.Name?.StartsWith(QueryCompilationContext.QueryParameterPrefix, StringComparison.Ordinal) == true)
+        {
+            return new SqlParameterExpression(parameterExpression.Name, parameterExpression.Type, null);
+        }
+
+        throw new InvalidOperationException(CoreStrings.TranslationFailed(parameterExpression.Print()));
+    }
 
     /// <inheritdoc />
     protected override Expression VisitTypeBinary(TypeBinaryExpression typeBinaryExpression)

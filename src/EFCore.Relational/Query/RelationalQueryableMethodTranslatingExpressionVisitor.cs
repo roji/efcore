@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
@@ -48,8 +49,9 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
     public RelationalQueryableMethodTranslatingExpressionVisitor(
         QueryableMethodTranslatingExpressionVisitorDependencies dependencies,
         RelationalQueryableMethodTranslatingExpressionVisitorDependencies relationalDependencies,
-        RelationalQueryCompilationContext queryCompilationContext)
-        : base(dependencies, queryCompilationContext, subquery: false)
+        RelationalQueryCompilationContext queryCompilationContext,
+        ImmutableDictionary<ParameterExpression, Expression> parameterMap)
+        : base(dependencies, queryCompilationContext, subquery: false, parameterMap)
     {
         RelationalDependencies = relationalDependencies;
 
@@ -74,8 +76,9 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
     /// </summary>
     /// <param name="parentVisitor">A parent visitor to create subquery visitor for.</param>
     protected RelationalQueryableMethodTranslatingExpressionVisitor(
-        RelationalQueryableMethodTranslatingExpressionVisitor parentVisitor)
-        : base(parentVisitor.Dependencies, parentVisitor.QueryCompilationContext, subquery: true)
+        RelationalQueryableMethodTranslatingExpressionVisitor parentVisitor,
+        ImmutableDictionary<ParameterExpression, Expression> parameterMap)
+        : base(parentVisitor.Dependencies, parentVisitor.QueryCompilationContext, subquery: true, parameterMap)
     {
         RelationalDependencies = parentVisitor.RelationalDependencies;
         _queryCompilationContext = parentVisitor._queryCompilationContext;
@@ -461,8 +464,9 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
     }
 
     /// <inheritdoc />
-    protected override QueryableMethodTranslatingExpressionVisitor CreateSubqueryVisitor()
-        => new RelationalQueryableMethodTranslatingExpressionVisitor(this);
+    protected override QueryableMethodTranslatingExpressionVisitor CreateSubqueryVisitor(
+        ImmutableDictionary<ParameterExpression, Expression> parameterMap)
+        => new RelationalQueryableMethodTranslatingExpressionVisitor(this, parameterMap);
 
     /// <inheritdoc />
     protected override ShapedQueryExpression CreateShapedQueryExpression(IEntityType entityType)
@@ -1294,7 +1298,9 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
     /// <inheritdoc />
     protected override ShapedQueryExpression? TranslateWhere(ShapedQueryExpression source, LambdaExpression predicate)
     {
-        var translation = TranslateLambdaExpression(source, predicate);
+        var newParameterMap = ParameterMap.Add(predicate.Parameters.Single(), source.ShaperExpression);
+        var translation = TranslateExpression(predicate.Body, newParameterMap);
+
         if (translation == null)
         {
             return null;
@@ -1305,17 +1311,14 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
         return source;
     }
 
-    /// <summary>
-    ///     Translates the given expression into equivalent SQL representation.
-    /// </summary>
-    /// <param name="expression">An expression to translate.</param>
-    /// <param name="applyDefaultTypeMapping">
-    ///     Whether to apply the default type mapping on the top-most element if it has none. Defaults to <see langword="true" />.
-    /// </param>
-    /// <returns>A <see cref="SqlExpression" /> which is translation of given expression or <see langword="null" />.</returns>
-    protected virtual SqlExpression? TranslateExpression(Expression expression, bool applyDefaultTypeMapping = true)
+    protected virtual SqlExpression? TranslateExpression(
+        Expression expression,
+        ImmutableDictionary<ParameterExpression, Expression>? parameterMap = null,
+        bool applyDefaultTypeMapping = true)
     {
-        var translation = _sqlTranslator.Translate(expression, applyDefaultTypeMapping);
+        // TODO: Remove nullable/coalescing
+        parameterMap ??= ImmutableDictionary<ParameterExpression, Expression>.Empty;
+        var translation = _sqlTranslator.Translate(expression, parameterMap, applyDefaultTypeMapping);
 
         if (translation is null)
         {

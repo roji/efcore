@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Immutable;
 using Microsoft.EntityFrameworkCore.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Query;
@@ -23,6 +24,8 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     private readonly bool _subquery;
     private readonly EntityShaperNullableMarkingExpressionVisitor _entityShaperNullableMarkingExpressionVisitor;
 
+    protected virtual ImmutableDictionary<ParameterExpression, Expression> ParameterMap { get; }
+
     /// <summary>
     ///     Creates a new instance of the <see cref="QueryableMethodTranslatingExpressionVisitor" /> class.
     /// </summary>
@@ -32,12 +35,14 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     protected QueryableMethodTranslatingExpressionVisitor(
         QueryableMethodTranslatingExpressionVisitorDependencies dependencies,
         QueryCompilationContext queryCompilationContext,
-        bool subquery)
+        bool subquery,
+        ImmutableDictionary<ParameterExpression, Expression> parameterMap)
     {
         Dependencies = dependencies;
         QueryCompilationContext = queryCompilationContext;
         _subquery = subquery;
         _entityShaperNullableMarkingExpressionVisitor = new EntityShaperNullableMarkingExpressionVisitor();
+        ParameterMap = parameterMap;
     }
 
     /// <summary>
@@ -561,9 +566,13 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     /// </summary>
     /// <param name="expression">The subquery expression to translate.</param>
     /// <returns>The translation of the given subquery.</returns>
-    public virtual ShapedQueryExpression? TranslateSubquery(Expression expression)
+    public virtual ShapedQueryExpression? TranslateSubquery(
+        Expression expression,
+        ImmutableDictionary<ParameterExpression, Expression>? parameterMap = null)
     {
-        var subqueryVisitor = CreateSubqueryVisitor();
+        // TODO: Remove nullable/coalescing
+        parameterMap ??= ParameterMap;
+        var subqueryVisitor = CreateSubqueryVisitor(parameterMap);
         var translation = subqueryVisitor.Translate(expression) as ShapedQueryExpression;
         if (translation == null && subqueryVisitor.TranslationErrorDetails != null)
         {
@@ -577,7 +586,8 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     ///     Creates a visitor customized to translate a subquery through <see cref="TranslateSubquery(Expression)" />.
     /// </summary>
     /// <returns>A visitor to translate subquery.</returns>
-    protected abstract QueryableMethodTranslatingExpressionVisitor CreateSubqueryVisitor();
+    protected abstract QueryableMethodTranslatingExpressionVisitor CreateSubqueryVisitor(
+        ImmutableDictionary<ParameterExpression, Expression> parameterMap);
 
     /// <summary>
     ///     Creates a <see cref="ShapedQueryExpression" /> for the given entity type.
