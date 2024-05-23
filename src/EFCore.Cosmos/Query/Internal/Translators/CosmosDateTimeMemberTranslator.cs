@@ -24,14 +24,22 @@ public class CosmosDateTimeMemberTranslator(ISqlExpressionFactory sqlExpressionF
         IDiagnosticsLogger<DbLoggerCategory.Query> logger)
     {
         var declaringType = member.DeclaringType;
-        if ((declaringType == typeof(DateTime)
-                || declaringType == typeof(DateTimeOffset))
-            && member.Name == nameof(DateTime.UtcNow))
+        if ((declaringType == typeof(DateTime) || declaringType == typeof(DateTimeOffset)))
         {
-            return sqlExpressionFactory.Function(
-                "GetCurrentDateTime",
-                [],
-                returnType);
+            switch (member.Name)
+            {
+                case nameof(DateTime.Day):
+                    return sqlExpressionFactory.Function(
+                        "DateTimePart",
+                        [
+                            sqlExpressionFactory.Constant("dd"),
+                            instance!
+                        ],
+                        returnType);
+
+                case nameof(DateTime.UtcNow):
+                    return sqlExpressionFactory.Function("GetCurrentDateTime", [], returnType);
+            }
         }
 
         return null;
