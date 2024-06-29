@@ -2582,14 +2582,11 @@ WHERE [l0].[Name] <> N'Foo' OR [l0].[Name] IS NULL
             """
 @__p_0='20'
 
-SELECT TOP(@__p_0) [s].[Id]
-FROM (
-    SELECT DISTINCT [l].[Id]
-    FROM [LevelOne] AS [l]
-    LEFT JOIN [LevelTwo] AS [l0] ON [l].[Id] = [l0].[Level1_Optional_Id]
-    WHERE [l0].[Name] <> N'Foo' OR [l0].[Name] IS NULL
-) AS [s]
-ORDER BY [s].[Id]
+SELECT DISTINCT TOP(@__p_0) [l].[Id]
+FROM [LevelOne] AS [l]
+LEFT JOIN [LevelTwo] AS [l0] ON [l].[Id] = [l0].[Level1_Optional_Id]
+WHERE [l0].[Name] <> N'Foo' OR [l0].[Name] IS NULL
+ORDER BY [l].[Id]
 """);
     }
 
@@ -2885,13 +2882,14 @@ FROM [LevelThree] AS [l]
         AssertSql(
             """
 SELECT (
-    SELECT [l1].[Name]
+    SELECT TOP(1) [l1].[Name]
     FROM (
         SELECT DISTINCT [l0].[Id], [l0].[Level2_Optional_Id], [l0].[Level2_Required_Id], [l0].[Name], [l0].[OneToMany_Optional_Inverse3Id], [l0].[OneToMany_Optional_Self_Inverse3Id], [l0].[OneToMany_Required_Inverse3Id], [l0].[OneToMany_Required_Self_Inverse3Id], [l0].[OneToOne_Optional_PK_Inverse3Id], [l0].[OneToOne_Optional_Self3Id]
         FROM [LevelThree] AS [l0]
+        ORDER BY [l0].[Id]
+        OFFSET 1 ROWS
     ) AS [l1]
-    ORDER BY [l1].[Id]
-    OFFSET 1 ROWS FETCH NEXT 1 ROWS ONLY)
+    ORDER BY [l1].[Id])
 FROM [LevelOne] AS [l]
 WHERE [l].[Id] < 3
 """);

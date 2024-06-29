@@ -2136,12 +2136,9 @@ ORDER BY [s].[CustomerID], [s].[OrderID]
             """
 @__p_0='5'
 
-SELECT [c0].[CustomerID], [c0].[Address], [c0].[City], [c0].[CompanyName], [c0].[ContactName], [c0].[ContactTitle], [c0].[Country], [c0].[Fax], [c0].[Phone], [c0].[PostalCode], [c0].[Region]
-FROM (
-    SELECT DISTINCT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
-    FROM [Customers] AS [c]
-) AS [c0]
-ORDER BY [c0].[CustomerID]
+SELECT DISTINCT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+FROM [Customers] AS [c]
+ORDER BY [c].[CustomerID]
 OFFSET @__p_0 ROWS
 """);
     }
@@ -2155,12 +2152,9 @@ OFFSET @__p_0 ROWS
 @__p_0='5'
 @__p_1='10'
 
-SELECT [c0].[CustomerID], [c0].[Address], [c0].[City], [c0].[CompanyName], [c0].[ContactName], [c0].[ContactTitle], [c0].[Country], [c0].[Fax], [c0].[Phone], [c0].[PostalCode], [c0].[Region]
-FROM (
-    SELECT DISTINCT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
-    FROM [Customers] AS [c]
-) AS [c0]
-ORDER BY [c0].[ContactName]
+SELECT DISTINCT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+FROM [Customers] AS [c]
+ORDER BY [c].[ContactName]
 OFFSET @__p_0 ROWS FETCH NEXT @__p_1 ROWS ONLY
 """);
     }
@@ -2391,12 +2385,9 @@ ORDER BY [c].[CustomerID]
             """
 @__p_0='5'
 
-SELECT TOP(@__p_0) [o0].[OrderID], [o0].[CustomerID], [o0].[EmployeeID], [o0].[OrderDate]
-FROM (
-    SELECT DISTINCT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
-    FROM [Orders] AS [o]
-) AS [o0]
-ORDER BY [o0].[OrderID]
+SELECT DISTINCT TOP(@__p_0) [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
+FROM [Orders] AS [o]
+ORDER BY [o].[OrderID]
 """);
     }
 
@@ -3920,17 +3911,14 @@ FROM (
 @__p_0='5'
 @__p_1='15'
 
-SELECT TOP(@__p_2) [c1].[CustomerID], [c1].[Address], [c1].[City], [c1].[CompanyName], [c1].[ContactName], [c1].[ContactTitle], [c1].[Country], [c1].[Fax], [c1].[Phone], [c1].[PostalCode], [c1].[Region]
+SELECT DISTINCT TOP(@__p_2) [c0].[CustomerID], [c0].[Address], [c0].[City], [c0].[CompanyName], [c0].[ContactName], [c0].[ContactTitle], [c0].[Country], [c0].[Fax], [c0].[Phone], [c0].[PostalCode], [c0].[Region]
 FROM (
-    SELECT DISTINCT [c0].[CustomerID], [c0].[Address], [c0].[City], [c0].[CompanyName], [c0].[ContactName], [c0].[ContactTitle], [c0].[Country], [c0].[Fax], [c0].[Phone], [c0].[PostalCode], [c0].[Region]
-    FROM (
-        SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
-        FROM [Customers] AS [c]
-        ORDER BY [c].[ContactTitle], [c].[ContactName]
-        OFFSET @__p_0 ROWS FETCH NEXT @__p_1 ROWS ONLY
-    ) AS [c0]
-) AS [c1]
-ORDER BY [c1].[ContactTitle]
+    SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+    FROM [Customers] AS [c]
+    ORDER BY [c].[ContactTitle], [c].[ContactName]
+    OFFSET @__p_0 ROWS FETCH NEXT @__p_1 ROWS ONLY
+) AS [c0]
+ORDER BY [c0].[ContactTitle]
 """);
     }
 
@@ -4080,12 +4068,9 @@ WHERE [c].[CustomerID] = N'ALFKI'
 
         AssertSql(
             """
-SELECT [c0].[CustomerID]
-FROM (
-    SELECT DISTINCT [c].[CustomerID]
-    FROM [Customers] AS [c]
-) AS [c0]
-ORDER BY [c0].[CustomerID]
+SELECT DISTINCT [c].[CustomerID]
+FROM [Customers] AS [c]
+ORDER BY [c].[CustomerID]
 """);
     }
 
@@ -4122,12 +4107,9 @@ WHERE [c].[CustomerID] + COALESCE([c].[City], N'') = N'ALFKIBerlin'
 
         AssertSql(
             """
-SELECT [c0].[A]
-FROM (
-    SELECT DISTINCT [c].[CustomerID] + COALESCE([c].[City], N'') AS [A]
-    FROM [Customers] AS [c]
-) AS [c0]
-ORDER BY [c0].[A]
+SELECT DISTINCT [c].[CustomerID] + COALESCE([c].[City], N'') AS [A]
+FROM [Customers] AS [c]
+ORDER BY [c].[CustomerID] + COALESCE([c].[City], N'')
 """);
     }
 
@@ -4200,12 +4182,9 @@ WHERE [c].[CustomerID] = N'ALFKI'
 
         AssertSql(
             """
-SELECT [c0].[Property]
-FROM (
-    SELECT DISTINCT [c].[CustomerID] AS [Property]
-    FROM [Customers] AS [c]
-) AS [c0]
-ORDER BY [c0].[Property]
+SELECT DISTINCT [c].[CustomerID] AS [Property]
+FROM [Customers] AS [c]
+ORDER BY [c].[CustomerID]
 """);
     }
 
@@ -4242,12 +4221,9 @@ WHERE [c].[CustomerID] + COALESCE([c].[City], N'') = N'ALFKIBerlin'
 
         AssertSql(
             """
-SELECT [c0].[Property]
-FROM (
-    SELECT DISTINCT [c].[CustomerID] + COALESCE([c].[City], N'') AS [Property]
-    FROM [Customers] AS [c]
-) AS [c0]
-ORDER BY [c0].[Property]
+SELECT DISTINCT [c].[CustomerID] + COALESCE([c].[City], N'') AS [Property]
+FROM [Customers] AS [c]
+ORDER BY [c].[CustomerID] + COALESCE([c].[City], N'')
 """);
     }
 

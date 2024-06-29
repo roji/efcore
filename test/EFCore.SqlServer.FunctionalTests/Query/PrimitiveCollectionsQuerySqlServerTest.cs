@@ -1563,20 +1563,17 @@ WHERE (
         SELECT [s].[value]
         FROM OPENJSON(@__Skip_0) WITH ([value] int '$') AS [s]
         UNION
-        SELECT [i2].[value]
+        SELECT [i1].[value]
         FROM (
-            SELECT TOP(20) [i1].[value]
+            SELECT DISTINCT TOP(20) [i0].[value]
             FROM (
-                SELECT DISTINCT [i0].[value]
-                FROM (
-                    SELECT [i].[value]
-                    FROM OPENJSON([p].[Ints]) WITH ([value] int '$') AS [i]
-                    ORDER BY [i].[value]
-                    OFFSET 1 ROWS
-                ) AS [i0]
-            ) AS [i1]
-            ORDER BY [i1].[value] DESC
-        ) AS [i2]
+                SELECT [i].[value]
+                FROM OPENJSON([p].[Ints]) WITH ([value] int '$') AS [i]
+                ORDER BY [i].[value]
+                OFFSET 1 ROWS
+            ) AS [i0]
+            ORDER BY [i0].[value] DESC
+        ) AS [i1]
     ) AS [u]) = 3
 """);
     }

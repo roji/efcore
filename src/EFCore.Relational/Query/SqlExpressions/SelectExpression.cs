@@ -1834,9 +1834,7 @@ public sealed partial class SelectExpression : TableExpressionBase
     /// <param name="orderingExpression">An ordering expression to use for ordering.</param>
     public void ApplyOrdering(OrderingExpression orderingExpression)
     {
-        if (IsDistinct
-            || Limit != null
-            || Offset != null)
+        if (Limit != null || Offset != null)
         {
             orderingExpression = orderingExpression.Update(PushdownIntoSubqueryInternal().Remap(orderingExpression.Expression));
         }

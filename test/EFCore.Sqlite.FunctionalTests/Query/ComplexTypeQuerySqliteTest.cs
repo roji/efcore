@@ -922,7 +922,7 @@ LIMIT @__p_0
         await base.Union_of_same_entity_with_nested_complex_type_projected_twice_with_double_pushdown(async);
 
         AssertSql(
-"""
+            """
 @__p_0='50'
 
 SELECT "u1"."Id", "u1"."Name", "u1"."BillingAddress_AddressLine1", "u1"."BillingAddress_AddressLine2", "u1"."BillingAddress_Tags", "u1"."BillingAddress_ZipCode", "u1"."BillingAddress_Country_Code", "u1"."BillingAddress_Country_FullName", "u1"."ShippingAddress_AddressLine1", "u1"."ShippingAddress_AddressLine2", "u1"."ShippingAddress_Tags", "u1"."ShippingAddress_ZipCode", "u1"."ShippingAddress_Country_Code", "u1"."ShippingAddress_Country_FullName", "u1"."Id0", "u1"."Name0", "u1"."BillingAddress_AddressLine10", "u1"."BillingAddress_AddressLine20", "u1"."BillingAddress_Tags0", "u1"."BillingAddress_ZipCode0", "u1"."BillingAddress_Country_Code0", "u1"."BillingAddress_Country_FullName0", "u1"."ShippingAddress_AddressLine10", "u1"."ShippingAddress_AddressLine20", "u1"."ShippingAddress_Tags0", "u1"."ShippingAddress_ZipCode0", "u1"."ShippingAddress_Country_Code0", "u1"."ShippingAddress_Country_FullName0"
@@ -942,9 +942,10 @@ FROM (
         ORDER BY "u"."Id", "u"."Id0"
         LIMIT @__p_0
     ) AS "u0"
+    ORDER BY "u0"."Id", "u0"."Id0"
+    LIMIT @__p_0
 ) AS "u1"
 ORDER BY "u1"."Id", "u1"."Id0"
-LIMIT @__p_0
 """);
     }
 
@@ -976,7 +977,7 @@ LIMIT @__p_0
         await base.Union_of_same_nested_complex_type_projected_twice_with_double_pushdown(async);
 
         AssertSql(
-"""
+            """
 @__p_0='50'
 
 SELECT "u1"."BillingAddress_AddressLine1", "u1"."BillingAddress_AddressLine2", "u1"."BillingAddress_Tags", "u1"."BillingAddress_ZipCode", "u1"."BillingAddress_Country_Code", "u1"."BillingAddress_Country_FullName", "u1"."BillingAddress_AddressLine10", "u1"."BillingAddress_AddressLine20", "u1"."BillingAddress_Tags0", "u1"."BillingAddress_ZipCode0", "u1"."BillingAddress_Country_Code0", "u1"."BillingAddress_Country_FullName0"
@@ -996,9 +997,10 @@ FROM (
         ORDER BY "u"."BillingAddress_ZipCode", "u"."BillingAddress_ZipCode0"
         LIMIT @__p_0
     ) AS "u0"
+    ORDER BY "u0"."BillingAddress_ZipCode", "u0"."BillingAddress_ZipCode0"
+    LIMIT @__p_0
 ) AS "u1"
 ORDER BY "u1"."BillingAddress_ZipCode", "u1"."BillingAddress_ZipCode0"
-LIMIT @__p_0
 """);
     }
 

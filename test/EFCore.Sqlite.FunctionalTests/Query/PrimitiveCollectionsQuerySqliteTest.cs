@@ -1556,21 +1556,18 @@ WHERE (
         SELECT "s"."value"
         FROM json_each(@__Skip_0) AS "s"
         UNION
-        SELECT "i2"."value"
+        SELECT "i1"."value"
         FROM (
-            SELECT "i1"."value"
+            SELECT DISTINCT "i0"."value"
             FROM (
-                SELECT DISTINCT "i0"."value"
-                FROM (
-                    SELECT "i"."value"
-                    FROM json_each("p"."Ints") AS "i"
-                    ORDER BY "i"."value"
-                    LIMIT -1 OFFSET 1
-                ) AS "i0"
-            ) AS "i1"
-            ORDER BY "i1"."value" DESC
+                SELECT "i"."value"
+                FROM json_each("p"."Ints") AS "i"
+                ORDER BY "i"."value"
+                LIMIT -1 OFFSET 1
+            ) AS "i0"
+            ORDER BY "i0"."value" DESC
             LIMIT 20
-        ) AS "i2"
+        ) AS "i1"
     ) AS "u") = 3
 """);
     }

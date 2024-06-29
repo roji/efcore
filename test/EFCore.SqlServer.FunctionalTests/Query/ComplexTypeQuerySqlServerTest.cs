@@ -1032,12 +1032,12 @@ ORDER BY [u].[Id], [u].[Id0]
         await base.Union_of_same_entity_with_nested_complex_type_projected_twice_with_double_pushdown(async);
 
         AssertSql(
-"""
+            """
 @__p_0='50'
 
-SELECT TOP(@__p_0) [u1].[Id], [u1].[Name], [u1].[BillingAddress_AddressLine1], [u1].[BillingAddress_AddressLine2], [u1].[BillingAddress_Tags], [u1].[BillingAddress_ZipCode], [u1].[BillingAddress_Country_Code], [u1].[BillingAddress_Country_FullName], [u1].[ShippingAddress_AddressLine1], [u1].[ShippingAddress_AddressLine2], [u1].[ShippingAddress_Tags], [u1].[ShippingAddress_ZipCode], [u1].[ShippingAddress_Country_Code], [u1].[ShippingAddress_Country_FullName], [u1].[Id0], [u1].[Name0], [u1].[BillingAddress_AddressLine10], [u1].[BillingAddress_AddressLine20], [u1].[BillingAddress_Tags0], [u1].[BillingAddress_ZipCode0], [u1].[BillingAddress_Country_Code0], [u1].[BillingAddress_Country_FullName0], [u1].[ShippingAddress_AddressLine10], [u1].[ShippingAddress_AddressLine20], [u1].[ShippingAddress_Tags0], [u1].[ShippingAddress_ZipCode0], [u1].[ShippingAddress_Country_Code0], [u1].[ShippingAddress_Country_FullName0]
+SELECT [u1].[Id], [u1].[Name], [u1].[BillingAddress_AddressLine1], [u1].[BillingAddress_AddressLine2], [u1].[BillingAddress_Tags], [u1].[BillingAddress_ZipCode], [u1].[BillingAddress_Country_Code], [u1].[BillingAddress_Country_FullName], [u1].[ShippingAddress_AddressLine1], [u1].[ShippingAddress_AddressLine2], [u1].[ShippingAddress_Tags], [u1].[ShippingAddress_ZipCode], [u1].[ShippingAddress_Country_Code], [u1].[ShippingAddress_Country_FullName], [u1].[Id0], [u1].[Name0], [u1].[BillingAddress_AddressLine10], [u1].[BillingAddress_AddressLine20], [u1].[BillingAddress_Tags0], [u1].[BillingAddress_ZipCode0], [u1].[BillingAddress_Country_Code0], [u1].[BillingAddress_Country_FullName0], [u1].[ShippingAddress_AddressLine10], [u1].[ShippingAddress_AddressLine20], [u1].[ShippingAddress_Tags0], [u1].[ShippingAddress_ZipCode0], [u1].[ShippingAddress_Country_Code0], [u1].[ShippingAddress_Country_FullName0]
 FROM (
-    SELECT DISTINCT [u0].[Id], [u0].[Name], [u0].[BillingAddress_AddressLine1], [u0].[BillingAddress_AddressLine2], [u0].[BillingAddress_Tags], [u0].[BillingAddress_ZipCode], [u0].[BillingAddress_Country_Code], [u0].[BillingAddress_Country_FullName], [u0].[ShippingAddress_AddressLine1], [u0].[ShippingAddress_AddressLine2], [u0].[ShippingAddress_Tags], [u0].[ShippingAddress_ZipCode], [u0].[ShippingAddress_Country_Code], [u0].[ShippingAddress_Country_FullName], [u0].[Id0], [u0].[Name0], [u0].[BillingAddress_AddressLine10], [u0].[BillingAddress_AddressLine20], [u0].[BillingAddress_Tags0], [u0].[BillingAddress_ZipCode0], [u0].[BillingAddress_Country_Code0], [u0].[BillingAddress_Country_FullName0], [u0].[ShippingAddress_AddressLine10], [u0].[ShippingAddress_AddressLine20], [u0].[ShippingAddress_Tags0], [u0].[ShippingAddress_ZipCode0], [u0].[ShippingAddress_Country_Code0], [u0].[ShippingAddress_Country_FullName0]
+    SELECT DISTINCT TOP(@__p_0) [u0].[Id], [u0].[Name], [u0].[BillingAddress_AddressLine1], [u0].[BillingAddress_AddressLine2], [u0].[BillingAddress_Tags], [u0].[BillingAddress_ZipCode], [u0].[BillingAddress_Country_Code], [u0].[BillingAddress_Country_FullName], [u0].[ShippingAddress_AddressLine1], [u0].[ShippingAddress_AddressLine2], [u0].[ShippingAddress_Tags], [u0].[ShippingAddress_ZipCode], [u0].[ShippingAddress_Country_Code], [u0].[ShippingAddress_Country_FullName], [u0].[Id0], [u0].[Name0], [u0].[BillingAddress_AddressLine10], [u0].[BillingAddress_AddressLine20], [u0].[BillingAddress_Tags0], [u0].[BillingAddress_ZipCode0], [u0].[BillingAddress_Country_Code0], [u0].[BillingAddress_Country_FullName0], [u0].[ShippingAddress_AddressLine10], [u0].[ShippingAddress_AddressLine20], [u0].[ShippingAddress_Tags0], [u0].[ShippingAddress_ZipCode0], [u0].[ShippingAddress_Country_Code0], [u0].[ShippingAddress_Country_FullName0]
     FROM (
         SELECT TOP(@__p_0) [u].[Id], [u].[Name], [u].[BillingAddress_AddressLine1], [u].[BillingAddress_AddressLine2], [u].[BillingAddress_Tags], [u].[BillingAddress_ZipCode], [u].[BillingAddress_Country_Code], [u].[BillingAddress_Country_FullName], [u].[ShippingAddress_AddressLine1], [u].[ShippingAddress_AddressLine2], [u].[ShippingAddress_Tags], [u].[ShippingAddress_ZipCode], [u].[ShippingAddress_Country_Code], [u].[ShippingAddress_Country_FullName], [u].[Id0], [u].[Name0], [u].[BillingAddress_AddressLine10], [u].[BillingAddress_AddressLine20], [u].[BillingAddress_Tags0], [u].[BillingAddress_ZipCode0], [u].[BillingAddress_Country_Code0], [u].[BillingAddress_Country_FullName0], [u].[ShippingAddress_AddressLine10], [u].[ShippingAddress_AddressLine20], [u].[ShippingAddress_Tags0], [u].[ShippingAddress_ZipCode0], [u].[ShippingAddress_Country_Code0], [u].[ShippingAddress_Country_FullName0]
         FROM (
@@ -1051,6 +1051,7 @@ FROM (
         ) AS [u]
         ORDER BY [u].[Id], [u].[Id0]
     ) AS [u0]
+    ORDER BY [u0].[Id], [u0].[Id0]
 ) AS [u1]
 ORDER BY [u1].[Id], [u1].[Id0]
 """);
@@ -1083,12 +1084,12 @@ ORDER BY [u].[BillingAddress_ZipCode], [u].[BillingAddress_ZipCode0]
         await base.Union_of_same_nested_complex_type_projected_twice_with_double_pushdown(async);
 
         AssertSql(
-"""
+            """
 @__p_0='50'
 
-SELECT TOP(@__p_0) [u1].[BillingAddress_AddressLine1], [u1].[BillingAddress_AddressLine2], [u1].[BillingAddress_Tags], [u1].[BillingAddress_ZipCode], [u1].[BillingAddress_Country_Code], [u1].[BillingAddress_Country_FullName], [u1].[BillingAddress_AddressLine10], [u1].[BillingAddress_AddressLine20], [u1].[BillingAddress_Tags0], [u1].[BillingAddress_ZipCode0], [u1].[BillingAddress_Country_Code0], [u1].[BillingAddress_Country_FullName0]
+SELECT [u1].[BillingAddress_AddressLine1], [u1].[BillingAddress_AddressLine2], [u1].[BillingAddress_Tags], [u1].[BillingAddress_ZipCode], [u1].[BillingAddress_Country_Code], [u1].[BillingAddress_Country_FullName], [u1].[BillingAddress_AddressLine10], [u1].[BillingAddress_AddressLine20], [u1].[BillingAddress_Tags0], [u1].[BillingAddress_ZipCode0], [u1].[BillingAddress_Country_Code0], [u1].[BillingAddress_Country_FullName0]
 FROM (
-    SELECT DISTINCT [u0].[BillingAddress_AddressLine1], [u0].[BillingAddress_AddressLine2], [u0].[BillingAddress_Tags], [u0].[BillingAddress_ZipCode], [u0].[BillingAddress_Country_Code], [u0].[BillingAddress_Country_FullName], [u0].[BillingAddress_AddressLine10], [u0].[BillingAddress_AddressLine20], [u0].[BillingAddress_Tags0], [u0].[BillingAddress_ZipCode0], [u0].[BillingAddress_Country_Code0], [u0].[BillingAddress_Country_FullName0]
+    SELECT DISTINCT TOP(@__p_0) [u0].[BillingAddress_AddressLine1], [u0].[BillingAddress_AddressLine2], [u0].[BillingAddress_Tags], [u0].[BillingAddress_ZipCode], [u0].[BillingAddress_Country_Code], [u0].[BillingAddress_Country_FullName], [u0].[BillingAddress_AddressLine10], [u0].[BillingAddress_AddressLine20], [u0].[BillingAddress_Tags0], [u0].[BillingAddress_ZipCode0], [u0].[BillingAddress_Country_Code0], [u0].[BillingAddress_Country_FullName0]
     FROM (
         SELECT TOP(@__p_0) [u].[BillingAddress_AddressLine1], [u].[BillingAddress_AddressLine2], [u].[BillingAddress_Tags], [u].[BillingAddress_ZipCode], [u].[BillingAddress_Country_Code], [u].[BillingAddress_Country_FullName], [u].[BillingAddress_AddressLine10], [u].[BillingAddress_AddressLine20], [u].[BillingAddress_Tags0], [u].[BillingAddress_ZipCode0], [u].[BillingAddress_Country_Code0], [u].[BillingAddress_Country_FullName0]
         FROM (
@@ -1102,6 +1103,7 @@ FROM (
         ) AS [u]
         ORDER BY [u].[BillingAddress_ZipCode], [u].[BillingAddress_ZipCode0]
     ) AS [u0]
+    ORDER BY [u0].[BillingAddress_ZipCode], [u0].[BillingAddress_ZipCode0]
 ) AS [u1]
 ORDER BY [u1].[BillingAddress_ZipCode], [u1].[BillingAddress_ZipCode0]
 """);

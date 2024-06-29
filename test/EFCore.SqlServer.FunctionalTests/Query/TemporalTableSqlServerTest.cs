@@ -153,11 +153,12 @@ LEFT JOIN [OwnedEntityDifferentTable] AS [o] ON [m].[Id] = [o].[MainEntityDiffer
             """
 @__p_0='3'
 
-SELECT TOP(@__p_0) [m0].[Id], [m0].[Description], [m0].[EndTime], [m0].[StartTime], [m0].[MainEntityDifferentTableId], [m0].[Description0], [m0].[EndTime0], [m0].[StartTime0]
+SELECT [m0].[Id], [m0].[Description], [m0].[EndTime], [m0].[StartTime], [m0].[MainEntityDifferentTableId], [m0].[Description0], [m0].[EndTime0], [m0].[StartTime0]
 FROM (
-    SELECT DISTINCT [m].[Id], [m].[Description], [m].[EndTime], [m].[StartTime], [o].[MainEntityDifferentTableId], [o].[Description] AS [Description0], [o].[EndTime] AS [EndTime0], [o].[StartTime] AS [StartTime0]
+    SELECT DISTINCT TOP(@__p_0) [m].[Id], [m].[Description], [m].[EndTime], [m].[StartTime], [o].[MainEntityDifferentTableId], [o].[Description] AS [Description0], [o].[EndTime] AS [EndTime0], [o].[StartTime] AS [StartTime0]
     FROM [MainEntityDifferentTable] FOR SYSTEM_TIME AS OF '2000-01-01T00:00:00.0000000' AS [m]
     LEFT JOIN [OwnedEntityDifferentTable] FOR SYSTEM_TIME AS OF '2000-01-01T00:00:00.0000000' AS [o] ON [m].[Id] = [o].[MainEntityDifferentTableId]
+    ORDER BY [m].[Id] DESC
 ) AS [m0]
 ORDER BY [m0].[Id] DESC
 """);
@@ -184,21 +185,18 @@ ORDER BY [m0].[Id] DESC
             """
 @__p_0='3'
 
-SELECT [s0].[Id], [s0].[Description], [s0].[EndTime], [s0].[StartTime], [s0].[MainEntityDifferentTableId], [s0].[Description1], [s0].[EndTime1], [s0].[StartTime1], [s0].[Id0], [s0].[Description0], [s0].[EndTime0], [s0].[StartTime0], [s0].[MainEntityDifferentTableId0], [s0].[Description2], [s0].[EndTime2], [s0].[StartTime2], [m1].[Id], [m1].[Description], [m1].[EndTime], [m1].[StartTime], [o1].[MainEntityDifferentTableId], [o1].[Description], [o1].[EndTime], [o1].[StartTime]
+SELECT [s].[Id], [s].[Description], [s].[EndTime], [s].[StartTime], [s].[MainEntityDifferentTableId], [s].[Description1], [s].[EndTime1], [s].[StartTime1], [s].[Id0], [s].[Description0], [s].[EndTime0], [s].[StartTime0], [s].[MainEntityDifferentTableId0], [s].[Description2], [s].[EndTime2], [s].[StartTime2], [m1].[Id], [m1].[Description], [m1].[EndTime], [m1].[StartTime], [o1].[MainEntityDifferentTableId], [o1].[Description], [o1].[EndTime], [o1].[StartTime]
 FROM (
-    SELECT TOP(@__p_0) [s].[Id], [s].[Description], [s].[EndTime], [s].[StartTime], [s].[Id0], [s].[Description0], [s].[EndTime0], [s].[StartTime0], [s].[MainEntityDifferentTableId], [s].[Description1], [s].[EndTime1], [s].[StartTime1], [s].[MainEntityDifferentTableId0], [s].[Description2], [s].[EndTime2], [s].[StartTime2]
-    FROM (
-        SELECT DISTINCT [m].[Id], [m].[Description], [m].[EndTime], [m].[StartTime], [m0].[Id] AS [Id0], [m0].[Description] AS [Description0], [m0].[EndTime] AS [EndTime0], [m0].[StartTime] AS [StartTime0], [o].[MainEntityDifferentTableId], [o].[Description] AS [Description1], [o].[EndTime] AS [EndTime1], [o].[StartTime] AS [StartTime1], [o0].[MainEntityDifferentTableId] AS [MainEntityDifferentTableId0], [o0].[Description] AS [Description2], [o0].[EndTime] AS [EndTime2], [o0].[StartTime] AS [StartTime2]
-        FROM [MainEntityDifferentTable] FOR SYSTEM_TIME AS OF '2000-01-01T00:00:00.0000000' AS [m]
-        INNER JOIN [MainEntityDifferentTable] AS [m0] ON [m].[Id] = [m0].[Id]
-        LEFT JOIN [OwnedEntityDifferentTable] FOR SYSTEM_TIME AS OF '2000-01-01T00:00:00.0000000' AS [o] ON [m].[Id] = [o].[MainEntityDifferentTableId]
-        LEFT JOIN [OwnedEntityDifferentTable] AS [o0] ON [m0].[Id] = [o0].[MainEntityDifferentTableId]
-    ) AS [s]
-    ORDER BY [s].[Id] DESC
-) AS [s0]
-INNER JOIN [MainEntityDifferentTable] AS [m1] ON [s0].[Id] = [m1].[Id]
+    SELECT DISTINCT TOP(@__p_0) [m].[Id], [m].[Description], [m].[EndTime], [m].[StartTime], [m0].[Id] AS [Id0], [m0].[Description] AS [Description0], [m0].[EndTime] AS [EndTime0], [m0].[StartTime] AS [StartTime0], [o].[MainEntityDifferentTableId], [o].[Description] AS [Description1], [o].[EndTime] AS [EndTime1], [o].[StartTime] AS [StartTime1], [o0].[MainEntityDifferentTableId] AS [MainEntityDifferentTableId0], [o0].[Description] AS [Description2], [o0].[EndTime] AS [EndTime2], [o0].[StartTime] AS [StartTime2]
+    FROM [MainEntityDifferentTable] FOR SYSTEM_TIME AS OF '2000-01-01T00:00:00.0000000' AS [m]
+    INNER JOIN [MainEntityDifferentTable] AS [m0] ON [m].[Id] = [m0].[Id]
+    LEFT JOIN [OwnedEntityDifferentTable] FOR SYSTEM_TIME AS OF '2000-01-01T00:00:00.0000000' AS [o] ON [m].[Id] = [o].[MainEntityDifferentTableId]
+    LEFT JOIN [OwnedEntityDifferentTable] AS [o0] ON [m0].[Id] = [o0].[MainEntityDifferentTableId]
+    ORDER BY [m].[Id] DESC
+) AS [s]
+INNER JOIN [MainEntityDifferentTable] AS [m1] ON [s].[Id] = [m1].[Id]
 LEFT JOIN [OwnedEntityDifferentTable] AS [o1] ON [m1].[Id] = [o1].[MainEntityDifferentTableId]
-ORDER BY [s0].[Id] DESC
+ORDER BY [s].[Id] DESC
 """);
     }
 
@@ -223,21 +221,18 @@ ORDER BY [s0].[Id] DESC
             """
 @__p_0='3'
 
-SELECT [s0].[Id], [s0].[Description], [s0].[EndTime], [s0].[StartTime], [s0].[MainEntityDifferentTableId], [s0].[Description1], [s0].[EndTime1], [s0].[StartTime1], [s0].[Id0], [s0].[Description0], [s0].[EndTime0], [s0].[StartTime0], [s0].[MainEntityDifferentTableId0], [s0].[Description2], [s0].[EndTime2], [s0].[StartTime2], [m1].[Id], [m1].[Description], [m1].[EndTime], [m1].[StartTime], [o1].[MainEntityDifferentTableId], [o1].[Description], [o1].[EndTime], [o1].[StartTime]
+SELECT [s].[Id], [s].[Description], [s].[EndTime], [s].[StartTime], [s].[MainEntityDifferentTableId], [s].[Description1], [s].[EndTime1], [s].[StartTime1], [s].[Id0], [s].[Description0], [s].[EndTime0], [s].[StartTime0], [s].[MainEntityDifferentTableId0], [s].[Description2], [s].[EndTime2], [s].[StartTime2], [m1].[Id], [m1].[Description], [m1].[EndTime], [m1].[StartTime], [o1].[MainEntityDifferentTableId], [o1].[Description], [o1].[EndTime], [o1].[StartTime]
 FROM (
-    SELECT TOP(@__p_0) [s].[Id], [s].[Description], [s].[EndTime], [s].[StartTime], [s].[Id0], [s].[Description0], [s].[EndTime0], [s].[StartTime0], [s].[MainEntityDifferentTableId], [s].[Description1], [s].[EndTime1], [s].[StartTime1], [s].[MainEntityDifferentTableId0], [s].[Description2], [s].[EndTime2], [s].[StartTime2]
-    FROM (
-        SELECT DISTINCT [m].[Id], [m].[Description], [m].[EndTime], [m].[StartTime], [m0].[Id] AS [Id0], [m0].[Description] AS [Description0], [m0].[EndTime] AS [EndTime0], [m0].[StartTime] AS [StartTime0], [o].[MainEntityDifferentTableId], [o].[Description] AS [Description1], [o].[EndTime] AS [EndTime1], [o].[StartTime] AS [StartTime1], [o0].[MainEntityDifferentTableId] AS [MainEntityDifferentTableId0], [o0].[Description] AS [Description2], [o0].[EndTime] AS [EndTime2], [o0].[StartTime] AS [StartTime2]
-        FROM [MainEntityDifferentTable] AS [m]
-        INNER JOIN [MainEntityDifferentTable] FOR SYSTEM_TIME AS OF '2000-01-01T00:00:00.0000000' AS [m0] ON [m].[Id] = [m0].[Id]
-        LEFT JOIN [OwnedEntityDifferentTable] AS [o] ON [m].[Id] = [o].[MainEntityDifferentTableId]
-        LEFT JOIN [OwnedEntityDifferentTable] FOR SYSTEM_TIME AS OF '2000-01-01T00:00:00.0000000' AS [o0] ON [m0].[Id] = [o0].[MainEntityDifferentTableId]
-    ) AS [s]
-    ORDER BY [s].[Id] DESC
-) AS [s0]
-INNER JOIN [MainEntityDifferentTable] AS [m1] ON [s0].[Id] = [m1].[Id]
+    SELECT DISTINCT TOP(@__p_0) [m].[Id], [m].[Description], [m].[EndTime], [m].[StartTime], [m0].[Id] AS [Id0], [m0].[Description] AS [Description0], [m0].[EndTime] AS [EndTime0], [m0].[StartTime] AS [StartTime0], [o].[MainEntityDifferentTableId], [o].[Description] AS [Description1], [o].[EndTime] AS [EndTime1], [o].[StartTime] AS [StartTime1], [o0].[MainEntityDifferentTableId] AS [MainEntityDifferentTableId0], [o0].[Description] AS [Description2], [o0].[EndTime] AS [EndTime2], [o0].[StartTime] AS [StartTime2]
+    FROM [MainEntityDifferentTable] AS [m]
+    INNER JOIN [MainEntityDifferentTable] FOR SYSTEM_TIME AS OF '2000-01-01T00:00:00.0000000' AS [m0] ON [m].[Id] = [m0].[Id]
+    LEFT JOIN [OwnedEntityDifferentTable] AS [o] ON [m].[Id] = [o].[MainEntityDifferentTableId]
+    LEFT JOIN [OwnedEntityDifferentTable] FOR SYSTEM_TIME AS OF '2000-01-01T00:00:00.0000000' AS [o0] ON [m0].[Id] = [o0].[MainEntityDifferentTableId]
+    ORDER BY [m].[Id] DESC
+) AS [s]
+INNER JOIN [MainEntityDifferentTable] AS [m1] ON [s].[Id] = [m1].[Id]
 LEFT JOIN [OwnedEntityDifferentTable] AS [o1] ON [m1].[Id] = [o1].[MainEntityDifferentTableId]
-ORDER BY [s0].[Id] DESC
+ORDER BY [s].[Id] DESC
 """);
     }
 
