@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Cosmos.Internal;
 using Xunit.Sdk;
 
 namespace Microsoft.EntityFrameworkCore.Query;
@@ -200,13 +201,20 @@ WHERE (c["Discriminator"] = "Customer")
 """);
             });
 
-    public override Task Count_over_keyless_entity_with_pushdown(bool async)
-        // Cosmos client evaluation. Issue #17246.
-        => AssertTranslationFailed(() => base.Count_over_keyless_entity_with_pushdown(async));
+    public override async Task Count_over_keyless_entity_with_pushdown(bool async)
+    {
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Count_over_keyless_entity_with_pushdown(async));
 
-    public override Task Count_over_keyless_entity_with_pushdown_empty_projection(bool async)
-        // Cosmos client evaluation. Issue #17246.
-        => AssertTranslationFailed(() => base.Count_over_keyless_entity_with_pushdown_empty_projection(async));
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
+    }
+
+    public override async Task Count_over_keyless_entity_with_pushdown_empty_projection(bool async)
+    {
+        var exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(() => base.Count_over_keyless_entity_with_pushdown_empty_projection(async));
+
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
+    }
 
     private void AssertSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);

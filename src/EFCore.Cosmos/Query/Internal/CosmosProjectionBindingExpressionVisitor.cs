@@ -26,6 +26,7 @@ public class CosmosProjectionBindingExpressionVisitor : ExpressionVisitor
     private readonly CosmosQueryableMethodTranslatingExpressionVisitor _queryableMethodTranslatingExpressionVisitor;
     private readonly CosmosSqlTranslatingExpressionVisitor _sqlTranslator;
     private readonly ITypeMappingSource _typeMappingSource;
+    private readonly CosmosAliasManager _aliasManager;
     private readonly IModel _model;
     private SelectExpression _selectExpression;
     private bool _clientEval;
@@ -45,13 +46,15 @@ public class CosmosProjectionBindingExpressionVisitor : ExpressionVisitor
         IModel model,
         CosmosQueryableMethodTranslatingExpressionVisitor queryableMethodTranslatingExpressionVisitor,
         CosmosSqlTranslatingExpressionVisitor sqlTranslator,
-        ITypeMappingSource typeMappingSource)
+        ITypeMappingSource typeMappingSource,
+        CosmosAliasManager aliasManager)
     {
         _model = model;
         _queryableMethodTranslatingExpressionVisitor = queryableMethodTranslatingExpressionVisitor;
         _sqlTranslator = sqlTranslator;
         _typeMappingSource = typeMappingSource;
         _selectExpression = null!;
+        _aliasManager = aliasManager;
     }
 
     /// <summary>
@@ -608,7 +611,7 @@ public class CosmosProjectionBindingExpressionVisitor : ExpressionVisitor
 
                     // TODO: Proper alias management (#33894).
                     var arrayReprojectionSubquery = SelectExpression.CreateForCollection(
-                        array, "i", new ScalarReferenceExpression("i", elementTypeMapping.ClrType, elementTypeMapping));
+                        array, "i", new ScalarReferenceExpression("i", elementTypeMapping.ClrType, elementTypeMapping), _aliasManager);
                     arrayReprojectionSubquery.ApplyProjection();
 
                     array = new ScalarArrayExpression(

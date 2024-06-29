@@ -244,12 +244,6 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Internal
                 resourceId, partitionKey);
 
         /// <summary>
-        ///     Azure Cosmos DB does not have an appropriate subquery for this translation.
-        /// </summary>
-        public static string NoSubqueryPushdown
-            => GetString("NoSubqueryPushdown");
-
-        /// <summary>
         ///     The expression '{sqlExpression}' in the SQL tree does not have a type mapping assigned.
         /// </summary>
         public static string NullTypeMappingInSqlTree(object? sqlExpression)
@@ -270,6 +264,12 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Internal
             => string.Format(
                 GetString("OneOfTwoValuesMustBeSet", nameof(param1), nameof(param2)),
                 param1, param2);
+
+        /// <summary>
+        ///     OrderBy isn't supported in Cosmos subqueries.
+        /// </summary>
+        public static string OrderByNotSupportedInSubqueries
+            => GetString("OrderByNotSupportedInSubqueries");
 
         /// <summary>
         ///     The entity of type '{entityType}' is mapped as a part of the document mapped to '{missingEntityType}', but there is no tracked entity of this type with the corresponding key value. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see the key values.

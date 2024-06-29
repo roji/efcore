@@ -624,48 +624,37 @@ OFFSET @__p_0 LIMIT @__p_1
 
     public override async Task Take_Skip(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Take_Skip(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Take_Skip(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.OffsetRequiresLimit, exception.Message);
     }
 
     public override async Task Take_Skip_Distinct(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Take_Skip_Distinct(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Take_Skip_Distinct(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Take_Skip_Distinct_Caching(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Take_Skip_Distinct_Caching(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Take_Skip_Distinct_Caching(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Take_Distinct_Count(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Take_Distinct_Count(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Take_Distinct_Count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Take_Where_Distinct_Count(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Take_Where_Distinct_Count(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Take_Where_Distinct_Count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override Task Queryable_simple(bool async)
@@ -818,20 +807,16 @@ OFFSET 0 LIMIT @__p_0
 
     public override async Task OrderBy_Take_Count(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.OrderBy_Take_Count(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.OrderBy_Take_Count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Take_OrderBy_Count(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Take_OrderBy_Count(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Take_OrderBy_Count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Any_simple(bool async)
@@ -1246,13 +1231,11 @@ SELECT EXISTS (
 
     public override async Task Take_with_single(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Take_with_single(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Take_with_single(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
+
 
     public override async Task Take_with_single_select_many(bool async)
     {
@@ -1264,23 +1247,31 @@ SELECT EXISTS (
 
     public override async Task Distinct_Skip(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Distinct_Skip(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Distinct_Skip(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.OffsetRequiresLimit, exception.Message);
     }
 
-    public override async Task Distinct_Skip_Take(bool async)
-    {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Distinct_Skip_Take(async),
-            CosmosStrings.NoSubqueryPushdown);
+    public override Task Distinct_Skip_Take(bool async)
+        => Fixture.NoSyncTest(
+            async, async a =>
+            {
+                await base.Distinct_Skip_Take(a);
 
-        AssertSql();
-    }
+                AssertSql(
+                    """
+@__p_0='5'
+@__p_1='10'
+
+SELECT s
+FROM (
+    SELECT DISTINCT VALUE c
+    FROM root c
+    WHERE (c["Discriminator"] = "Customer")) s
+ORDER BY s["ContactName"]
+OFFSET @__p_0 LIMIT @__p_1
+""");
+            });
 
     public override async Task Skip_Distinct(bool async)
     {
@@ -1537,22 +1528,31 @@ OFFSET 0 LIMIT @__p_0
 """);
             });
 
-    public override async Task Distinct_Take(bool async)
-    {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Distinct_Take(async),
-            CosmosStrings.NoSubqueryPushdown);
+    public override Task Distinct_Take(bool async)
+        => Fixture.NoSyncTest(
+            async, async a =>
+            {
+                await base.Distinct_Take(a);
 
-        AssertSql();
-    }
+                AssertSql(
+                    """
+@__p_0='5'
+
+SELECT s
+FROM (
+    SELECT DISTINCT VALUE c
+    FROM root c
+    WHERE (c["Discriminator"] = "Order")) s
+ORDER BY s["OrderID"]
+OFFSET 0 LIMIT @__p_0
+""");
+            });
 
     public override async Task Distinct_Take_Count(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Distinct_Take_Count(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Distinct_Take_Count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task OrderBy_shadow(bool async)
@@ -1943,12 +1943,9 @@ WHERE ((c["Discriminator"] = "Customer") AND (((c["ContactName"] != null) ? c["C
 
     public override async Task Take_skip_null_coalesce_operator(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Take_skip_null_coalesce_operator(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Take_skip_null_coalesce_operator(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Select_take_null_coalesce_operator(bool async)
@@ -1980,32 +1977,23 @@ OFFSET 0 LIMIT @__p_0
 
     public override async Task Select_take_skip_null_coalesce_operator(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Select_take_skip_null_coalesce_operator(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Select_take_skip_null_coalesce_operator(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Select_take_skip_null_coalesce_operator2(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Select_take_skip_null_coalesce_operator2(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Select_take_skip_null_coalesce_operator2(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Select_take_skip_null_coalesce_operator3(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Select_take_skip_null_coalesce_operator3(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Select_take_skip_null_coalesce_operator3(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Selected_column_can_coalesce(bool async)
@@ -2796,65 +2784,39 @@ OFFSET @__p_0 LIMIT @__p_1
 
     public override async Task OrderBy_skip_skip_take(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.OrderBy_skip_skip_take(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.OrderBy_skip_skip_take(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task OrderBy_skip_take_take(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.OrderBy_skip_take_take(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(() => base.OrderBy_skip_take_take(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task OrderBy_skip_take_take_take_take(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.OrderBy_skip_take_take_take_take(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.OrderBy_skip_take_take_take_take(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
+
 
     public override async Task OrderBy_skip_take_skip_take_skip(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.OrderBy_skip_take_skip_take_skip(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.OrderBy_skip_take_skip_take_skip(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.OffsetRequiresLimit, exception.Message);
     }
 
     public override async Task OrderBy_skip_take_distinct(bool async)
     {
-        // Always throws for sync.
-        if (async)
-        {
-            // Cosmos client evaluation. Issue #17246.
-            await Assert.ThrowsAsync<CosmosException>(
-                async () => await base.OrderBy_skip_take_distinct(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.OrderBy_skip_take_distinct(async));
 
-            AssertSql(
-                """
-@__p_0='5'
-@__p_1='15'
-
-SELECT DISTINCT c
-FROM root c
-WHERE (c["Discriminator"] = "Customer")
-ORDER BY c["ContactTitle"], c["ContactName"]
-OFFSET @__p_0 LIMIT @__p_1
-""");
-        }
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task OrderBy_coalesce_take_distinct(bool async)
@@ -2881,53 +2843,32 @@ OFFSET 0 LIMIT @__p_0
 
     public override async Task OrderBy_coalesce_skip_take_distinct(bool async)
     {
-        // Always throws for sync.
-        if (async)
-        {
-            // Cosmos client evaluation. Issue #17246.
-            await Assert.ThrowsAsync<CosmosException>(
-                async () => await base.OrderBy_coalesce_skip_take_distinct(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.OrderBy_coalesce_skip_take_distinct(async));
 
-            AssertSql(
-                """
-@__p_0='5'
-@__p_1='15'
-
-SELECT DISTINCT c
-FROM root c
-WHERE (c["Discriminator"] = "Product")
-ORDER BY ((c["UnitPrice"] != null) ? c["UnitPrice"] : 0.0)
-OFFSET @__p_0 LIMIT @__p_1
-""");
-        }
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task OrderBy_coalesce_skip_take_distinct_take(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.OrderBy_coalesce_skip_take_distinct_take(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.OrderBy_coalesce_skip_take_distinct_take(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task OrderBy_skip_take_distinct_orderby_take(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.OrderBy_skip_take_distinct_orderby_take(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.OrderBy_skip_take_distinct_orderby_take(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task No_orderby_added_for_fully_translated_manually_constructed_LOJ(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.No_orderby_added_for_fully_translated_manually_constructed_LOJ(async));
+        var exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => base.No_orderby_added_for_fully_translated_manually_constructed_LOJ(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task No_orderby_added_for_client_side_GroupJoin_dependent_to_principal_LOJ(bool async)
@@ -2948,9 +2889,11 @@ OFFSET @__p_0 LIMIT @__p_1
     public override async Task No_orderby_added_for_client_side_GroupJoin_dependent_to_principal_LOJ_with_additional_join_condition2(
         bool async)
     {
-        await base.No_orderby_added_for_client_side_GroupJoin_dependent_to_principal_LOJ_with_additional_join_condition2(async);
+        var exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => base.No_orderby_added_for_client_side_GroupJoin_dependent_to_principal_LOJ_with_additional_join_condition2(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Orderby_added_for_client_side_GroupJoin_principal_to_dependent_LOJ(bool async)
@@ -3008,20 +2951,16 @@ WHERE ((c["Discriminator"] = "Customer") AND (c["CustomerID"] = "ALFKI"))
 
     public override async Task Anonymous_member_distinct_orderby(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Anonymous_member_distinct_orderby(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Anonymous_member_distinct_orderby(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.ComplexProjectionInSubqueryNotSupported, exception.Message);
     }
 
     public override async Task Anonymous_member_distinct_result(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Anonymous_member_distinct_result(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Anonymous_member_distinct_result(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.ComplexProjectionInSubqueryNotSupported, exception.Message);
     }
 
     public override Task Anonymous_complex_distinct_where(bool async)
@@ -3040,20 +2979,16 @@ WHERE ((c["Discriminator"] = "Customer") AND ((c["CustomerID"] || c["City"]) = "
 
     public override async Task Anonymous_complex_distinct_orderby(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Anonymous_complex_distinct_orderby(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Anonymous_complex_distinct_orderby(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.ComplexProjectionInSubqueryNotSupported, exception.Message);
     }
 
     public override async Task Anonymous_complex_distinct_result(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Anonymous_complex_distinct_result(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Anonymous_complex_distinct_orderby(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.ComplexProjectionInSubqueryNotSupported, exception.Message);
     }
 
     public override async Task Anonymous_complex_orderby(bool async)
@@ -3098,20 +3033,16 @@ WHERE ((c["Discriminator"] = "Customer") AND (c["CustomerID"] = "ALFKI"))
 
     public override async Task DTO_member_distinct_orderby(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.DTO_member_distinct_orderby(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.DTO_member_distinct_orderby(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.ComplexProjectionInSubqueryNotSupported, exception.Message);
     }
 
     public override async Task DTO_member_distinct_result(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.DTO_member_distinct_result(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.DTO_member_distinct_result(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.ComplexProjectionInSubqueryNotSupported, exception.Message);
     }
 
     public override Task DTO_complex_distinct_where(bool async)
@@ -3130,39 +3061,23 @@ WHERE ((c["Discriminator"] = "Customer") AND ((c["CustomerID"] || c["City"]) = "
 
     public override async Task DTO_complex_distinct_orderby(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.DTO_complex_distinct_orderby(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.DTO_complex_distinct_orderby(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.ComplexProjectionInSubqueryNotSupported, exception.Message);
     }
 
     public override async Task DTO_complex_distinct_result(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.DTO_complex_distinct_result(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.DTO_complex_distinct_result(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.ComplexProjectionInSubqueryNotSupported, exception.Message);
     }
 
     public override async Task DTO_complex_orderby(bool async)
     {
-        // Always throws for sync.
-        if (async)
-        {
-            // Cosmos client evaluation. Issue #17246.
-            await Assert.ThrowsAsync<CosmosException>(
-                async () => await base.DTO_complex_orderby(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.DTO_complex_orderby(async));
 
-            AssertSql(
-                """
-SELECT (c["CustomerID"] || c["City"]) AS Property
-FROM root c
-WHERE (c["Discriminator"] = "Customer")
-ORDER BY (c["CustomerID"] || c["City"])
-""");
-        }
+        Assert.Equal(CosmosStrings.ComplexProjectionInSubqueryNotSupported, exception.Message);
     }
 
     public override async Task DTO_subquery_orderby(bool async)
@@ -3226,34 +3141,30 @@ WHERE ((c["Discriminator"] = "Order") AND (c["OrderID"] = 10300))
 
     public override async Task Select_take_count(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Select_take_count(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Select_take_count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Select_orderBy_take_count(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Select_orderBy_take_count(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Select_orderBy_take_count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Select_take_long_count(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Select_take_long_count(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Select_take_long_count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Select_orderBy_take_long_count(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Select_orderBy_take_long_count(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Select_orderBy_take_long_count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Select_take_max(bool async)
@@ -3290,34 +3201,30 @@ WHERE ((c["Discriminator"] = "Order") AND (c["OrderID"] = 10300))
 
     public override async Task Select_skip_count(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Select_skip_count(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Select_skip_count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Select_orderBy_skip_count(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Select_orderBy_skip_count(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Select_orderBy_skip_count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Select_skip_long_count(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Select_skip_long_count(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Select_skip_long_count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Select_orderBy_skip_long_count(bool async)
     {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Select_orderBy_skip_long_count(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Select_orderBy_skip_long_count(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task Select_skip_max(bool async)
@@ -3352,21 +3259,37 @@ WHERE ((c["Discriminator"] = "Order") AND (c["OrderID"] = 10300))
         AssertSql();
     }
 
-    public override async Task Select_distinct_count(bool async)
-    {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Select_distinct_count(async));
+    public override Task Select_distinct_count(bool async)
+        => Fixture.NoSyncTest(
+            async, async a =>
+            {
+                await base.Select_distinct_count(a);
 
-        AssertSql();
-    }
+                AssertSql(
+                    """
+SELECT COUNT(1) AS c
+FROM (
+    SELECT DISTINCT VALUE c
+    FROM root c
+    WHERE (c["Discriminator"] = "Customer")) s
+""");
+            });
 
-    public override async Task Select_distinct_long_count(bool async)
-    {
-        // Cosmos client evaluation. Issue #17246.
-        await AssertTranslationFailed(() => base.Select_distinct_long_count(async));
+    public override Task Select_distinct_long_count(bool async)
+        => Fixture.NoSyncTest(
+            async, async a =>
+            {
+                await base.Select_distinct_long_count(a);
 
-        AssertSql();
-    }
+                AssertSql(
+                    """
+SELECT COUNT(1) AS c
+FROM (
+    SELECT DISTINCT VALUE c
+    FROM root c
+    WHERE (c["Discriminator"] = "Customer")) s
+""");
+            });
 
     public override async Task Select_distinct_max(bool async)
     {
@@ -4296,15 +4219,14 @@ WHERE ((c["Discriminator"] = "Customer") AND c["CustomerID"] IN (null, "ALFKI"))
         AssertSql();
     }
 
-    public override async Task Distinct_followed_by_ordering_on_condition(bool async)
-    {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Distinct_followed_by_ordering_on_condition(async),
-            CosmosStrings.NoSubqueryPushdown);
+    public override Task Distinct_followed_by_ordering_on_condition(bool async)
+        => Fixture.NoSyncTest(
+            async, async a =>
+            {
+                await base.Distinct_followed_by_ordering_on_condition(a);
 
-        AssertSql();
-    }
+                AssertSql();
+            });
 
     public override async Task DefaultIfEmpty_Sum_over_collection_navigation(bool async)
     {

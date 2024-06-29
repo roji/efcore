@@ -123,7 +123,8 @@ public abstract class OwnedQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Query_when_subquery(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<OwnedPerson>().Distinct()
+            ss => ss.Set<OwnedPerson>()
+                .Distinct()
                 .OrderBy(p => p.Id)
                 .Take(5)
                 .Select(op => new { op }),

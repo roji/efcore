@@ -55,9 +55,10 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             _memberTranslatorProvider,
             _methodCallTranslatorProvider,
             this);
-        _projectionBindingExpressionVisitor =
-            new CosmosProjectionBindingExpressionVisitor(_queryCompilationContext.Model, this, _sqlTranslator, _typeMappingSource);
         _aliasManager = queryCompilationContext.AliasManager;
+        _projectionBindingExpressionVisitor =
+            new CosmosProjectionBindingExpressionVisitor(
+                _queryCompilationContext.Model, this, _sqlTranslator, _typeMappingSource, _aliasManager);
         _subquery = false;
     }
 
@@ -83,9 +84,10 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             _memberTranslatorProvider,
             _methodCallTranslatorProvider,
             parentVisitor);
-        _projectionBindingExpressionVisitor =
-            new CosmosProjectionBindingExpressionVisitor(_queryCompilationContext.Model, this, _sqlTranslator, _typeMappingSource);
         _aliasManager = parentVisitor._aliasManager;
+        _projectionBindingExpressionVisitor =
+            new CosmosProjectionBindingExpressionVisitor(
+                _queryCompilationContext.Model, this, _sqlTranslator, _typeMappingSource, _aliasManager);
         _subquery = true;
     }
 
@@ -280,7 +282,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
 
                         if (translation is not null)
                         {
-                            var finalShapedQuery = CreateShapedQueryExpression(new SelectExpression(translation), boundMember.Type);
+                            var finalShapedQuery = CreateShapedQueryExpression(
+                                new SelectExpression(translation, _aliasManager), boundMember.Type);
                             return finalShapedQuery.UpdateResultCardinality(
                                 returnDefault ? ResultCardinality.SingleOrDefault : ResultCardinality.Single);
                         }
@@ -309,7 +312,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                 var alias = _aliasManager.GenerateSourceAlias(fromSql);
                 var selectExpression = new SelectExpression(
                     new SourceExpression(fromSql, alias),
-                    new EntityProjectionExpression(new ObjectReferenceExpression(entityType, alias), entityType));
+                    new EntityProjectionExpression(new ObjectReferenceExpression(entityType, alias), entityType),
+                    _aliasManager);
                 return CreateShapedQueryExpression(entityType, selectExpression);
 
             default:
@@ -358,6 +362,7 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
         var selectExpression = new SelectExpression(
             new SourceExpression(new ObjectReferenceExpression(entityType, "root"), alias),
             new EntityProjectionExpression(new ObjectReferenceExpression(entityType, alias), entityType),
+            _aliasManager,
             _readItemInfo);
 
         // Add discriminator predicate
@@ -371,7 +376,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                 var discriminatorColumn = ((EntityProjectionExpression)selectExpression.GetMappedProjection(new ProjectionMember()))
                     .BindProperty(discriminatorProperty, clientEval: false);
 
-                selectExpression.ApplyPredicate(
+                ApplyPredicate(
+                    selectExpression,
                     _sqlExpressionFactory.Equal(
                         (SqlExpression)discriminatorColumn,
                         _sqlExpressionFactory.Constant(concreteEntityType.GetDiscriminatorValue())));
@@ -384,7 +390,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             var discriminatorColumn = ((EntityProjectionExpression)selectExpression.GetMappedProjection(new ProjectionMember()))
                 .BindProperty(discriminatorProperty, clientEval: false);
 
-            selectExpression.ApplyPredicate(
+            ApplyPredicate(
+                selectExpression,
                 _sqlExpressionFactory.In(
                     (SqlExpression)discriminatorColumn,
                     concreteEntityTypes.Select(et => _sqlExpressionFactory.Constant(et.GetDiscriminatorValue())).ToArray()));
@@ -468,7 +475,7 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                 _sqlExpressionFactory.Function(
                     "ARRAY_LENGTH", new[] { array }, typeof(int), _typeMappingSource.FindMapping(typeof(int))),
                     _sqlExpressionFactory.Constant(0));
-            var select = new SelectExpression(simplifiedTranslation);
+            var select = new SelectExpression(simplifiedTranslation, _aliasManager);
 
             return source.Update(select, new ProjectionBindingExpression(select, new ProjectionMember(), typeof(int)));
         }
@@ -483,7 +490,7 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
         }
 
         var translation = _sqlExpressionFactory.Exists(subquery);
-        var selectExpression = new SelectExpression(translation);
+        var selectExpression = new SelectExpression(translation, _aliasManager);
 
         return source.Update(
             selectExpression,
@@ -553,12 +560,12 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             if (array is ArrayConstantExpression arrayConstant)
             {
                 var inExpression = _sqlExpressionFactory.In(translatedItem, arrayConstant.Items);
-                return source.Update(new SelectExpression(inExpression), source.ShaperExpression);
+                return source.Update(new SelectExpression(inExpression, _aliasManager), source.ShaperExpression);
             }
 
             (translatedItem, scalarArray) = _sqlExpressionFactory.ApplyTypeMappingsOnItemAndArray(translatedItem, scalarArray);
             var simplifiedTranslation = _sqlExpressionFactory.Function("ARRAY_CONTAINS", [scalarArray, translatedItem], typeof(bool));
-            return source.UpdateQueryExpression(new SelectExpression(simplifiedTranslation));
+            return source.UpdateQueryExpression(new SelectExpression(simplifiedTranslation, _aliasManager));
         }
 
         // Translate to EXISTS
@@ -596,7 +603,15 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
     /// </summary>
     protected override ShapedQueryExpression TranslateDistinct(ShapedQueryExpression source)
     {
-        ((SelectExpression)source.QueryExpression).ApplyDistinct();
+        var select = (SelectExpression)source.QueryExpression;
+
+        // TODO: #34123
+        // if (select.Limit is not null || select.Offset is not null)
+        // {
+        //     select.PushdownIntoSubquery();
+        // }
+
+        select.ApplyDistinct();
 
         return source;
     }
@@ -646,7 +661,7 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                         translation, TranslateExpression(translation.Type.GetDefaultValueConstant())!);
                 }
 
-                var translatedSelect = new SelectExpression(translation);
+                var translatedSelect = new SelectExpression(translation, _aliasManager);
                 return source.Update(
                     translatedSelect,
                     new ProjectionBindingExpression(translatedSelect, new ProjectionMember(), element.Type));
@@ -670,7 +685,9 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                 }
 
                 var translatedSelect =
-                    new SelectExpression(new EntityProjectionExpression(translation, (IEntityType)projectedStructuralTypeShaper.StructuralType));
+                    new SelectExpression(
+                        new EntityProjectionExpression(translation, (IEntityType)projectedStructuralTypeShaper.StructuralType),
+                        _aliasManager);
                 return source.Update(
                     translatedSelect,
                     new StructuralTypeShaperExpression(
@@ -696,8 +713,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             _queryCompilationContext.Logger.RowLimitingOperationWithoutOrderByWarning();
         }
 
-        select.ApplyOffset(translatedIndex);
-        select.ApplyLimit(TranslateExpression(Expression.Constant(1))!);
+        ApplyOffset(select, translatedIndex);
+        ApplyLimit(select, TranslateExpression(Expression.Constant(1))!);
 
         return null;
     }
@@ -744,13 +761,13 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             return TranslateElementAtOrDefault(source, Expression.Constant(0), returnDefault);
         }
 
-        var selectExpression = (SelectExpression)source.QueryExpression;
-        if (selectExpression is { Predicate: null, Orderings: [] })
+        var select = (SelectExpression)source.QueryExpression;
+        if (select is { Predicate: null, Orderings: [] })
         {
             _queryCompilationContext.Logger.FirstWithoutOrderByAndFilterWarning();
         }
 
-        selectExpression.ApplyLimit(TranslateExpression(Expression.Constant(1))!);
+        ApplyLimit(select, TranslateExpression(Expression.Constant(1))!);
 
         return source.ShaperExpression.Type != returnType
             ? source.UpdateShaperExpression(Expression.Convert(source.ShaperExpression, returnType))
@@ -832,9 +849,9 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             source = translatedSource;
         }
 
-        var selectExpression = (SelectExpression)source.QueryExpression;
-        selectExpression.ReverseOrderings();
-        selectExpression.ApplyLimit(TranslateExpression(Expression.Constant(1))!);
+        var select = (SelectExpression)source.QueryExpression;
+        select.ReverseOrderings();
+        ApplyLimit(select, TranslateExpression(Expression.Constant(1))!);
 
         return source.ShaperExpression.Type != returnType
             ? source.UpdateShaperExpression(Expression.Convert(source.ShaperExpression, returnType))
@@ -957,7 +974,7 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
         var selectExpression = (SelectExpression)source.QueryExpression;
         if (translation is not SqlConstantExpression { Value: true })
         {
-            selectExpression.ApplyPredicate(translation);
+            ApplyPredicate(selectExpression, translation);
         }
 
         var baseType = entityType.GetAllBaseTypes().SingleOrDefault(et => et.ClrType == resultType);
@@ -993,9 +1010,16 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
         LambdaExpression keySelector,
         bool ascending)
     {
+        var select = (SelectExpression)source.QueryExpression;
+
+        if (select.IsDistinct || select.Limit is not null || select.Offset is not null)
+        {
+            select.PushdownIntoSubquery();
+        }
+
         if (TranslateLambdaExpression(source, keySelector) is SqlExpression translation)
         {
-            ((SelectExpression)source.QueryExpression).ApplyOrdering(new OrderingExpression(translation, ascending));
+            select.ApplyOrdering(new OrderingExpression(translation, ascending));
 
             return source;
         }
@@ -1011,14 +1035,14 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
     /// </summary>
     protected override ShapedQueryExpression? TranslateReverse(ShapedQueryExpression source)
     {
-        var selectExpression = (SelectExpression)source.QueryExpression;
-        if (selectExpression.Orderings.Count == 0)
+        var select = (SelectExpression)source.QueryExpression;
+        if (select.Orderings.Count == 0)
         {
             AddTranslationErrorDetails(CosmosStrings.MissingOrderingInSelectExpression);
             return null;
         }
 
-        selectExpression.ReverseOrderings();
+        select.ReverseOrderings();
 
         return source;
     }
@@ -1136,8 +1160,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             return TranslateElementAtOrDefault(source, Expression.Constant(0), returnDefault);
         }
 
-        var selectExpression = (SelectExpression)source.QueryExpression;
-        selectExpression.ApplyLimit(TranslateExpression(Expression.Constant(2))!);
+        var select = (SelectExpression)source.QueryExpression;
+        ApplyLimit(select, TranslateExpression(Expression.Constant(2))!);
 
         return source.ShaperExpression.Type == returnType
             ? source
@@ -1169,6 +1193,7 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                 ? a
                 : null;
 
+        // TODO: Deduplicate with the LIMIT/OFFSET->ARRAY_SLICE transformation logic in SelectExpression.PushdownIntoSubquery
         switch (array)
         {
             // ElementAtOrDefault over an array of scalars
@@ -1183,11 +1208,12 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                 var translatedSelect = SelectExpression.CreateForCollection(
                     slice,
                     alias,
-                    new ScalarReferenceExpression(alias, element.Type, element.TypeMapping));
+                    new ScalarReferenceExpression(alias, element.Type, element.TypeMapping),
+                    _aliasManager);
                 return source.UpdateQueryExpression(translatedSelect);
             }
 
-            // ElementAtOrDefault over an array os structural types
+            // ElementAtOrDefault over an array of structural types
             case not null when projectedStructuralTypeShaper is not null:
             {
                 var arrayType = typeof(IEnumerable<>).MakeGenericType(projectedStructuralTypeShaper.Type);
@@ -1198,7 +1224,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                     alias,
                     new EntityProjectionExpression(
                         new ObjectReferenceExpression((IEntityType)projectedStructuralTypeShaper.StructuralType, alias),
-                        (IEntityType)projectedStructuralTypeShaper.StructuralType));
+                        (IEntityType)projectedStructuralTypeShaper.StructuralType),
+                    _aliasManager);
                 return source.Update(
                     translatedSelect,
                     new StructuralTypeShaperExpression(
@@ -1208,7 +1235,7 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             }
         }
 
-        // Translate using OFFSET/LIMIT, except in subqueries where it isn't supported
+        // Simplification to ARRAY_SLICE failed, translate using OFFSET/LIMIT, except in subqueries where it isn't supported.
         if (_subquery)
         {
             AddTranslationErrorDetails(CosmosStrings.LimitOffsetNotSupportedInSubqueries);
@@ -1224,7 +1251,7 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             _queryCompilationContext.Logger.RowLimitingOperationWithoutOrderByWarning();
         }
 
-        select.ApplyOffset(translatedCount);
+        ApplyOffset(select, translatedCount);
 
         return source;
     }
@@ -1308,7 +1335,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                 select = SelectExpression.CreateForCollection(
                     slice,
                     alias,
-                    new ScalarReferenceExpression(alias, element.Type, element.TypeMapping));
+                    new ScalarReferenceExpression(alias, element.Type, element.TypeMapping),
+                    _aliasManager);
                 return source.UpdateQueryExpression(select);
             }
 
@@ -1327,7 +1355,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                     alias,
                     new EntityProjectionExpression(
                         new ObjectReferenceExpression((IEntityType)projectedStructuralTypeShaper.StructuralType, alias),
-                        (IEntityType)projectedStructuralTypeShaper.StructuralType));
+                        (IEntityType)projectedStructuralTypeShaper.StructuralType),
+                    _aliasManager);
                 return source.Update(
                     translatedSelect,
                     new StructuralTypeShaperExpression(
@@ -1337,7 +1366,7 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             }
         }
 
-        // Translate using OFFSET/LIMIT, except in subqueries where it isn't supported
+        // Simplification to ARRAY_SLICE failed, translate using OFFSET/LIMIT, except in subqueries where it isn't supported.
         if (_subquery)
         {
             AddTranslationErrorDetails(CosmosStrings.LimitOffsetNotSupportedInSubqueries);
@@ -1353,7 +1382,7 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             _queryCompilationContext.Logger.RowLimitingOperationWithoutOrderByWarning();
         }
 
-        select.ApplyLimit(translatedCount);
+        ApplyLimit(select, translatedCount);
 
         return source;
     }
@@ -1402,7 +1431,9 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
     /// </summary>
     protected override ShapedQueryExpression? TranslateWhere(ShapedQueryExpression source, LambdaExpression predicate)
     {
-        if (source.ShaperExpression is StructuralTypeShaperExpression { StructuralType: IEntityType entityType } entityShaperExpression
+        var select = (SelectExpression)source.QueryExpression;
+
+        if (source.ShaperExpression is StructuralTypeShaperExpression { StructuralType: IEntityType entityType }
             && entityType.GetPartitionKeyPropertyNames().FirstOrDefault() != null)
         {
             List<(Expression Expression, IProperty Property)?> partitionKeyValues = new();
@@ -1430,9 +1461,15 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
             }
         }
 
+        // TODO: #34123
+        // if (select.Limit is not null || select.Offset is not null)
+        // {
+        //     select.PushdownIntoSubquery();
+        // }
+
         if (TranslateLambdaExpression(source, predicate) is SqlExpression translation)
         {
-            ((SelectExpression)source.QueryExpression).ApplyPredicate(translation);
+            select.ApplyPredicate(translation);
 
             return source;
         }
@@ -1585,7 +1622,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                     var select = SelectExpression.CreateForCollection(
                         shaper.ValueBufferExpression,
                         sourceAlias,
-                        projection);
+                        projection,
+                        _aliasManager);
                     return CreateShapedQueryExpression(targetEntityType, select);
                 }
 
@@ -1600,7 +1638,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                     var select = SelectExpression.CreateForCollection(
                         sqlExpression,
                         sourceAlias,
-                        new ScalarReferenceExpression(sourceAlias, elementClrType, sqlExpression.TypeMapping!.ElementTypeMapping!));
+                        new ScalarReferenceExpression(sourceAlias, elementClrType, sqlExpression.TypeMapping!.ElementTypeMapping!),
+                        _aliasManager);
                     return CreateShapedQueryExpression(select, elementClrType);
                 }
             }
@@ -1644,7 +1683,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
         var select = SelectExpression.CreateForCollection(
             inlineArray,
             sourceAlias,
-            new ScalarReferenceExpression(sourceAlias, elementClrType, elementTypeMapping));
+            new ScalarReferenceExpression(sourceAlias, elementClrType, elementTypeMapping),
+            _aliasManager);
         return CreateShapedQueryExpression(select, elementClrType);
     }
 
@@ -1674,11 +1714,43 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
         var select = SelectExpression.CreateForCollection(
             sqlParameterExpression,
             sourceAlias,
-            new ScalarReferenceExpression(sourceAlias, elementClrType, elementTypeMapping));
+            new ScalarReferenceExpression(sourceAlias, elementClrType, elementTypeMapping),
+            _aliasManager);
         return CreateShapedQueryExpression(select, elementClrType);
     }
 
     #endregion Queryable collection support
+
+    private void ApplyPredicate(SelectExpression select, SqlExpression predicate)
+    {
+        // TODO: #34123
+        // if (select.Limit is not null || select.Offset is not null)
+        // {
+        //     select.PushdownIntoSubquery();
+        // }
+
+        select.ApplyPredicate(predicate);
+    }
+
+    private void ApplyOffset(SelectExpression select, SqlExpression offset)
+    {
+        if (select.Limit is not null || select.Offset is not null)
+        {
+            select.PushdownIntoSubquery();
+        }
+
+        select.ApplyOffset(offset);
+    }
+
+    private void ApplyLimit(SelectExpression select, SqlExpression limit)
+    {
+        if (select.Limit is not null)
+        {
+            select.PushdownIntoSubquery();
+        }
+
+        select.ApplyLimit(limit);
+    }
 
     private ShapedQueryExpression? TranslateCountLongCount(ShapedQueryExpression source, LambdaExpression? predicate, Type returnType)
     {
@@ -1687,22 +1759,22 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
         {
             var simplifiedTranslation = _sqlExpressionFactory.Function(
                 "ARRAY_LENGTH", new[] { array }, typeof(int), _typeMappingSource.FindMapping(typeof(int)));
-            var select = new SelectExpression(simplifiedTranslation);
+            var simplifiedSelect = new SelectExpression(simplifiedTranslation, _aliasManager);
 
-            return source.Update(select, new ProjectionBindingExpression(select, new ProjectionMember(), typeof(int)));
+            return source.Update(simplifiedSelect, new ProjectionBindingExpression(simplifiedSelect, new ProjectionMember(), typeof(int)));
         }
 
-        var selectExpression = (SelectExpression)source.QueryExpression;
-
-        // TODO: Subquery pushdown, #33968
-        if (selectExpression.IsDistinct
-            || selectExpression.Limit != null
-            || selectExpression.Offset != null)
+        if (source.QueryExpression is not SelectExpression select)
         {
             return null;
         }
 
-        if (predicate != null)
+        if (select.IsDistinct || select.Limit is not null || select.Offset is not null)
+        {
+            select.PushdownIntoSubquery();
+        }
+
+        if (predicate is not null)
         {
             if (TranslateWhere(source, predicate) is not ShapedQueryExpression translatedSource)
             {
@@ -1717,8 +1789,8 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
 
         var projectionMapping = new Dictionary<ProjectionMember, Expression> { { new ProjectionMember(), translation } };
 
-        selectExpression.ClearOrdering();
-        selectExpression.ReplaceProjectionMapping(projectionMapping);
+        select.ClearOrdering();
+        select.ReplaceProjectionMapping(projectionMapping);
         return source.UpdateShaperExpression(
             Expression.Convert(
                 new ProjectionBindingExpression(source.QueryExpression, new ProjectionMember(), returnType.MakeNullable()),
@@ -1746,7 +1818,7 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                 var translation = _sqlExpressionFactory.Function(functionName, [array1, array2], arrayType, arrayTypeMapping);
                 var alias = _aliasManager.GenerateSourceAlias(translation);
                 var select = SelectExpression.CreateForCollection(
-                    translation, alias, new ScalarReferenceExpression(alias, projection1.Type, typeMapping));
+                    translation, alias, new ScalarReferenceExpression(alias, projection1.Type, typeMapping), _aliasManager);
                 return source1.UpdateQueryExpression(select);
             }
 
@@ -1758,7 +1830,7 @@ public class CosmosQueryableMethodTranslatingExpressionVisitor : QueryableMethod
                 var translation = new ObjectFunctionExpression(functionName, [array1, array2], arrayType);
                 var alias = _aliasManager.GenerateSourceAlias(translation);
                 var select = SelectExpression.CreateForCollection(
-                    translation, alias, new ObjectReferenceExpression((IEntityType)structuralType1, alias));
+                    translation, alias, new ObjectReferenceExpression((IEntityType)structuralType1, alias), _aliasManager);
                 return CreateShapedQueryExpression(select, structuralType1.ClrType);
             }
         }

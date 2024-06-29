@@ -309,9 +309,25 @@ WHERE (c["Discriminator"] IN ("OwnedPerson", "Branch", "LeafB", "LeafA") AND (c[
 """);
             });
 
-    // TODO: Subquery pushdown, #33968
     public override Task Query_when_subquery(bool async)
-        => AssertTranslationFailed(() => base.Query_when_subquery(async));
+        => CosmosTestHelpers.Instance.NoSyncTest(
+            async, async a =>
+            {
+                await base.Query_when_subquery(a);
+
+                AssertSql(
+                    """
+@__p_0='5'
+
+SELECT s
+FROM (
+    SELECT DISTINCT VALUE c
+    FROM root c
+    WHERE c["Discriminator"] IN ("OwnedPerson", "Branch", "LeafB", "LeafA")) s
+ORDER BY s["Id"]
+OFFSET 0 LIMIT @__p_0
+""");
+            });
 
     public override Task Project_owned_reference_navigation_which_owns_additional(bool async)
         => CosmosTestHelpers.Instance.NoSyncTest(
@@ -1207,17 +1223,23 @@ WHERE (c["Discriminator"] IN ("OwnedPerson", "Branch", "LeafB", "LeafA") AND (Da
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
-    public override async Task Distinct_over_owned_collection(bool async)
-    {
-        // Always throws for sync.
-        if (async)
-        {
-            // TODO: Subquery pushdown, #33968
-            await AssertTranslationFailed(() => base.Distinct_over_owned_collection(async));
+    public override Task Distinct_over_owned_collection(bool async)
+        => CosmosTestHelpers.Instance.NoSyncTest(
+            async, async a =>
+            {
+                await base.Distinct_over_owned_collection(a);
 
-            AssertSql();
-        }
-    }
+                AssertSql(
+                    """
+SELECT c
+FROM root c
+WHERE (c["Discriminator"] IN ("OwnedPerson", "Branch", "LeafB", "LeafA") AND ((
+    SELECT VALUE COUNT(1)
+    FROM (
+        SELECT DISTINCT VALUE o
+        FROM o IN c["Orders"]) s) = 2))
+""");
+            });
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]

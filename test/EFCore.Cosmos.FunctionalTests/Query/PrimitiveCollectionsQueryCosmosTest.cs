@@ -1170,6 +1170,20 @@ WHERE ((c["Discriminator"] = "PrimitiveCollectionsEntity") AND ARRAY_CONTAINS(AR
 """);
             });
 
+    public override Task Column_collection_Take_Skip(bool async)
+        => CosmosTestHelpers.Instance.NoSyncTest(
+            async, async a =>
+            {
+                await base.Column_collection_Take_Skip(a);
+
+                AssertSql(
+                    """
+SELECT c
+FROM root c
+WHERE ((c["Discriminator"] = "PrimitiveCollectionsEntity") AND ARRAY_CONTAINS(ARRAY_SLICE(c["Ints"], 1, 2), 11))
+""");
+            });
+
     public override Task Column_collection_Where_Skip(bool async)
         => CosmosTestHelpers.Instance.NoSyncTest(
             async, async a =>
@@ -1291,13 +1305,23 @@ WHERE ((c["Discriminator"] = "PrimitiveCollectionsEntity") AND (ARRAY_LENGTH(c["
 """);
             });
 
-    public override async Task Column_collection_Distinct(bool async)
-    {
-        // TODO: Subquery pushdown, #33968
-        await AssertTranslationFailed(() => base.Column_collection_Distinct(async));
+    public override Task Column_collection_Distinct(bool async)
+        => CosmosTestHelpers.Instance.NoSyncTest(
+            async, async a =>
+            {
+                await base.Column_collection_Distinct(a);
 
-        AssertSql();
-    }
+                AssertSql(
+                    """
+SELECT c
+FROM root c
+WHERE ((c["Discriminator"] = "PrimitiveCollectionsEntity") AND ((
+    SELECT VALUE COUNT(1)
+    FROM (
+        SELECT DISTINCT VALUE i
+        FROM i IN c["Ints"]) s) = 3))
+""");
+            });
 
     public override Task Column_collection_SelectMany(bool async)
         => CosmosTestHelpers.Instance.NoSyncTest(

@@ -24,14 +24,10 @@ public sealed class ProjectionMember
     ///     Creates a new instance of the <see cref="ProjectionMember" /> class with empty MemberInfo chain.
     /// </summary>
     public ProjectionMember()
-    {
-        _memberChain = new List<MemberInfo>();
-    }
+        => _memberChain = new List<MemberInfo>();
 
     private ProjectionMember(IList<MemberInfo> memberChain)
-    {
-        _memberChain = memberChain;
-    }
+        => _memberChain = memberChain;
 
     /// <summary>
     ///     Append given MemberInfo to existing chain at the end.
@@ -67,6 +63,12 @@ public sealed class ProjectionMember
     /// </remarks>
     public MemberInfo? Last
         => _memberChain.LastOrDefault();
+
+    /// <summary>
+    ///     Returns whether this projection member is empty.
+    /// </summary>
+    public bool IsEmpty
+        => _memberChain.Count == 0;
 
     /// <inheritdoc />
     [DebuggerStepThrough]

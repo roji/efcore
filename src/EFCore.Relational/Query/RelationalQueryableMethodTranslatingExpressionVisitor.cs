@@ -1043,15 +1043,14 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
         LambdaExpression keySelector,
         bool ascending)
     {
-        var translation = TranslateLambdaExpression(source, keySelector);
-        if (translation == null)
+        if (TranslateLambdaExpression(source, keySelector) is SqlExpression translation)
         {
-            return null;
+            ((SelectExpression)source.QueryExpression).ApplyOrdering(new OrderingExpression(translation, ascending));
+
+            return source;
         }
 
-        ((SelectExpression)source.QueryExpression).ApplyOrdering(new OrderingExpression(translation, ascending));
-
-        return source;
+        return null;
     }
 
     /// <inheritdoc />

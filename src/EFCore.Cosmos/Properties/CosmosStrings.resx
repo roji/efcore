@@ -243,9 +243,6 @@
   <data name="NoReadItemQueryString" xml:space="preserve">
     <value>There is no string-based representation of this query as it's executed using 'ReadItemQueryAsync({resourceId}, {partitionKey})'.</value>
   </data>
-  <data name="NoSubqueryPushdown" xml:space="preserve">
-    <value>Azure Cosmos DB does not have an appropriate subquery for this translation.</value>
-  </data>
   <data name="NullTypeMappingInSqlTree" xml:space="preserve">
     <value>The expression '{sqlExpression}' in the SQL tree does not have a type mapping assigned.</value>
   </data>
@@ -257,6 +254,9 @@
   </data>
   <data name="OneOfTwoValuesMustBeSet" xml:space="preserve">
     <value>Exactly one of '{param1}' or '{param2}' must be set.</value>
+  </data>
+  <data name="OrderByNotSupportedInSubqueries" xml:space="preserve">
+    <value>OrderBy isn't supported in Cosmos subqueries.</value>
   </data>
   <data name="OrphanedNestedDocument" xml:space="preserve">
     <value>The entity of type '{entityType}' is mapped as a part of the document mapped to '{missingEntityType}', but there is no tracked entity of this type with the corresponding key value. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see the key values.</value>

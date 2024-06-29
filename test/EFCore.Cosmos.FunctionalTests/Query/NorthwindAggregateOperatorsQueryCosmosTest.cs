@@ -1129,10 +1129,9 @@ WHERE (((c["Discriminator"] = "Order") AND (c["OrderID"] > 10)) AND (c["Customer
 
     public override async Task Count_after_client_projection(bool async)
     {
-        // Aggregates. Issue #16146.
-        await AssertTranslationFailed(() => base.Count_after_client_projection(async));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => base.Count_after_client_projection(async));
 
-        AssertSql();
+        Assert.Equal(CosmosStrings.LimitOffsetNotSupportedInSubqueries, exception.Message);
     }
 
     public override async Task OrderBy_client_Take(bool async)
@@ -1201,42 +1200,72 @@ ORDER BY c["CustomerID"]
 """);
             });
 
-    public override async Task Distinct_OrderBy(bool async)
-        // Subquery pushdown. Issue #16156.
-        => await AssertTranslationFailedWithDetails(
-            () => base.Distinct_OrderBy(async),
-            CosmosStrings.NoSubqueryPushdown);
+    public override Task Distinct_OrderBy(bool async)
+        => Fixture.NoSyncTest(
+            async, async a =>
+            {
+                await base.Distinct_OrderBy(a);
 
-    public override async Task Distinct_OrderBy2(bool async)
-        // Subquery pushdown. Issue #16156.
-        => await AssertTranslationFailedWithDetails(
-            () => base.Distinct_OrderBy2(async),
-            CosmosStrings.NoSubqueryPushdown);
+                AssertSql();
+            });
+
+    public override Task Distinct_OrderBy2(bool async)
+        => Fixture.NoSyncTest(
+            async, async a =>
+            {
+                await base.Distinct_OrderBy2(a);
+
+                AssertSql(
+                    """
+SELECT s
+FROM (
+    SELECT DISTINCT VALUE c
+    FROM root c
+    WHERE (c["Discriminator"] = "Customer")) s
+ORDER BY s["CustomerID"]
+""");
+            });
 
     public override async Task Distinct_OrderBy3(bool async)
     {
-        // Subquery pushdown. Issue #16156.
-        await AssertTranslationFailedWithDetails(
-            () => base.Distinct_OrderBy(async),
-            CosmosStrings.NoSubqueryPushdown);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await base.Distinct_OrderBy3(async));
 
-        AssertSql();
+        AssertEqual(CosmosStrings.ComplexProjectionInSubqueryNotSupported, exception.Message);
     }
 
-    public override async Task Distinct_Count(bool async)
-    {
-        // Aggregates. Issue #16146.
-        await AssertTranslationFailed(() => base.Distinct_Count(async));
+    public override Task Distinct_Count(bool async)
+        => Fixture.NoSyncTest(
+            async, async a =>
+            {
+                await base.Distinct_Count(a);
 
-        AssertSql();
-    }
+                AssertSql(
+                    """
+SELECT COUNT(1) AS c
+FROM (
+    SELECT DISTINCT VALUE c
+    FROM root c
+    WHERE (c["Discriminator"] = "Customer")) s
+""");
+            });
 
     public override async Task Select_Select_Distinct_Count(bool async)
     {
-        // Aggregates. Issue #16146.
-        await AssertTranslationFailed(() => base.Select_Select_Distinct_Count(async));
+        // Always throws for sync.
+        if (async)
+        {
+            // TODO: Seems like a Cosmos bug, need to isolate and file
+            await Assert.ThrowsAsync<EqualException>(() => base.Select_Select_Distinct_Count(async));
 
-        AssertSql();
+            AssertSql(
+                """
+SELECT COUNT(1) AS c
+FROM (
+    SELECT DISTINCT VALUE c["City"]
+    FROM root c
+    WHERE (c["Discriminator"] = "Customer")) s
+""");
+        }
     }
 
     public override Task Single_Predicate(bool async)
