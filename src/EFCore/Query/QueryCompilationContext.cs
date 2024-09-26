@@ -44,17 +44,6 @@ public class QueryCompilationContext
 
     /// <summary>
     ///     <para>
-    ///         Expression representing a not translated expression in query tree during translation phase.
-    ///     </para>
-    ///     <para>
-    ///         This property is typically used by database providers (and other extensions). It is generally
-    ///         not used in application code.
-    ///     </para>
-    /// </summary>
-    public static readonly Expression NotTranslatedExpression = new NotTranslatedExpressionType();
-
-    /// <summary>
-    ///     <para>
     ///         Names of parameters on which <see cref="EF.Constant{T}" /> was used. Such parameters are later transformed into constants.
     ///     </para>
     ///     <para>
@@ -312,18 +301,18 @@ public class QueryCompilationContext
     private static readonly MethodInfo QueryContextAddParameterMethodInfo
         = typeof(QueryContext).GetTypeInfo().GetDeclaredMethod(nameof(QueryContext.AddParameter))!;
 
-    [DebuggerDisplay("{Microsoft.EntityFrameworkCore.Query.ExpressionPrinter.Print(this), nq}")]
-    private sealed class NotTranslatedExpressionType : Expression, IPrintableExpression
-    {
-        public override Type Type
-            => typeof(object);
-
-        public override ExpressionType NodeType
-            => ExpressionType.Extension;
-
-        void IPrintableExpression.Print(ExpressionPrinter expressionPrinter)
-            => expressionPrinter.Append("!!! NotTranslated !!!");
-    }
+    // [DebuggerDisplay("{Microsoft.EntityFrameworkCore.Query.ExpressionPrinter.Print(this), nq}")]
+    // private sealed class NotTranslatedExpressionType : Expression, IPrintableExpression
+    // {
+    //     public override Type Type
+    //         => typeof(object);
+    //
+    //     public override ExpressionType NodeType
+    //         => ExpressionType.Extension;
+    //
+    //     void IPrintableExpression.Print(ExpressionPrinter expressionPrinter)
+    //         => expressionPrinter.Append("!!! NotTranslated !!!");
+    // }
 
     private sealed class RuntimeParameterConstantLifter(ILiftableConstantFactory liftableConstantFactory) : ExpressionVisitor
     {

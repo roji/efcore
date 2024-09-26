@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Runtime.ExceptionServices;
 using Microsoft.EntityFrameworkCore.Internal;
 using static Microsoft.EntityFrameworkCore.Query.QueryHelpers;
 
@@ -46,13 +47,6 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     /// </summary>
     protected virtual QueryableMethodTranslatingExpressionVisitorDependencies Dependencies { get; }
 
-    private Expression? _untranslatedExpression;
-
-    /// <summary>
-    ///     Detailed information about errors encountered during translation.
-    /// </summary>
-    public virtual string? TranslationErrorDetails { get; private set; }
-
     /// <summary>
     ///     Translates an expression to an equivalent SQL representation.
     /// </summary>
@@ -64,39 +58,23 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
 
         // Note that we only throw if a specific node is recognized as untranslatable; we need to otherwise not throw in order to allow
         // for client evaluation.
-        if (translated == QueryCompilationContext.NotTranslatedExpression && _untranslatedExpression is not null)
+        if (translated is TranslationFailedExpression { Expression: Expression untranslatableExpression, Message: var message })
         {
-            if (_untranslatedExpression is QueryRootExpression)
+            if (untranslatableExpression is QueryRootExpression)
             {
                 throw new InvalidOperationException(
-                    TranslationErrorDetails is null
-                        ? CoreStrings.QueryUnhandledQueryRootExpression(_untranslatedExpression.GetType().ShortDisplayName())
-                        : CoreStrings.TranslationFailedWithDetails(_untranslatedExpression, TranslationErrorDetails));
+                    message is null
+                        ? CoreStrings.QueryUnhandledQueryRootExpression(untranslatableExpression.GetType().ShortDisplayName())
+                        : CoreStrings.TranslationFailedWithDetails(untranslatableExpression, message));
             }
 
             throw new InvalidOperationException(
-                TranslationErrorDetails is null
-                    ? CoreStrings.TranslationFailed(_untranslatedExpression.Print())
-                    : CoreStrings.TranslationFailedWithDetails(_untranslatedExpression.Print(), TranslationErrorDetails));
+                message is null
+                    ? CoreStrings.TranslationFailed(untranslatableExpression.Print())
+                    : CoreStrings.TranslationFailedWithDetails(untranslatableExpression.Print(), message));
         }
 
         return translated;
-    }
-
-    /// <summary>
-    ///     Adds detailed information about errors encountered during translation.
-    /// </summary>
-    /// <param name="details">Error encountered during translation.</param>
-    protected virtual void AddTranslationErrorDetails(string details)
-    {
-        if (TranslationErrorDetails == null)
-        {
-            TranslationErrorDetails = details;
-        }
-        else
-        {
-            TranslationErrorDetails += Environment.NewLine + details;
-        }
     }
 
     /// <summary>
@@ -106,34 +84,24 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
 
     /// <inheritdoc />
     protected override Expression VisitExtension(Expression extensionExpression)
-    {
-        switch (extensionExpression)
+        => extensionExpression switch
         {
-            case InlineQueryRootExpression inlineQueryRootExpression:
-                return TranslateInlineQueryRoot(inlineQueryRootExpression) ?? base.VisitExtension(extensionExpression);
+            InlineQueryRootExpression inlineQueryRootExpression => TranslateInlineQueryRoot(inlineQueryRootExpression)
+                ?? base.VisitExtension(extensionExpression),
 
-            case ParameterQueryRootExpression parameterQueryRootExpression:
-                return TranslateParameterQueryRoot(parameterQueryRootExpression) ?? base.VisitExtension(extensionExpression);
+            ParameterQueryRootExpression parameterQueryRootExpression => TranslateParameterQueryRoot(parameterQueryRootExpression)
+                ?? base.VisitExtension(extensionExpression),
 
-            case QueryRootExpression queryRootExpression:
-                // This requires exact type match on query root to avoid processing query roots derived from EntityQueryRootExpression, e.g.
-                // SQL Server TemporalQueryRootExpression.
-                if (queryRootExpression.GetType() == typeof(EntityQueryRootExpression))
-                {
-                    var shapedQuery = CreateShapedQueryExpression(((EntityQueryRootExpression)extensionExpression).EntityType);
-                    if (shapedQuery is not null)
-                    {
-                        return shapedQuery;
-                    }
-                }
+            // This requires exact type match on query root to avoid processing query roots derived from EntityQueryRootExpression, e.g.
+            // SQL Server TemporalQueryRootExpression.
+            EntityQueryRootExpression entityQueryRoot when entityQueryRoot.GetType() == typeof(EntityQueryRootExpression)
+                => CreateShapedQueryExpression(entityQueryRoot.EntityType)
+                ?? (Expression)new TranslationFailedExpression(entityQueryRoot, "ShapedQueryExpression could not be created"), // TODO: string
 
-                _untranslatedExpression = queryRootExpression;
-                return QueryCompilationContext.NotTranslatedExpression;
+            QueryRootExpression queryRoot => new TranslationFailedExpression(queryRoot, "Unhandled query root, provider bug"), // TODO: string
 
-            default:
-                return base.VisitExtension(extensionExpression);
-        }
-    }
+            _ => base.VisitExtension(extensionExpression)
+        };
 
     /// <inheritdoc />
     protected override Expression VisitMethodCall(MethodCallExpression methodCallExpression)
@@ -150,17 +118,30 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
                 {
                     case nameof(EntityFrameworkQueryableExtensions.ExecuteDelete)
                         when genericMethod == EntityFrameworkQueryableExtensions.ExecuteDeleteMethodInfo:
-                        return TranslateExecuteDelete(shapedQueryExpression)
-                            ?? throw new InvalidOperationException(
+                        try
+                        {
+                            return TranslateExecuteDelete(shapedQueryExpression);
+                        }
+                        catch (Exception e)
+                        {
+                            // TODO: Possibly preserve the stack
+                            throw new InvalidOperationException(
                                 CoreStrings.NonQueryTranslationFailedWithDetails(
-                                    methodCallExpression.Print(), TranslationErrorDetails));
+                                    methodCallExpression.Print(), e.Message));
+                        }
 
                     case nameof(EntityFrameworkQueryableExtensions.ExecuteUpdate)
                         when genericMethod == EntityFrameworkQueryableExtensions.ExecuteUpdateMethodInfo:
-                        return TranslateExecuteUpdate(shapedQueryExpression, methodCallExpression.Arguments[1].UnwrapLambdaFromQuote())
-                            ?? throw new InvalidOperationException(
+                        try
+                        {
+                            return TranslateExecuteUpdate(shapedQueryExpression, methodCallExpression.Arguments[1].UnwrapLambdaFromQuote());
+                        }
+                        catch (Exception e)
+                        {
+                            throw new InvalidOperationException(
                                 CoreStrings.NonQueryTranslationFailedWithDetails(
-                                    methodCallExpression.Print(), TranslationErrorDetails));
+                                    methodCallExpression.Print(), e.Message));
+                        }
                 }
             }
         }
@@ -537,6 +518,7 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
                         LambdaExpression GetLambdaExpressionFromArgument(int argumentIndex)
                             => methodCallExpression.Arguments[argumentIndex].UnwrapLambdaFromQuote();
 
+                        // TODO: This shouldn't be needed - changed all the Translate* methods to return non-nullable ShapedQueryExpression
                         Expression CheckTranslated(ShapedQueryExpression? translated)
                         {
                             if (translated is not null)
@@ -544,13 +526,11 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
                                 return translated;
                             }
 
-                            _untranslatedExpression ??= methodCallExpression;
-
-                            return QueryCompilationContext.NotTranslatedExpression;
+                            return new TranslationFailedExpression(methodCallExpression);
                         }
                 }
             }
-            else if (source == QueryCompilationContext.NotTranslatedExpression)
+            else if (source is TranslationFailedExpression)
             {
                 return source;
             }
@@ -558,19 +538,24 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
 
         // The method isn't a LINQ operator on Queryable/QueryableExtensions.
 
-        // Identify property access, e.g. primitive collection property (context.Blogs.Where(b => b.Tags.Contains(...)))
+        // Identify property access, e.g. primitive collection property (.Where(b => b.Tags.Contains(...)))
         if (IsMemberAccess(methodCallExpression, QueryCompilationContext.Model, out var propertyAccessSource, out var propertyName)
             && TranslateMemberAccess(propertyAccessSource, propertyName) is ShapedQueryExpression translation)
         {
             return translation;
         }
 
+        // TODO: Figure out when we actually end up here - only on unknown operator?
         return _subquery
-            ? QueryCompilationContext.NotTranslatedExpression
-            : TranslationErrorDetails is null
-                ? throw new InvalidOperationException(CoreStrings.TranslationFailed(methodCallExpression.Print()))
-                : throw new InvalidOperationException(
-                    CoreStrings.TranslationFailedWithDetails(methodCallExpression.Print(), TranslationErrorDetails));
+#pragma warning disable CS0618 // Type or member is obsolete
+            ? new TranslationFailedExpression(methodCallExpression, "Unknown operator") // TODO: String
+#pragma warning restore CS0618 // Type or member is obsolete
+            : throw new InvalidOperationException(
+                CoreStrings.TranslationFailedWithDetails(methodCallExpression.Print(), "Unknown operator")); // TODO: String
+        // : TranslationErrorDetails is null
+        //     ? throw new InvalidOperationException(CoreStrings.TranslationFailed(methodCallExpression.Print()))
+        //     : throw new InvalidOperationException(
+        //         CoreStrings.TranslationFailedWithDetails(methodCallExpression.Print(), TranslationErrorDetails));
     }
 
     private sealed class EntityShaperNullableMarkingExpressionVisitor : ExpressionVisitor
@@ -594,17 +579,14 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     /// </summary>
     /// <param name="expression">The subquery expression to translate.</param>
     /// <returns>The translation of the given subquery.</returns>
-    public virtual ShapedQueryExpression? TranslateSubquery(Expression expression)
-    {
-        var subqueryVisitor = CreateSubqueryVisitor();
-        var translation = subqueryVisitor.Translate(expression) as ShapedQueryExpression;
-        if (translation == null && subqueryVisitor.TranslationErrorDetails != null)
+    public virtual Expression TranslateSubquery(Expression expression)
+        => CreateSubqueryVisitor().Translate(expression) switch
         {
-            AddTranslationErrorDetails(subqueryVisitor.TranslationErrorDetails);
-        }
+            ShapedQueryExpression shapedQuery => shapedQuery,
+            TranslationFailedExpression translationFailed => translationFailed,
 
-        return translation;
-    }
+            _ => new TranslationFailedExpression(expression, "Couldn't translate to subquery") // TODO
+        };
 
     /// <summary>
     ///     Creates a visitor customized to translate a subquery through <see cref="TranslateSubquery(Expression)" />.
@@ -1036,7 +1018,7 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     /// </summary>
     /// <param name="source">The shaped query on which the operator is applied.</param>
     /// <returns>The non query after translation.</returns>
-    protected virtual Expression? TranslateExecuteDelete(ShapedQueryExpression source)
+    protected virtual Expression TranslateExecuteDelete(ShapedQueryExpression source)
         => throw new InvalidOperationException(
             CoreStrings.ExecuteQueriesNotSupported(
                 nameof(EntityFrameworkQueryableExtensions.ExecuteDelete), nameof(EntityFrameworkQueryableExtensions.ExecuteDeleteAsync)));
@@ -1056,7 +1038,7 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     ///     statements.
     /// </param>
     /// <returns>The non query after translation.</returns>
-    protected virtual Expression? TranslateExecuteUpdate(ShapedQueryExpression source, LambdaExpression setPropertyCalls)
+    protected virtual Expression TranslateExecuteUpdate(ShapedQueryExpression source, LambdaExpression setPropertyCalls)
         => throw new InvalidOperationException(
             CoreStrings.ExecuteQueriesNotSupported(
                 nameof(EntityFrameworkQueryableExtensions.ExecuteUpdate), nameof(EntityFrameworkQueryableExtensions.ExecuteUpdateAsync)));

@@ -16,7 +16,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
         typeof(RelationalSqlTranslatingExpressionVisitor).GetTypeInfo().GetDeclaredMethod(nameof(ParameterValueExtractor))!;
 
     /// <inheritdoc />
-    protected override NonQueryExpression? TranslateExecuteUpdate(ShapedQueryExpression source, LambdaExpression setPropertyCalls)
+    protected override NonQueryExpression TranslateExecuteUpdate(ShapedQueryExpression source, LambdaExpression setPropertyCalls)
     {
         // Our source may have IncludeExpressions because of owned entities or auto-include; unwrap these, as they're meaningless for
         // ExecuteUpdate's lambdas. Note that we don't currently support updates across tables.
@@ -24,15 +24,10 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
 
         var setters = new List<(LambdaExpression PropertySelector, Expression ValueExpression)>();
         PopulateSetPropertyCalls(setPropertyCalls.Body, setters, setPropertyCalls.Parameters[0]);
-        if (TranslationErrorDetails != null)
-        {
-            return null;
-        }
 
         if (setters.Count == 0)
         {
-            AddTranslationErrorDetails(RelationalStrings.NoSetPropertyInvocation);
-            return null;
+            throw new InvalidOperationException(RelationalStrings.NoSetPropertyInvocation);
         }
 
         // Translate the setters: the left (property) selectors get translated to ColumnExpressions, the right (value) selectors to
@@ -40,17 +35,13 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
         // Note that if the query isn't natively supported, we'll do a pushdown (see PushdownWithPkInnerJoinPredicate below); if that
         // happens, we'll have to re-translate the setters over the new query (which includes a JOIN). However, we still translate here
         // since we need the target table in order to perform the check below.
-        if (!TranslateSetters(source, setters, out var translatedSetters, out var targetTable))
-        {
-            return null;
-        }
+        TranslateSetters(source, setters, out var translatedSetters, out var targetTable);
 
         if (targetTable is TpcTablesExpression tpcTablesExpression)
         {
-            AddTranslationErrorDetails(
+            throw new InvalidOperationException(
                 RelationalStrings.ExecuteOperationOnTPC(
                     nameof(EntityFrameworkQueryableExtensions.ExecuteUpdate), tpcTablesExpression.EntityType.DisplayName()));
-            return null;
         }
 
         // Check if the provider has a native translation for the update represented by the select expression.
@@ -95,23 +86,20 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                     break;
 
                 default:
-                    AddTranslationErrorDetails(RelationalStrings.InvalidArgumentToExecuteUpdate);
-                    break;
+                    throw new InvalidOperationException(RelationalStrings.InvalidArgumentToExecuteUpdate);
             }
         }
 
-        bool TranslateSetters(
+        void TranslateSetters(
             ShapedQueryExpression source,
             List<(LambdaExpression PropertySelector, Expression ValueExpression)> setters,
-            [NotNullWhen(true)] out List<ColumnValueSetter>? translatedSetters,
-            [NotNullWhen(true)] out TableExpressionBase? targetTable)
+            out List<ColumnValueSetter> translatedSetters,
+            out TableExpressionBase targetTable)
         {
             var select = (SelectExpression)source.QueryExpression;
 
-            targetTable = null;
             string? targetTableAlias = null;
             var tempTranslatedSetters = new List<ColumnValueSetter>();
-            translatedSetters = null;
 
             LambdaExpression? propertySelector;
             Expression? targetTablePropertySelector = null;
@@ -125,14 +113,12 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 // We'll bind the member manually below, so as to get the IPropertyBase it represents - that's important for later.
                 if (!IsMemberAccess(propertySelectorBody, QueryCompilationContext.Model, out var baseExpression, out var member))
                 {
-                    AddTranslationErrorDetails(RelationalStrings.InvalidPropertyInSetProperty(propertySelector.Print()));
-                    return false;
+                    throw new InvalidOperationException(RelationalStrings.InvalidPropertyInSetProperty(propertySelector.Print()));
                 }
 
                 if (!_sqlTranslator.TryBindMember(_sqlTranslator.Visit(baseExpression), member, out var translatedBaseExpression, out var propertyBase))
                 {
-                    AddTranslationErrorDetails(RelationalStrings.InvalidPropertyInSetProperty(propertySelector.Print()));
-                    return false;
+                    throw new InvalidOperationException(RelationalStrings.InvalidPropertyInSetProperty(propertySelector.Print()));
                 }
 
                 // Hack: when returning a StructuralTypeShaperExpression, _sqlTranslator returns it wrapped by a
@@ -185,7 +171,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                         if (!IsColumnOnSameTable(column, propertySelector)
                             || TranslateSqlSetterValueSelector(source, valueSelector, column) is not SqlExpression translatedValueSelector)
                         {
-                            return false;
+                            throw new InvalidOperationException(); // TODO
                         }
 
                         tempTranslatedSetters.Add(new ColumnValueSetter(column, translatedValueSelector));
@@ -206,15 +192,14 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                         if (TranslateSetterValueSelector(source, valueSelector, shaper.Type) is not Expression translatedValueSelector
                             || !TryProcessComplexType(shaper, translatedValueSelector))
                         {
-                            return false;
+                            throw new InvalidOperationException(); // TODO
                         }
 
                         break;
                     }
 
                     default:
-                        AddTranslationErrorDetails(RelationalStrings.InvalidPropertyInSetProperty(propertySelector.Print()));
-                        return false;
+                        throw new InvalidOperationException(RelationalStrings.InvalidPropertyInSetProperty(propertySelector.Print()));
                 }
             }
 
@@ -235,10 +220,9 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 }
                 else if (!ReferenceEquals(column.TableAlias, targetTableAlias))
                 {
-                    AddTranslationErrorDetails(
+                    throw new InvalidOperationException(
                         RelationalStrings.MultipleTablesInExecuteUpdate(
                             propertySelector.Print(), targetTablePropertySelector!.Print()));
-                    return false;
                 }
 
                 return true;
@@ -395,11 +379,10 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 return translatedSelector;
             }
 
-            AddTranslationErrorDetails(RelationalStrings.InvalidValueInSetProperty(valueSelector.Print()));
-            return null;
+            throw new InvalidOperationException(RelationalStrings.InvalidValueInSetProperty(valueSelector.Print()));
         }
 
-        Expression? TranslateSetterValueSelector(ShapedQueryExpression source, Expression valueSelector, Type propertyType)
+        Expression TranslateSetterValueSelector(ShapedQueryExpression source, Expression valueSelector, Type propertyType)
         {
             var remappedValueSelector = valueSelector is LambdaExpression lambdaExpression
                 ? RemapLambdaBody(source, lambdaExpression)
@@ -413,14 +396,13 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
             if (_sqlTranslator.TranslateProjection(remappedValueSelector, applyDefaultTypeMapping: false) is not Expression
                 translatedValueSelector)
             {
-                AddTranslationErrorDetails(RelationalStrings.InvalidValueInSetProperty(valueSelector.Print()));
-                return null;
+                throw new InvalidOperationException(RelationalStrings.InvalidValueInSetProperty(valueSelector.Print()));
             }
 
             return translatedValueSelector;
         }
 
-        NonQueryExpression? PushdownWithPkInnerJoinPredicate()
+        NonQueryExpression PushdownWithPkInnerJoinPredicate()
         {
             // The provider doesn't natively support the update.
             // As a fallback, we place the original query in a subquery and user an INNER JOIN on the primary key columns.
@@ -444,24 +426,21 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                     out var baseExpression)
                 || baseExpression.UnwrapTypeConversion(out _) is not StructuralTypeShaperExpression shaper)
             {
-                AddTranslationErrorDetails(RelationalStrings.InvalidPropertyInSetProperty(firstPropertySelector));
-                return null;
+                throw new InvalidOperationException(RelationalStrings.InvalidPropertyInSetProperty(firstPropertySelector));
             }
 
             if (shaper.StructuralType is not IEntityType entityType)
             {
-                AddTranslationErrorDetails(
+                throw new InvalidOperationException(
                     RelationalStrings.ExecuteUpdateSubqueryNotSupportedOverComplexTypes(shaper.StructuralType.DisplayName()));
-                return null;
             }
 
             if (entityType.FindPrimaryKey() is not IKey pk)
             {
-                AddTranslationErrorDetails(
+                throw new InvalidOperationException(
                     RelationalStrings.ExecuteOperationOnKeylessEntityTypeWithUnsupportedOperator(
                         nameof(EntityFrameworkQueryableExtensions.ExecuteUpdate),
                         entityType.DisplayName()));
-                return null;
             }
 
             // Generate the INNER JOIN around the original query, on the PK properties.
@@ -511,10 +490,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
 
             // Re-translate the property selectors to get column expressions pointing to the new outer select expression (the original one
             // has been pushed down into a subquery).
-            if (!TranslateSetters(outer, setters, out var translatedSetters, out _))
-            {
-                return null;
-            }
+            TranslateSetters(outer, setters, out var translatedSetters, out _);
 
             outerSelectExpression.ReplaceProjection(new List<Expression>());
             outerSelectExpression.ApplyProjection();

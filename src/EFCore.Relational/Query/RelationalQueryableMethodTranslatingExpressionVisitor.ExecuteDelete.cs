@@ -10,33 +10,30 @@ namespace Microsoft.EntityFrameworkCore.Query;
 public partial class RelationalQueryableMethodTranslatingExpressionVisitor
 {
     /// <inheritdoc />
-    protected override NonQueryExpression? TranslateExecuteDelete(ShapedQueryExpression source)
+    protected override NonQueryExpression TranslateExecuteDelete(ShapedQueryExpression source)
     {
         source = source.UpdateShaperExpression(new IncludePruner().Visit(source.ShaperExpression));
 
         if (source.ShaperExpression is not StructuralTypeShaperExpression { StructuralType: IEntityType entityType } shaper)
         {
-            AddTranslationErrorDetails(RelationalStrings.ExecuteDeleteOnNonEntityType);
-            return null;
+            throw new InvalidOperationException(RelationalStrings.ExecuteDeleteOnNonEntityType);
         }
 
         var mappingStrategy = entityType.GetMappingStrategy();
         if (mappingStrategy == RelationalAnnotationNames.TptMappingStrategy)
         {
-            AddTranslationErrorDetails(
+            throw new InvalidOperationException(
                 RelationalStrings.ExecuteOperationOnTPT(
                     nameof(EntityFrameworkQueryableExtensions.ExecuteDelete), entityType.DisplayName()));
-            return null;
         }
 
         if (mappingStrategy == RelationalAnnotationNames.TpcMappingStrategy
             && entityType.GetDirectlyDerivedTypes().Any())
         {
             // We allow TPC is it is leaf type
-            AddTranslationErrorDetails(
+            throw new InvalidOperationException(
                 RelationalStrings.ExecuteOperationOnTPC(
                     nameof(EntityFrameworkQueryableExtensions.ExecuteDelete), entityType.DisplayName()));
-            return null;
         }
 
         // Find the table model that maps to the entity type; there must be exactly one (e.g. no entity splitting).
@@ -52,10 +49,9 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 break;
 
             default:
-                AddTranslationErrorDetails(
+                throw new InvalidOperationException(
                     RelationalStrings.ExecuteOperationOnEntitySplitting(
                         nameof(EntityFrameworkQueryableExtensions.ExecuteDelete), entityType.DisplayName()));
-                return null;
         }
 
         var selectExpression = (SelectExpression)source.QueryExpression;
@@ -106,10 +102,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
             {
                 if (AreOtherNonOwnedEntityTypesInTheTable(entityType.GetRootType(), targetTable))
                 {
-                    AddTranslationErrorDetails(
+                    throw new InvalidOperationException(
                         RelationalStrings.ExecuteDeleteOnTableSplitting(unwrappedTableExpression.Table.SchemaQualifiedName));
-
-                    return null;
                 }
 
                 selectExpression.ReplaceProjection(new List<Expression>());
@@ -125,11 +119,10 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
         var pk = entityType.FindPrimaryKey();
         if (pk == null)
         {
-            AddTranslationErrorDetails(
+            throw new InvalidOperationException(
                 RelationalStrings.ExecuteOperationOnKeylessEntityTypeWithUnsupportedOperator(
                     nameof(EntityFrameworkQueryableExtensions.ExecuteDelete),
                     entityType.DisplayName()));
-            return null;
         }
 
         var clrType = entityType.ClrType;

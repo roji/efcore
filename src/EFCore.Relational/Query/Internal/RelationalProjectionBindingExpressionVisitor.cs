@@ -61,7 +61,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
 
         var result = Visit(expression);
 
-        if (result == QueryCompilationContext.NotTranslatedExpression)
+        if (result is TranslationFailedExpression)
         {
             _indexBasedBinding = true;
             _projectionBindingCache = new Dictionary<StructuralTypeProjectionExpression, ProjectionBindingExpression>();
@@ -204,8 +204,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                     }
                     else
                     {
-                        var subquery = _queryableMethodTranslatingExpressionVisitor.TranslateSubquery(methodCallExpression);
-                        if (subquery != null)
+                        if (_queryableMethodTranslatingExpressionVisitor.TranslateSubquery(methodCallExpression) is ShapedQueryExpression subquery)
                         {
                             _clientProjections!.Add(subquery);
                             var type = expression.Type;
@@ -243,7 +242,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                         return base.Visit(shaper);
 
                     case null or RelationalStructuralTypeShaperExpression { StructuralType: IEntityType }:
-                        return QueryCompilationContext.NotTranslatedExpression;
+                        return new TranslationFailedExpression(expression);
 
                     default:
                         throw new UnreachableException();
@@ -328,7 +327,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                     {
                         // If projectionBinding is not mapped via projection member then it is bound via index
                         // Hence we need to switch to index based binding too.
-                        return QueryCompilationContext.NotTranslatedExpression;
+                        return new TranslationFailedExpression(shaper);
                     }
 
                     var projection2 = ((SelectExpression)projectionBindingExpression.QueryExpression)
@@ -383,7 +382,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                         : base.VisitExtension(extensionExpression);
                 }
 
-                return QueryCompilationContext.NotTranslatedExpression;
+                return new TranslationFailedExpression(includeExpression);
             }
 
             case CollectionResultExpression collectionResultExpression:
@@ -403,7 +402,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                             _selectExpression, _clientProjections.Count - 1, collectionResultExpression.Type));
                 }
 
-                return QueryCompilationContext.NotTranslatedExpression;
+                return new TranslationFailedExpression(collectionResultExpression);
             }
 
             default:
@@ -470,7 +469,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
             _projectionMembers.Push(projectionMember);
 
             visitedExpression = Visit(memberAssignment.Expression);
-            if (visitedExpression == QueryCompilationContext.NotTranslatedExpression)
+            if (visitedExpression is TranslationFailedExpression)
             {
                 return memberAssignment.Update(Expression.Convert(visitedExpression, expression.Type));
             }
@@ -492,9 +491,9 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
     protected override Expression VisitMemberInit(MemberInitExpression memberInitExpression)
     {
         var newExpression = Visit(memberInitExpression.NewExpression);
-        if (newExpression == QueryCompilationContext.NotTranslatedExpression)
+        if (newExpression is TranslationFailedExpression)
         {
-            return QueryCompilationContext.NotTranslatedExpression;
+            return newExpression;
         }
 
         var newBindings = new MemberBinding[memberInitExpression.Bindings.Count];
@@ -502,14 +501,20 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
         {
             if (memberInitExpression.Bindings[i].BindingType != MemberBindingType.Assignment)
             {
-                return QueryCompilationContext.NotTranslatedExpression;
+                return new TranslationFailedExpression(memberInitExpression);
             }
 
             newBindings[i] = VisitMemberBinding(memberInitExpression.Bindings[i]);
-            if (newBindings[i] is MemberAssignment { Expression: UnaryExpression { NodeType: ExpressionType.Convert } unaryExpression }
-                && unaryExpression.Operand == QueryCompilationContext.NotTranslatedExpression)
+            if (newBindings[i] is MemberAssignment
+                {
+                    Expression: UnaryExpression
+                    {
+                        NodeType: ExpressionType.Convert,
+                        Operand: TranslationFailedExpression translationFailure
+                    }
+                })
             {
-                return QueryCompilationContext.NotTranslatedExpression;
+                return translationFailure;
             }
         }
 
@@ -571,7 +576,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
         if (!_indexBasedBinding
             && newExpression.Members == null)
         {
-            return QueryCompilationContext.NotTranslatedExpression;
+            return new TranslationFailedExpression(newExpression);
         }
 
         var newArguments = new Expression[newExpression.Arguments.Count];
@@ -588,9 +593,9 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                 var projectionMember = _projectionMembers.Peek().Append(newExpression.Members![i]);
                 _projectionMembers.Push(projectionMember);
                 visitedArgument = Visit(argument);
-                if (visitedArgument == QueryCompilationContext.NotTranslatedExpression)
+                if (visitedArgument is TranslationFailedExpression)
                 {
-                    return QueryCompilationContext.NotTranslatedExpression;
+                    return visitedArgument;
                 }
 
                 _projectionMembers.Pop();
