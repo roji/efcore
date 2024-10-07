@@ -32,12 +32,7 @@ public class SqlBinaryExpression : SqlExpression
         RelationalTypeMapping? typeMapping)
         : base(type, typeMapping)
     {
-        if (!IsValidOperator(operatorType))
-        {
-            throw new InvalidOperationException(
-                RelationalStrings.UnsupportedOperatorForSqlExpression(
-                    operatorType, typeof(SqlBinaryExpression).ShortDisplayName()));
-        }
+        CheckValidOperator(operatorType);
 
         OperatorType = operatorType;
         Left = left;
@@ -80,7 +75,7 @@ public class SqlBinaryExpression : SqlExpression
             ? new SqlBinaryExpression(OperatorType, left, right, Type, TypeMapping)
             : this;
 
-    internal static bool IsValidOperator(ExpressionType operatorType)
+    internal static void CheckValidOperator(ExpressionType operatorType)
     {
         switch (operatorType)
         {
@@ -101,9 +96,13 @@ public class SqlBinaryExpression : SqlExpression
             case ExpressionType.NotEqual:
             case ExpressionType.Coalesce:
             case ExpressionType.ExclusiveOr:
-                return true;
+                return;
             default:
-                return false;
+                // TODO: Not sure it's great to have SqlBinaryExpression know about TranslationFailedException, too low-level.
+                // TODO: Consider just not validating inside the expression - there's really no need for it.
+                throw new TranslationFailedException(
+                    RelationalStrings.UnsupportedOperatorForSqlExpression(
+                        operatorType, typeof(SqlBinaryExpression).ShortDisplayName()));
         }
     }
 

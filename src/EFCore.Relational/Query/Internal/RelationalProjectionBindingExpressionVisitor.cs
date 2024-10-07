@@ -59,9 +59,16 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
 
         _projectionMembers.Push(new ProjectionMember());
 
-        var result = Visit(expression);
+        // Attempt to first translate the selector expression. If translation failed, perform client evaluation.
+        Expression result;
+        try
+        {
+            result = Visit(expression);
 
-        if (result == QueryCompilationContext.NotTranslatedExpression)
+            _selectExpression.ReplaceProjection(_projectionMapping);
+            _projectionMapping.Clear();
+        }
+        catch (TranslationFailedException)
         {
             _indexBasedBinding = true;
             _projectionBindingCache = new Dictionary<StructuralTypeProjectionExpression, ProjectionBindingExpression>();
@@ -72,11 +79,6 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
 
             _selectExpression.ReplaceProjection(_clientProjections);
             _clientProjections.Clear();
-        }
-        else
-        {
-            _selectExpression.ReplaceProjection(_projectionMapping);
-            _projectionMapping.Clear();
         }
 
         _selectExpression = null!;
@@ -243,7 +245,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                         return base.Visit(shaper);
 
                     case null or RelationalStructuralTypeShaperExpression { StructuralType: IEntityType }:
-                        return QueryCompilationContext.NotTranslatedExpression;
+                        throw new TranslationFailedException();
 
                     default:
                         throw new UnreachableException();
@@ -328,7 +330,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                     {
                         // If projectionBinding is not mapped via projection member then it is bound via index
                         // Hence we need to switch to index based binding too.
-                        return QueryCompilationContext.NotTranslatedExpression;
+                        throw new TranslationFailedException();
                     }
 
                     var projection2 = ((SelectExpression)projectionBindingExpression.QueryExpression)
@@ -383,7 +385,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                         : base.VisitExtension(extensionExpression);
                 }
 
-                return QueryCompilationContext.NotTranslatedExpression;
+                throw new TranslationFailedException();
             }
 
             case CollectionResultExpression collectionResultExpression:
@@ -403,7 +405,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                             _selectExpression, _clientProjections.Count - 1, collectionResultExpression.Type));
                 }
 
-                return QueryCompilationContext.NotTranslatedExpression;
+                throw new TranslationFailedException();
             }
 
             default:
@@ -470,10 +472,12 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
             _projectionMembers.Push(projectionMember);
 
             visitedExpression = Visit(memberAssignment.Expression);
-            if (visitedExpression == QueryCompilationContext.NotTranslatedExpression)
-            {
-                return memberAssignment.Update(Expression.Convert(visitedExpression, expression.Type));
-            }
+
+            // TODO: What was going on here??
+            // if (visitedExpression == QueryCompilationContext.NotTranslatedExpression)
+            // {
+            //     return memberAssignment.Update(Expression.Convert(visitedExpression, expression.Type));
+            // }
 
             _projectionMembers.Pop();
         }
@@ -492,25 +496,16 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
     protected override Expression VisitMemberInit(MemberInitExpression memberInitExpression)
     {
         var newExpression = Visit(memberInitExpression.NewExpression);
-        if (newExpression == QueryCompilationContext.NotTranslatedExpression)
-        {
-            return QueryCompilationContext.NotTranslatedExpression;
-        }
 
         var newBindings = new MemberBinding[memberInitExpression.Bindings.Count];
         for (var i = 0; i < newBindings.Length; i++)
         {
             if (memberInitExpression.Bindings[i].BindingType != MemberBindingType.Assignment)
             {
-                return QueryCompilationContext.NotTranslatedExpression;
+                throw new TranslationFailedException();
             }
 
             newBindings[i] = VisitMemberBinding(memberInitExpression.Bindings[i]);
-            if (newBindings[i] is MemberAssignment { Expression: UnaryExpression { NodeType: ExpressionType.Convert } unaryExpression }
-                && unaryExpression.Operand == QueryCompilationContext.NotTranslatedExpression)
-            {
-                return QueryCompilationContext.NotTranslatedExpression;
-            }
         }
 
         return memberInitExpression.Update((NewExpression)newExpression, newBindings);
@@ -571,7 +566,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
         if (!_indexBasedBinding
             && newExpression.Members == null)
         {
-            return QueryCompilationContext.NotTranslatedExpression;
+            throw new TranslationFailedException();
         }
 
         var newArguments = new Expression[newExpression.Arguments.Count];
@@ -588,10 +583,6 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                 var projectionMember = _projectionMembers.Peek().Append(newExpression.Members![i]);
                 _projectionMembers.Push(projectionMember);
                 visitedArgument = Visit(argument);
-                if (visitedArgument == QueryCompilationContext.NotTranslatedExpression)
-                {
-                    return QueryCompilationContext.NotTranslatedExpression;
-                }
 
                 _projectionMembers.Pop();
             }

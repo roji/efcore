@@ -395,7 +395,7 @@ public class SqlExpressionFactory : ISqlExpressionFactory
     }
 
     /// <inheritdoc />
-    public virtual SqlExpression? MakeBinary(
+    public virtual SqlExpression MakeBinary(
         ExpressionType operatorType,
         SqlExpression left,
         SqlExpression right,
@@ -410,10 +410,7 @@ public class SqlExpressionFactory : ISqlExpressionFactory
                 return ApplyTypeMapping(OrElse(left, right, existingExpression), typeMapping);
         }
 
-        if (!SqlBinaryExpression.IsValidOperator(operatorType))
-        {
-            return null;
-        }
+        SqlBinaryExpression.CheckValidOperator(operatorType);
 
         var returnType = left.Type;
         switch (operatorType)

@@ -850,6 +850,12 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 propertySpecification, function);
 
         /// <summary>
+        ///     The database provider doesn't support the SQL GREATEST() function.
+        /// </summary>
+        public static string GreatestNotSupported
+            => GetString("GreatestNotSupported");
+
+        /// <summary>
         ///     Can't use HasData for entity type '{entity}'. HasData is not supported for entities mapped to JSON.
         /// </summary>
         public static string HasDataNotSupportedForEntitiesMappedToJson(object? entity)
@@ -1054,20 +1060,22 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 value);
 
         /// <summary>
-        ///     The following lambda argument to 'SetProperty' does not represent a valid property to be set: '{propertyExpression}'.
+        ///     The lambda argument to 'SetProperty' does not represent a valid property to be set.
         /// </summary>
-        public static string InvalidPropertyInSetProperty(object? propertyExpression)
-            => string.Format(
-                GetString("InvalidPropertyInSetProperty", nameof(propertyExpression)),
-                propertyExpression);
+        public static string InvalidPropertyInSetProperty
+            => GetString("InvalidPropertyInSetProperty");
 
         /// <summary>
-        ///     The following lambda argument to 'SetProperty' does not represent a valid value: '{valueExpression}'.
+        ///     The lambda argument to 'SetProperty' does not represent a valid value.
         /// </summary>
-        public static string InvalidValueInSetProperty(object? valueExpression)
-            => string.Format(
-                GetString("InvalidValueInSetProperty", nameof(valueExpression)),
-                valueExpression);
+        public static string InvalidValueInSetProperty
+            => GetString("InvalidValueInSetProperty");
+
+        /// <summary>
+        ///     Invocation expressions are not supported in the LINQ query.
+        /// </summary>
+        public static string InvocationNodeNotSupported
+            => GetString("InvocationNodeNotSupported");
 
         /// <summary>
         ///     Can't navigate from JSON-mapped entity '{jsonEntity}' to its parent entity '{parentEntity}' using navigation '{navigation}'. Entities mapped to JSON can only navigate to their children.
@@ -1282,6 +1290,12 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
             => string.Format(
                 GetString("LastUsedWithoutOrderBy", nameof(method)),
                 method);
+
+        /// <summary>
+        ///     List initializers are not supported in the LINQ query.
+        /// </summary>
+        public static string ListInitializersNotSupported
+            => GetString("ListInitializersNotSupported");
 
         /// <summary>
         ///     The entity type '{entityType}' is mapped to the DbFunction named '{functionName}', but no DbFunction with that name was found in the model. Ensure that the entity type mapping is configured using the model name of a function in the model.
@@ -1592,6 +1606,12 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         /// </summary>
         public static string ProjectionMappingCountMismatch
             => GetString("ProjectionMappingCountMismatch");
+
+        /// <summary>
+        ///     The database provider does not support primitive collections.
+        /// </summary>
+        public static string PrimitiveCollectionsNotSupported
+            => GetString("PrimitiveCollectionsNotSupported");
 
         /// <summary>
         ///     The '{propertyType}' property '{entityType}.{property}' could not be mapped to the database type '{storeType}' because the database provider does not support mapping '{propertyType}' properties to '{storeType}' columns. Consider mapping to a different database type or converting the property value to a type supported by the database using a value converter. See https://aka.ms/efcore-docs-value-converters for more information. Alternately, exclude the property from the model using the '[NotMapped]' attribute or by using 'EntityTypeBuilder.Ignore' in 'OnModelCreating'.
@@ -2146,7 +2166,7 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 nodeType, expressionType);
 
         /// <summary>
-        ///     No relational type mapping can be found for property '{entity}.{property}' and the current provider doesn't specify a default store type for the properties of type '{clrType}'. 
+        ///     No relational type mapping can be found for property '{entity}.{property}' and the current provider doesn't specify a default store type for the properties of type '{clrType}'.
         /// </summary>
         public static string UnsupportedPropertyType(object? entity, object? property, object? clrType)
             => string.Format(

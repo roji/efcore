@@ -44,17 +44,6 @@ public class QueryCompilationContext
 
     /// <summary>
     ///     <para>
-    ///         Expression representing a not translated expression in query tree during translation phase.
-    ///     </para>
-    ///     <para>
-    ///         This property is typically used by database providers (and other extensions). It is generally
-    ///         not used in application code.
-    ///     </para>
-    /// </summary>
-    public static readonly Expression NotTranslatedExpression = new NotTranslatedExpressionType();
-
-    /// <summary>
-    ///     <para>
     ///         Names of parameters on which <see cref="EF.Constant{T}" /> was used. Such parameters are later transformed into constants.
     ///     </para>
     ///     <para>

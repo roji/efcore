@@ -27,6 +27,12 @@ public class StringMethodTranslator : IMethodCallTranslator
         = typeof(string).GetRuntimeMethod(
             nameof(string.Concat), [typeof(string), typeof(string), typeof(string), typeof(string)])!;
 
+    private static readonly MethodInfo StringEqualsWithStringComparison
+        = typeof(string).GetRuntimeMethod(nameof(string.Equals), [typeof(string), typeof(StringComparison)])!;
+
+    private static readonly MethodInfo StringEqualsWithStringComparisonStatic
+        = typeof(string).GetRuntimeMethod(nameof(string.Equals), [typeof(string), typeof(string), typeof(StringComparison)])!;
+
     private readonly ISqlExpressionFactory _sqlExpressionFactory;
 
     /// <summary>
@@ -86,6 +92,12 @@ public class StringMethodTranslator : IMethodCallTranslator
                     _sqlExpressionFactory.Add(
                         arguments[2],
                         arguments[3])));
+        }
+
+        if (Equals(method, StringEqualsWithStringComparison)
+            || Equals(method, StringEqualsWithStringComparisonStatic))
+        {
+            throw new TranslationFailedException(CoreStrings.QueryUnableToTranslateStringEqualsWithStringComparison);
         }
 
         return null;

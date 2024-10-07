@@ -436,6 +436,9 @@
   <data name="FunctionOverrideMismatch" xml:space="preserve">
     <value>The property '{propertySpecification}' has specific configuration for the function '{function}', but it isn't mapped to a column on that function return. Remove the specific configuration, or map an entity type that contains this property to '{function}'.</value>
   </data>
+  <data name="GreatestNotSupported" xml:space="preserve">
+    <value>The database provider doesn't support the SQL GREATEST() function.</value>
+  </data>
   <data name="HasDataNotSupportedForEntitiesMappedToJson" xml:space="preserve">
     <value>Can't use HasData for entity type '{entity}'. HasData is not supported for entities mapped to JSON.</value>
   </data>
@@ -515,10 +518,13 @@
     <value>The specified 'MinBatchSize' value '{value}' is not valid. It must be a positive number.</value>
   </data>
   <data name="InvalidPropertyInSetProperty" xml:space="preserve">
-    <value>The following lambda argument to 'SetProperty' does not represent a valid property to be set: '{propertyExpression}'.</value>
+    <value>The lambda argument to 'SetProperty' does not represent a valid property to be set.</value>
   </data>
   <data name="InvalidValueInSetProperty" xml:space="preserve">
-    <value>The following lambda argument to 'SetProperty' does not represent a valid value: '{valueExpression}'.</value>
+    <value>The lambda argument to 'SetProperty' does not represent a valid value.</value>
+  </data>
+  <data name="InvocationNodeNotSupported" xml:space="preserve">
+    <value>Invocation expressions are not supported in the query.</value>
   </data>
   <data name="JsonCantNavigateToParentEntity" xml:space="preserve">
     <value>Can't navigate from JSON-mapped entity '{jsonEntity}' to its parent entity '{parentEntity}' using navigation '{navigation}'. Entities mapped to JSON can only navigate to their children.</value>
@@ -603,6 +609,9 @@
   </data>
   <data name="LastUsedWithoutOrderBy" xml:space="preserve">
     <value>Queries performing '{method}' operation must have a deterministic sort order. Rewrite the query to apply an 'OrderBy' operation on the sequence before calling '{method}'.</value>
+  </data>
+  <data name="ListInitializersNotSupported" xml:space="preserve">
+    <value>List initializers are not supported in the LINQ query.</value>
   </data>
   <data name="LogAcquiringMigrationLock" xml:space="preserve">
     <value>Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.</value>
@@ -1041,6 +1050,9 @@
   </data>
   <data name="PendingAmbientTransaction" xml:space="preserve">
     <value>This connection was used with an ambient transaction. The original ambient transaction needs to be completed before this connection can be used outside of it.</value>
+  </data>
+  <data name="PrimitiveCollectionsNotSupported" xml:space="preserve">
+    <value>The database provider does not support primitive collections.</value>
   </data>
   <data name="ProjectionMappingCountMismatch" xml:space="preserve">
     <value>Unable to translate set operations when both sides don't assign values to the same properties in the nominal type. Please make sure that the same properties are included on both sides, and consider assigning default values if a property doesn't require a specific value.</value>

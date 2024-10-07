@@ -559,14 +559,11 @@ public class SqlServerSqlTranslatingExpressionVisitor : RelationalSqlTranslating
     public override SqlExpression? GenerateGreatest(IReadOnlyList<SqlExpression> expressions, Type resultType)
     {
         // Docs: https://learn.microsoft.com/sql/t-sql/functions/logical-functions-greatest-transact-sql
-        if (_sqlServerSingletonOptions.EngineType == SqlServerEngineType.SqlServer
-            && _sqlServerSingletonOptions.SqlServerCompatibilityLevel < 160)
-        {
-            return null;
-        }
-
-        if (_sqlServerSingletonOptions.EngineType == SqlServerEngineType.AzureSql
-            && _sqlServerSingletonOptions.AzureSqlCompatibilityLevel < 160)
+        if (_sqlServerSingletonOptions is
+            {
+                EngineType: SqlServerEngineType.SqlServer or SqlServerEngineType.AzureSql,
+                SqlServerCompatibilityLevel: < 160
+            })
         {
             return null;
         }

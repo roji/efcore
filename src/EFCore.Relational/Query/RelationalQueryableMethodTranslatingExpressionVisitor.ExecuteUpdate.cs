@@ -16,7 +16,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
         typeof(RelationalSqlTranslatingExpressionVisitor).GetTypeInfo().GetDeclaredMethod(nameof(ParameterValueExtractor))!;
 
     /// <inheritdoc />
-    protected override UpdateExpression? TranslateExecuteUpdate(ShapedQueryExpression source, LambdaExpression setPropertyCalls)
+    protected override UpdateExpression TranslateExecuteUpdate(ShapedQueryExpression source, LambdaExpression setPropertyCalls)
     {
         // Our source may have IncludeExpressions because of owned entities or auto-include; unwrap these, as they're meaningless for
         // ExecuteUpdate's lambdas. Note that we don't currently support updates across tables.
@@ -24,15 +24,10 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
 
         var setters = new List<(LambdaExpression PropertySelector, Expression ValueExpression)>();
         PopulateSetPropertyCalls(setPropertyCalls.Body, setters, setPropertyCalls.Parameters[0]);
-        if (TranslationErrorDetails != null)
-        {
-            return null;
-        }
 
         if (setters.Count == 0)
         {
-            AddTranslationErrorDetails(RelationalStrings.NoSetPropertyInvocation);
-            return null;
+            throw new TranslationFailedException(RelationalStrings.NoSetPropertyInvocation);
         }
 
         // Translate the setters: the left (property) selectors get translated to ColumnExpressions, the right (value) selectors to
@@ -40,17 +35,13 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
         // Note that if the query isn't natively supported, we'll do a pushdown (see PushdownWithPkInnerJoinPredicate below); if that
         // happens, we'll have to re-translate the setters over the new query (which includes a JOIN). However, we still translate here
         // since we need the target table in order to perform the check below.
-        if (!TranslateSetters(source, setters, out var translatedSetters, out var targetTable))
-        {
-            return null;
-        }
+        var translatedSetters = TranslateSetters(source, setters, out var targetTable);
 
         if (targetTable is TpcTablesExpression tpcTablesExpression)
         {
-            AddTranslationErrorDetails(
+            throw new TranslationFailedException(
                 RelationalStrings.ExecuteOperationOnTPC(
                     nameof(EntityFrameworkQueryableExtensions.ExecuteUpdate), tpcTablesExpression.EntityType.DisplayName()));
-            return null;
         }
 
         // Check if the provider has a native translation for the update represented by the select expression.
@@ -95,23 +86,19 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                     break;
 
                 default:
-                    AddTranslationErrorDetails(RelationalStrings.InvalidArgumentToExecuteUpdate);
-                    break;
+                    throw new TranslationFailedException(RelationalStrings.InvalidArgumentToExecuteUpdate);
             }
         }
 
-        bool TranslateSetters(
+        List<ColumnValueSetter> TranslateSetters(
             ShapedQueryExpression source,
             List<(LambdaExpression PropertySelector, Expression ValueExpression)> setters,
-            [NotNullWhen(true)] out List<ColumnValueSetter>? translatedSetters,
-            [NotNullWhen(true)] out TableExpressionBase? targetTable)
+            out TableExpressionBase targetTable)
         {
             var select = (SelectExpression)source.QueryExpression;
 
-            targetTable = null;
             string? targetTableAlias = null;
-            var tempTranslatedSetters = new List<ColumnValueSetter>();
-            translatedSetters = null;
+            var translatedSetters = new List<ColumnValueSetter>();
 
             LambdaExpression? propertySelector;
             Expression? targetTablePropertySelector = null;
@@ -123,16 +110,11 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
 
                 // The top-most node on the property selector must be a member access; chop it off to get the base expression and member.
                 // We'll bind the member manually below, so as to get the IPropertyBase it represents - that's important for later.
-                if (!IsMemberAccess(propertySelectorBody, QueryCompilationContext.Model, out var baseExpression, out var member))
+                if (!IsMemberAccess(propertySelectorBody, QueryCompilationContext.Model, out var baseExpression, out var member)
+                    || !_sqlTranslator.TryBindMember(
+                        _sqlTranslator.Visit(baseExpression), member, out var translatedBaseExpression, out var propertyBase))
                 {
-                    AddTranslationErrorDetails(RelationalStrings.InvalidPropertyInSetProperty(propertySelector.Print()));
-                    return false;
-                }
-
-                if (!_sqlTranslator.TryBindMember(_sqlTranslator.Visit(baseExpression), member, out var translatedBaseExpression, out var propertyBase))
-                {
-                    AddTranslationErrorDetails(RelationalStrings.InvalidPropertyInSetProperty(propertySelector.Print()));
-                    return false;
+                    throw new TranslationFailedException(propertySelector, RelationalStrings.InvalidPropertyInSetProperty);
                 }
 
                 // Hack: when returning a StructuralTypeShaperExpression, _sqlTranslator returns it wrapped by a
@@ -182,13 +164,11 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                             select.SetTables(newTables);
                         }
 
-                        if (!IsColumnOnSameTable(column, propertySelector)
-                            || TranslateSqlSetterValueSelector(source, valueSelector, column) is not SqlExpression translatedValueSelector)
-                        {
-                            return false;
-                        }
+                        CheckColumnsOnSameTable(column, propertySelector);
 
-                        tempTranslatedSetters.Add(new ColumnValueSetter(column, translatedValueSelector));
+                        var translatedValueSelector = TranslateSqlSetterValueSelector(source, valueSelector, column);
+
+                        translatedSetters.Add(new ColumnValueSetter(column, translatedValueSelector));
                         break;
                     }
 
@@ -203,71 +183,54 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                             propertyBase is IComplexProperty complexProperty && complexProperty.ComplexType == complexType,
                             "PropertyBase should be a complex property referring to the correct complex type");
 
-                        if (TranslateSetterValueSelector(source, valueSelector, shaper.Type) is not Expression translatedValueSelector
-                            || !TryProcessComplexType(shaper, translatedValueSelector))
-                        {
-                            return false;
-                        }
+                        var translatedValueSelector = TranslateSetterValueSelector(source, valueSelector, shaper.Type);
+                        ProcessComplexType(shaper, translatedValueSelector);
 
                         break;
                     }
 
                     default:
-                        AddTranslationErrorDetails(RelationalStrings.InvalidPropertyInSetProperty(propertySelector.Print()));
-                        return false;
+                        throw new TranslationFailedException(propertySelector, RelationalStrings.InvalidPropertyInSetProperty);
                 }
             }
-
-            translatedSetters = tempTranslatedSetters;
 
             Check.DebugAssert(targetTableAlias is not null, "Target table alias should have a value");
             var selectExpression = (SelectExpression)source.QueryExpression;
             targetTable = selectExpression.Tables.First(t => t.GetRequiredAlias() == targetTableAlias);
 
-            return true;
+            return translatedSetters;
 
-            bool IsColumnOnSameTable(ColumnExpression column, LambdaExpression propertySelector)
+            void CheckColumnsOnSameTable(ColumnExpression column, LambdaExpression propertySelector)
             {
                 if (targetTableAlias is null)
                 {
                     targetTableAlias = column.TableAlias;
                     targetTablePropertySelector = propertySelector;
                 }
-                else if (!ReferenceEquals(column.TableAlias, targetTableAlias))
+                else if (column.TableAlias != targetTableAlias)
                 {
-                    AddTranslationErrorDetails(
-                        RelationalStrings.MultipleTablesInExecuteUpdate(
-                            propertySelector.Print(), targetTablePropertySelector!.Print()));
-                    return false;
+                    throw new TranslationFailedException(RelationalStrings.MultipleTablesInExecuteUpdate(
+                        propertySelector.Print(), targetTablePropertySelector!.Print()));
                 }
-
-                return true;
             }
 
-            bool TryProcessComplexType(StructuralTypeShaperExpression shaperExpression, Expression valueExpression)
+            void ProcessComplexType(StructuralTypeShaperExpression shaperExpression, Expression valueExpression)
             {
                 if (shaperExpression.StructuralType is not IComplexType complexType
                     || shaperExpression.ValueBufferExpression is not StructuralTypeProjectionExpression projection)
                 {
-                    return false;
+                    throw new TranslationFailedException();
                 }
 
                 foreach (var property in complexType.GetProperties())
                 {
                     var column = projection.BindProperty(property);
-                    if (!IsColumnOnSameTable(column, propertySelector))
-                    {
-                        return false;
-                    }
+                    CheckColumnsOnSameTable(column, propertySelector);
 
                     var rewrittenValueSelector = CreatePropertyAccessExpression(valueExpression, property);
-                    if (TranslateSqlSetterValueSelector(
-                            source, rewrittenValueSelector, column) is not SqlExpression translatedValueSelector)
-                    {
-                        return false;
-                    }
+                    var translatedValueSelector = TranslateSqlSetterValueSelector(source, rewrittenValueSelector, column);
 
-                    tempTranslatedSetters.Add(new ColumnValueSetter(column, translatedValueSelector));
+                    translatedSetters.Add(new ColumnValueSetter(column, translatedValueSelector));
                 }
 
                 foreach (var complexProperty in complexType.GetComplexProperties())
@@ -279,13 +242,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
 
                     var nestedShaperExpression = projection.BindComplexProperty(complexProperty);
                     var nestedValueExpression = CreateComplexPropertyAccessExpression(valueExpression, complexProperty);
-                    if (!TryProcessComplexType(nestedShaperExpression, nestedValueExpression))
-                    {
-                        return false;
-                    }
+                    ProcessComplexType(nestedShaperExpression, nestedValueExpression);
                 }
-
-                return true;
             }
 
             Expression CreatePropertyAccessExpression(Expression target, IProperty property)
@@ -383,7 +341,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
             }
         }
 
-        SqlExpression? TranslateSqlSetterValueSelector(
+        SqlExpression TranslateSqlSetterValueSelector(
             ShapedQueryExpression source,
             Expression valueSelector,
             ColumnExpression column)
@@ -395,11 +353,10 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 return translatedSelector;
             }
 
-            AddTranslationErrorDetails(RelationalStrings.InvalidValueInSetProperty(valueSelector.Print()));
-            return null;
+            throw new TranslationFailedException(valueSelector, RelationalStrings.InvalidValueInSetProperty);
         }
 
-        Expression? TranslateSetterValueSelector(ShapedQueryExpression source, Expression valueSelector, Type propertyType)
+        Expression TranslateSetterValueSelector(ShapedQueryExpression source, Expression valueSelector, Type propertyType)
         {
             var remappedValueSelector = valueSelector is LambdaExpression lambdaExpression
                 ? RemapLambdaBody(source, lambdaExpression)
@@ -410,17 +367,10 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 remappedValueSelector = Expression.Convert(remappedValueSelector, propertyType);
             }
 
-            if (_sqlTranslator.TranslateProjection(remappedValueSelector, applyDefaultTypeMapping: false) is not Expression
-                translatedValueSelector)
-            {
-                AddTranslationErrorDetails(RelationalStrings.InvalidValueInSetProperty(valueSelector.Print()));
-                return null;
-            }
-
-            return translatedValueSelector;
+            return _sqlTranslator.TranslateProjection(remappedValueSelector, applyDefaultTypeMapping: false);
         }
 
-        UpdateExpression? PushdownWithPkInnerJoinPredicate()
+        UpdateExpression PushdownWithPkInnerJoinPredicate()
         {
             // The provider doesn't natively support the update.
             // As a fallback, we place the original query in a subquery and user an INNER JOIN on the primary key columns.
@@ -444,24 +394,21 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                     out var baseExpression)
                 || baseExpression.UnwrapTypeConversion(out _) is not StructuralTypeShaperExpression shaper)
             {
-                AddTranslationErrorDetails(RelationalStrings.InvalidPropertyInSetProperty(firstPropertySelector));
-                return null;
+                throw new TranslationFailedException(firstPropertySelector, RelationalStrings.InvalidPropertyInSetProperty);
             }
 
             if (shaper.StructuralType is not IEntityType entityType)
             {
-                AddTranslationErrorDetails(
+                throw new TranslationFailedException(
                     RelationalStrings.ExecuteUpdateSubqueryNotSupportedOverComplexTypes(shaper.StructuralType.DisplayName()));
-                return null;
             }
 
             if (entityType.FindPrimaryKey() is not IKey pk)
             {
-                AddTranslationErrorDetails(
+                throw new TranslationFailedException(
                     RelationalStrings.ExecuteOperationOnKeylessEntityTypeWithUnsupportedOperator(
                         nameof(EntityFrameworkQueryableExtensions.ExecuteUpdate),
                         entityType.DisplayName()));
-                return null;
             }
 
             // Generate the INNER JOIN around the original query, on the PK properties.
@@ -511,10 +458,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
 
             // Re-translate the property selectors to get column expressions pointing to the new outer select expression (the original one
             // has been pushed down into a subquery).
-            if (!TranslateSetters(outer, setters, out var translatedSetters, out _))
-            {
-                return null;
-            }
+            var translatedSetters = TranslateSetters(outer, setters, out _);
 
             outerSelectExpression.ReplaceProjection(new List<Expression>());
             outerSelectExpression.ApplyProjection();

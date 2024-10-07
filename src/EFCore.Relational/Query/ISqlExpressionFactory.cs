@@ -59,7 +59,7 @@ public interface ISqlExpressionFactory
     /// <param name="typeMapping">A type mapping to be assigned to the created expression.</param>
     /// <param name="existingExpression">An optional expression that can be re-used if it matches the new expression.</param>
     /// <returns>A <see cref="SqlExpression" /> with the given arguments.</returns>
-    SqlExpression? MakeBinary(
+    SqlExpression MakeBinary(
         ExpressionType operatorType,
         SqlExpression left,
         SqlExpression right,

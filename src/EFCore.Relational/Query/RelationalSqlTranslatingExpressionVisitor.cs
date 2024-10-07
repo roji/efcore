@@ -3,9 +3,11 @@
 
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
+using Exception = System.Exception;
 
 namespace Microsoft.EntityFrameworkCore.Query;
 
@@ -46,12 +48,6 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     private static readonly MethodInfo ParameterListValueExtractorMethod =
         typeof(RelationalSqlTranslatingExpressionVisitor).GetTypeInfo().GetDeclaredMethod(nameof(ParameterListValueExtractor))!;
 
-    private static readonly MethodInfo StringEqualsWithStringComparison
-        = typeof(string).GetRuntimeMethod(nameof(string.Equals), [typeof(string), typeof(StringComparison)])!;
-
-    private static readonly MethodInfo StringEqualsWithStringComparisonStatic
-        = typeof(string).GetRuntimeMethod(nameof(string.Equals), [typeof(string), typeof(string), typeof(StringComparison)])!;
-
     private static readonly MethodInfo GetTypeMethodInfo = typeof(object).GetTypeInfo().GetDeclaredMethod(nameof(GetType))!;
 
     private readonly QueryCompilationContext _queryCompilationContext;
@@ -81,27 +77,6 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     }
 
     /// <summary>
-    ///     Detailed information about errors encountered during translation.
-    /// </summary>
-    public virtual string? TranslationErrorDetails { get; private set; }
-
-    /// <summary>
-    ///     Adds detailed information about error encountered during translation.
-    /// </summary>
-    /// <param name="details">Detailed information about error encountered during translation.</param>
-    protected virtual void AddTranslationErrorDetails(string details)
-    {
-        if (TranslationErrorDetails == null)
-        {
-            TranslationErrorDetails = details;
-        }
-        else
-        {
-            TranslationErrorDetails += Environment.NewLine + details;
-        }
-    }
-
-    /// <summary>
     ///     Relational provider-specific dependencies for this service.
     /// </summary>
     protected virtual RelationalSqlTranslatingExpressionVisitorDependencies Dependencies { get; }
@@ -114,12 +89,12 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     ///     Whether to apply the default type mapping on the top-most element if it has none. Defaults to <see langword="true" />.
     /// </param>
     /// <returns>A SQL translation of the given expression.</returns>
-    public virtual SqlExpression? Translate(Expression expression, bool applyDefaultTypeMapping = true)
-    {
-        TranslationErrorDetails = null;
-
-        return TranslateInternal(expression, applyDefaultTypeMapping) as SqlExpression;
-    }
+    public virtual SqlExpression Translate(Expression expression, bool applyDefaultTypeMapping = true)
+        => TranslateInternal(expression, applyDefaultTypeMapping) switch
+        {
+            SqlExpression s => s,
+            var other => throw new TranslationFailedException(expression, "Expected scalar expression") // TODO
+        };
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -128,11 +103,8 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     [EntityFrameworkInternal]
-    public virtual Expression? TranslateProjection(Expression expression, bool applyDefaultTypeMapping = true)
-    {
-        TranslationErrorDetails = null;
-
-        return TranslateInternal(expression, applyDefaultTypeMapping) switch
+    public virtual Expression TranslateProjection(Expression expression, bool applyDefaultTypeMapping = true)
+        => TranslateInternal(expression, applyDefaultTypeMapping) switch
         {
             // This is the case of a structural type getting projected out via Select (possibly also an owned entity one day, if we stop
             // expanding them in pre-visitation)
@@ -140,13 +112,13 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                 => shaper,
 
             StructuralTypeReferenceExpression { Subquery: not null }
-                => null, // TODO: think about this - probably unsupported (if so, message)
+                => throw new TranslationFailedException(), // TODO: think about this - probably unsupported (if so, message)
 
             SqlExpression s => s,
 
-            _ => null
+            _ => throw new TranslationFailedException()
+
         };
-    }
 
     private Expression? TranslateInternal(Expression expression, bool applyDefaultTypeMapping = true)
     {
@@ -281,16 +253,35 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             }
         }
 
-        var visitedLeft = Visit(left);
-        var visitedRight = Visit(right);
+        // TODO: Figure this out. Do we really need to catch translation exceptions here?
+        SqlExpression? visitedLeft = null, visitedRight = null;
+        TranslationFailedException? leftTranslationException = null, rightTranslationException = null;
+        try
+        {
+            visitedLeft = Translate(left);
+        }
+        catch (TranslationFailedException e)
+        {
+            leftTranslationException = e;
+        }
+
+        try
+        {
+            visitedRight = Translate(right);
+        }
+        catch (TranslationFailedException e)
+        {
+            rightTranslationException = e;
+        }
 
         if (binaryExpression.NodeType is ExpressionType.Equal or ExpressionType.NotEqual
-            // Visited expression could be null, We need to pass MemberInitExpression
+            // TODO: Visited expression could be null, We need to pass MemberInitExpression
             && TryRewriteStructuralTypeEquality(
                 binaryExpression.NodeType,
-                visitedLeft == QueryCompilationContext.NotTranslatedExpression ? left : visitedLeft,
-                visitedRight == QueryCompilationContext.NotTranslatedExpression ? right : visitedRight,
-                equalsMethod: false, out var result))
+                visitedLeft ?? left,
+                visitedRight ?? right,
+                equalsMethod: false,
+                out var result))
         {
             return result;
         }
@@ -306,17 +297,23 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             _ => binaryExpression.NodeType
         };
 
-        return TranslationFailed(binaryExpression.Left, visitedLeft, out var sqlLeft)
-            || TranslationFailed(binaryExpression.Right, visitedRight, out var sqlRight)
-                ? QueryCompilationContext.NotTranslatedExpression
-                : uncheckedNodeTypeVariant == ExpressionType.Coalesce
-                    ? _sqlExpressionFactory.Coalesce(sqlLeft!, sqlRight!)
-                    : _sqlExpressionFactory.MakeBinary(
-                        uncheckedNodeTypeVariant,
-                        sqlLeft!,
-                        sqlRight!,
-                        typeMapping: null)
-                    ?? QueryCompilationContext.NotTranslatedExpression;
+        if (leftTranslationException is not null)
+        {
+            ExceptionDispatchInfo.Throw(leftTranslationException);
+        }
+
+        if (rightTranslationException is not null)
+        {
+            ExceptionDispatchInfo.Throw(rightTranslationException);
+        }
+
+        return uncheckedNodeTypeVariant == ExpressionType.Coalesce
+            ? _sqlExpressionFactory.Coalesce(visitedLeft!, visitedRight!)
+            : _sqlExpressionFactory.MakeBinary(
+                uncheckedNodeTypeVariant,
+                visitedLeft!,
+                visitedRight!,
+                typeMapping: null);
 
         Expression ProcessGetType(StructuralTypeReferenceExpression typeReference, Type comparisonType, bool match)
         {
@@ -338,7 +335,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             // If no derived type matches then fail the translation
             if (derivedType == null)
             {
-                return QueryCompilationContext.NotTranslatedExpression;
+                throw new TranslationFailedException(binaryExpression);
             }
 
             // If the derived type is abstract type then predicate will always be false
@@ -428,7 +425,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                         _sqlExpressionFactory.Constant(derivedType.GetDiscriminatorValue()!));
             }
 
-            return QueryCompilationContext.NotTranslatedExpression;
+            throw new TranslationFailedException(binaryExpression);
         }
 
         bool IsGetTypeMethodCall(Expression expression, out StructuralTypeReferenceExpression? typeReference)
@@ -475,17 +472,13 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
     /// <inheritdoc />
     protected override Expression VisitConditional(ConditionalExpression conditionalExpression)
-    {
-        var test = Visit(conditionalExpression.Test);
-        var ifTrue = Visit(conditionalExpression.IfTrue);
-        var ifFalse = Visit(conditionalExpression.IfFalse);
-
-        return TranslationFailed(conditionalExpression.Test, test, out var sqlTest)
-            || TranslationFailed(conditionalExpression.IfTrue, ifTrue, out var sqlIfTrue)
-            || TranslationFailed(conditionalExpression.IfFalse, ifFalse, out var sqlIfFalse)
-                ? QueryCompilationContext.NotTranslatedExpression
-                : _sqlExpressionFactory.Case([new CaseWhenClause(sqlTest!, sqlIfTrue!)], sqlIfFalse);
-    }
+        => _sqlExpressionFactory.Case(
+            [
+                new CaseWhenClause(
+                    Translate(conditionalExpression.Test, applyDefaultTypeMapping: false),
+                    Translate(conditionalExpression.IfTrue, applyDefaultTypeMapping: false))
+            ],
+            Translate(conditionalExpression.IfFalse, applyDefaultTypeMapping: false));
 
     /// <inheritdoc />
     protected override Expression VisitConstant(ConstantExpression constantExpression)
@@ -550,14 +543,14 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
                 if (mappedProjectionBindingExpression == null)
                 {
-                    return QueryCompilationContext.NotTranslatedExpression;
+                    throw new TranslationFailedException(extensionExpression);
                 }
 
                 var subquery = (SelectExpression)shapedQueryExpression.QueryExpression;
                 var projection = subquery.GetProjection(mappedProjectionBindingExpression);
                 if (projection is not SqlExpression sqlExpression)
                 {
-                    return QueryCompilationContext.NotTranslatedExpression;
+                    throw new TranslationFailedException(extensionExpression);
                 }
 
                 if (subquery.Tables.Count == 0)
@@ -587,13 +580,13 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                 return Visit(queryableParameterQueryRootExpression.ParameterExpression);
 
             default:
-                return QueryCompilationContext.NotTranslatedExpression;
+                throw new TranslationFailedException(extensionExpression);
         }
     }
 
     /// <inheritdoc />
     protected override Expression VisitInvocation(InvocationExpression invocationExpression)
-        => QueryCompilationContext.NotTranslatedExpression;
+        => throw new TranslationFailedException(invocationExpression, RelationalStrings.InvocationNodeNotSupported);
 
     /// <inheritdoc />
     protected override Expression VisitLambda<T>(Expression<T> lambdaExpression)
@@ -601,27 +594,28 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
     /// <inheritdoc />
     protected override Expression VisitListInit(ListInitExpression listInitExpression)
-        => QueryCompilationContext.NotTranslatedExpression;
+        => throw new TranslationFailedException(listInitExpression, RelationalStrings.ListInitializersNotSupported);
 
     /// <inheritdoc />
     protected override Expression VisitMember(MemberExpression memberExpression)
-    {
-        var innerExpression = Visit(memberExpression.Expression);
+        => Visit(memberExpression.Expression) switch
+        {
+            StructuralTypeReferenceExpression e
+                => BindMember(memberExpression, e, MemberIdentity.Create(memberExpression.Member)),
 
-        return TryBindMember(innerExpression, MemberIdentity.Create(memberExpression.Member), out var expression)
-            ? expression
-            : (TranslationFailed(memberExpression.Expression, innerExpression, out var sqlInnerExpression)
-                ? QueryCompilationContext.NotTranslatedExpression
-                : Dependencies.MemberTranslatorProvider.Translate(
-                    sqlInnerExpression, memberExpression.Member, memberExpression.Type, _queryCompilationContext.Logger))
-            ?? QueryCompilationContext.NotTranslatedExpression;
-    }
+            SqlExpression e
+                => Dependencies.MemberTranslatorProvider.Translate(
+                    e, memberExpression.Member, memberExpression.Type, _queryCompilationContext.Logger)
+                ?? throw new TranslationFailedException(memberExpression, "No translator found for this member access"), // TODO
+
+            _ => throw new TranslationFailedException(memberExpression, "Can't bind on this expression type") // TODO
+        };
 
     /// <inheritdoc />
     protected override Expression VisitMemberInit(MemberInitExpression memberInitExpression)
         => TryEvaluateToConstant(memberInitExpression, out var sqlConstantExpression)
             ? sqlConstantExpression
-            : QueryCompilationContext.NotTranslatedExpression;
+            : throw new TranslationFailedException(memberInitExpression, "Non-constant memberinit not supported"); // TODO
 
     /// <inheritdoc />
     protected override Expression VisitMethodCall(MethodCallExpression methodCallExpression)
@@ -629,27 +623,34 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
         // EF.Property case
         if (methodCallExpression.TryGetEFPropertyArguments(out var source, out var propertyName))
         {
-            if (TryBindMember(Visit(source), MemberIdentity.Create(propertyName), out var result))
-            {
-                return result;
-            }
+            // TODO: Not sure about this, understand it better
+            return BindMember(methodCallExpression, Visit(source), MemberIdentity.Create(propertyName));
 
-            var message = CoreStrings.QueryUnableToTranslateEFProperty(methodCallExpression.Print());
-            if (_throwForNotTranslatedEfProperty)
-            {
-                throw new InvalidOperationException(message);
-            }
+            // if (TryBindMember(Visit(source), MemberIdentity.Create(propertyName), out var result))
+            // {
+            //     return result;
+            // }
+            //
+            // throw new TranslationFailedException(
+            //     methodCallExpression, CoreStrings.QueryUnableToTranslateEFProperty(methodCallExpression.Print()));
 
-            AddTranslationErrorDetails(message);
-
-            return QueryCompilationContext.NotTranslatedExpression;
+            // var message = CoreStrings.QueryUnableToTranslateEFProperty(methodCallExpression.Print());
+            // if (_throwForNotTranslatedEfProperty)
+            // {
+            //     throw new InvalidOperationException(message);
+            // }
+            //
+            // AddTranslationErrorDetails(message);
+            //
+            // return QueryCompilationContext.NotTranslatedExpression;
         }
 
         // EF Indexer property
         if (methodCallExpression.TryGetIndexerArguments(_model, out source, out propertyName)
-            && TryBindMember(Visit(source), MemberIdentity.Create(propertyName), out var indexerResult))
+            && Visit(source) is StructuralTypeReferenceExpression structuralTypeReference)
         {
-            return indexerResult;
+            // TODO: Possibly merge with EF.Property handling above
+            return BindMember(methodCallExpression, structuralTypeReference, MemberIdentity.Create(propertyName));
         }
 
         var method = methodCallExpression.Method;
@@ -668,31 +669,32 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                 Arguments.Count: 1
             }:
             {
-                var left = Visit(methodCallExpression.Object);
-                var right = Visit(RemoveObjectConvert(arguments[0]));
-
-                if (TryRewriteStructuralTypeEquality(
-                        ExpressionType.Equal,
-                        left == QueryCompilationContext.NotTranslatedExpression ? methodCallExpression.Object : left,
-                        right == QueryCompilationContext.NotTranslatedExpression ? arguments[0] : right,
-                        equalsMethod: true,
-                        out var result))
-                {
-                    return result;
-                }
-
-                if (left is SqlExpression leftSql
-                    && right is SqlExpression rightSql)
-                {
-                    sqlObject = leftSql;
-                    scalarArguments = [rightSql];
-                }
-                else
-                {
-                    return QueryCompilationContext.NotTranslatedExpression;
-                }
-
-                break;
+                throw new NotImplementedException();
+                // var left = Visit(methodCallExpression.Object);
+                // var right = Visit(RemoveObjectConvert(arguments[0]));
+                //
+                // if (TryRewriteStructuralTypeEquality(
+                //         ExpressionType.Equal,
+                //         left == QueryCompilationContext.NotTranslatedExpression ? methodCallExpression.Object : left,
+                //         right == QueryCompilationContext.NotTranslatedExpression ? arguments[0] : right,
+                //         equalsMethod: true,
+                //         out var result))
+                // {
+                //     return result;
+                // }
+                //
+                // if (left is SqlExpression leftSql
+                //     && right is SqlExpression rightSql)
+                // {
+                //     sqlObject = leftSql;
+                //     scalarArguments = [rightSql];
+                // }
+                // else
+                // {
+                //     throw new TranslationFailedException("Non-scalars in equality"); // TODO
+                // }
+                //
+                // break;
             }
 
             case
@@ -702,38 +704,39 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                 Arguments.Count: 2
             }:
             {
-                if (arguments[0].Type == typeof(object[])
-                    && arguments[0] is NewArrayExpression)
-                {
-                    return Visit(
-                        ConvertObjectArrayEqualityComparison(
-                            arguments[0], arguments[1]));
-                }
-
-                var left = Visit(RemoveObjectConvert(arguments[0]));
-                var right = Visit(RemoveObjectConvert(arguments[1]));
-
-                if (TryRewriteStructuralTypeEquality(
-                        ExpressionType.Equal,
-                        left == QueryCompilationContext.NotTranslatedExpression ? arguments[0] : left,
-                        right == QueryCompilationContext.NotTranslatedExpression ? arguments[1] : right,
-                        equalsMethod: true,
-                        out var result))
-                {
-                    return result;
-                }
-
-                if (left is SqlExpression leftSql
-                    && right is SqlExpression rightSql)
-                {
-                    scalarArguments = [leftSql, rightSql];
-                }
-                else
-                {
-                    return QueryCompilationContext.NotTranslatedExpression;
-                }
-
-                break;
+                throw new NotImplementedException();
+                // if (arguments[0].Type == typeof(object[])
+                //     && arguments[0] is NewArrayExpression)
+                // {
+                //     return Visit(
+                //         ConvertObjectArrayEqualityComparison(
+                //             arguments[0], arguments[1]));
+                // }
+                //
+                // var left = Visit(RemoveObjectConvert(arguments[0]));
+                // var right = Visit(RemoveObjectConvert(arguments[1]));
+                //
+                // if (TryRewriteStructuralTypeEquality(
+                //         ExpressionType.Equal,
+                //         left == QueryCompilationContext.NotTranslatedExpression ? arguments[0] : left,
+                //         right == QueryCompilationContext.NotTranslatedExpression ? arguments[1] : right,
+                //         equalsMethod: true,
+                //         out var result))
+                // {
+                //     return result;
+                // }
+                //
+                // if (left is SqlExpression leftSql
+                //     && right is SqlExpression rightSql)
+                // {
+                //     scalarArguments = [leftSql, rightSql];
+                // }
+                // else
+                // {
+                //     throw new TranslationFailedException("Non-scalars in equality"); // TODO
+                // }
+                //
+                // break;
             }
 
             case
@@ -745,53 +748,55 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                 }
             } when method.GetGenericMethodDefinition().Equals(EnumerableMethods.Contains):
             {
-                var enumerable = Visit(arguments[0]);
-                var item = Visit(arguments[1]);
-
-                if (TryRewriteContainsEntity(
-                        enumerable,
-                        item == QueryCompilationContext.NotTranslatedExpression ? arguments[1] : item, out var result))
-                {
-                    return result;
-                }
-
-                if (enumerable is SqlExpression sqlEnumerable
-                    && item is SqlExpression sqlItem)
-                {
-                    scalarArguments = [sqlEnumerable, sqlItem];
-                }
-                else
-                {
-                    return QueryCompilationContext.NotTranslatedExpression;
-                }
-
-                break;
+                throw new NotImplementedException();
+                // var enumerable = Visit(arguments[0]);
+                // var item = Visit(arguments[1]);
+                //
+                // if (TryRewriteContainsEntity(
+                //         enumerable,
+                //         item == QueryCompilationContext.NotTranslatedExpression ? arguments[1] : item, out var result))
+                // {
+                //     return result;
+                // }
+                //
+                // if (enumerable is SqlExpression sqlEnumerable
+                //     && item is SqlExpression sqlItem)
+                // {
+                //     scalarArguments = [sqlEnumerable, sqlItem];
+                // }
+                // else
+                // {
+                //     throw new TranslationFailedException("Non-scalars in contains"); // TODO
+                // }
+                //
+                // break;
             }
 
             case { Arguments: [var argument] } when method.IsContainsMethod():
             {
-                var enumerable = Visit(methodCallExpression.Object);
-                var item = Visit(argument);
-
-                if (TryRewriteContainsEntity(
-                        enumerable!,
-                        item == QueryCompilationContext.NotTranslatedExpression ? argument : item, out var result))
-                {
-                    return result;
-                }
-
-                if (enumerable is SqlExpression sqlEnumerable
-                    && item is SqlExpression sqlItem)
-                {
-                    sqlObject = sqlEnumerable;
-                    scalarArguments = [sqlItem];
-                }
-                else
-                {
-                    return QueryCompilationContext.NotTranslatedExpression;
-                }
-
-                break;
+                throw new NotImplementedException();
+                // var enumerable = Visit(methodCallExpression.Object);
+                // var item = Visit(argument);
+                //
+                // if (TryRewriteContainsEntity(
+                //         enumerable!,
+                //         item == QueryCompilationContext.NotTranslatedExpression ? argument : item, out var result))
+                // {
+                //     return result;
+                // }
+                //
+                // if (enumerable is SqlExpression sqlEnumerable
+                //     && item is SqlExpression sqlItem)
+                // {
+                //     sqlObject = sqlEnumerable;
+                //     scalarArguments = [sqlItem];
+                // }
+                // else
+                // {
+                //     throw new TranslationFailedException("Non-scalars in contains"); // TODO
+                // }
+                //
+                // break;
             }
 
             // Translate EF.Functions.Greatest/Least.
@@ -808,15 +813,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
                 for (var i = 0; i < values.Count; i++)
                 {
-                    var value = values[i];
-                    var visitedValue = Visit(value);
-
-                    if (TranslationFailed(value, visitedValue, out var translatedValue))
-                    {
-                        return QueryCompilationContext.NotTranslatedExpression;
-                    }
-
-                    translatedValues[i] = translatedValue!;
+                    translatedValues[i] = Translate(values[i]);
                 }
 
                 var elementClrType = newArray.Type.GetElementType()!.UnwrapNullableType();
@@ -826,8 +823,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                         nameof(RelationalDbFunctionsExtensions.Greatest) => GenerateGreatest(translatedValues, elementClrType),
                         nameof(RelationalDbFunctionsExtensions.Least) => GenerateLeast(translatedValues, elementClrType),
                         _ => throw new UnreachableException()
-                    }
-                    ?? QueryCompilationContext.NotTranslatedExpression;
+                    };
             }
 
             // Translate Math.Max/Min.
@@ -842,31 +838,33 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                 var translatedArguments = new List<SqlExpression>();
                 var returnType = method.ReturnType.UnwrapNullableType();
 
-                return TryFlattenVisit(argument1)
-                    && TryFlattenVisit(argument2)
-                    && method.Name switch
+                VisitAndFlatten(argument1);
+                VisitAndFlatten(argument2);
+
+                try
+                {
+                    return method.Name switch
                     {
                         nameof(Math.Max) => GenerateGreatest(translatedArguments, returnType),
                         nameof(Math.Min) => GenerateLeast(translatedArguments, returnType),
                         _ => throw new UnreachableException()
-                    } is SqlExpression translatedFunctionCall
-                        ? translatedFunctionCall
-                        : QueryCompilationContext.NotTranslatedExpression;
+                    };
+                }
+                catch (TranslationFailedException e)
+                {
+                    throw new TranslationFailedException(methodCallExpression, e.Message);
+                }
 
-                bool TryFlattenVisit(Expression argument)
+                void VisitAndFlatten(Expression argument)
                 {
                     if (argument is MethodCallExpression nestedCall && nestedCall.Method == method)
                     {
-                        return TryFlattenVisit(nestedCall.Arguments[0]) && TryFlattenVisit(nestedCall.Arguments[1]);
+                        VisitAndFlatten(nestedCall.Arguments[0]);
+                        VisitAndFlatten(nestedCall.Arguments[1]);
+                        return;
                     }
 
-                    if (TranslationFailed(argument, Visit(argument), out var translatedArgument))
-                    {
-                        return false;
-                    }
-
-                    translatedArguments.Add(translatedArgument!);
-                    return true;
+                    translatedArguments.Add(Translate(argument));
                 }
             }
 
@@ -926,35 +924,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             return translation;
         }
 
-        translation = TranslateAsSubquery(methodCallExpression);
-        if (translation != QueryCompilationContext.NotTranslatedExpression)
-        {
-            return translation;
-        }
-
-        if (method == StringEqualsWithStringComparison
-            || method == StringEqualsWithStringComparisonStatic)
-        {
-            AddTranslationErrorDetails(CoreStrings.QueryUnableToTranslateStringEqualsWithStringComparison);
-        }
-        else
-        {
-            AddTranslationErrorDetails(
-                CoreStrings.QueryUnableToTranslateMethod(
-                    method.DeclaringType?.DisplayName(),
-                    method.Name));
-        }
-
-        return QueryCompilationContext.NotTranslatedExpression;
-
-        Expression TranslateAsSubquery(Expression expression)
-        {
-            var subqueryTranslation = _queryableMethodTranslatingExpressionVisitor.TranslateSubquery(expression);
-
-            return subqueryTranslation == null
-                ? QueryCompilationContext.NotTranslatedExpression
-                : Visit(subqueryTranslation);
-        }
+        return _queryableMethodTranslatingExpressionVisitor.TranslateSubquery(methodCallExpression);
     }
 
     /// <inheritdoc />
@@ -1110,25 +1080,38 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     {
         var operand = Visit(unaryExpression.Operand);
 
-        if (operand is StructuralTypeReferenceExpression typeReference
-            && unaryExpression.NodeType is ExpressionType.Convert or ExpressionType.ConvertChecked or ExpressionType.TypeAs)
+        if (unaryExpression is
+            {
+                Operand: StructuralTypeReferenceExpression typeReference,
+                NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked or ExpressionType.TypeAs,
+                Type: var type
+            })
         {
-            return typeReference.Convert(unaryExpression.Type);
+            if (type == typeof(object) // Ignore object conversion
+                || type.IsAssignableFrom(typeReference.Type)) // Ignore casting to base type/interface
+            {
+                return typeReference;
+            }
+
+            return typeReference.StructuralType is IEntityType entityType
+                && entityType.GetDerivedTypes().FirstOrDefault(et => et.ClrType == type) is IEntityType derivedEntityType
+                    ? new StructuralTypeReferenceExpression(typeReference, derivedEntityType)
+                    : throw new TranslationFailedException(unaryExpression);
         }
 
-        if (TranslationFailed(unaryExpression.Operand, operand, out var sqlOperand))
+        if (operand is not SqlExpression sqlOperand)
         {
-            return QueryCompilationContext.NotTranslatedExpression;
+            throw new TranslationFailedException(unaryExpression);
         }
 
         switch (unaryExpression.NodeType)
         {
             case ExpressionType.Not:
-                return _sqlExpressionFactory.Not(sqlOperand!);
+                return _sqlExpressionFactory.Not(sqlOperand);
 
             case ExpressionType.Negate:
             case ExpressionType.NegateChecked:
-                return _sqlExpressionFactory.Negate(sqlOperand!);
+                return _sqlExpressionFactory.Negate(sqlOperand);
 
             case ExpressionType.Convert:
             case ExpressionType.ConvertChecked:
@@ -1139,7 +1122,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
                     || unaryExpression.Type.UnwrapNullableType() == operand.Type.UnwrapNullableType()
                     || unaryExpression.Type.UnwrapNullableType() == typeof(Enum))
                 {
-                    return sqlOperand!;
+                    return sqlOperand;
                 }
 
                 // Introduce explicit cast only if the target type is mapped else we need to client eval
@@ -1155,9 +1138,10 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
             case ExpressionType.Quote:
                 return operand;
-        }
 
-        return QueryCompilationContext.NotTranslatedExpression;
+            default:
+                throw new TranslationFailedException(unaryExpression);
+        }
     }
 
     private bool TryBindMember(
@@ -1165,6 +1149,18 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
         MemberIdentity member,
         [NotNullWhen(true)] out Expression? expression)
         => TryBindMember(source, member, out expression, out _);
+
+    private Expression BindMember(
+        Expression originalExpression,
+        Expression? source,
+        MemberIdentity member)
+        => TryBindMember(source, member, out var expression, out _)
+            ? expression
+            : throw new TranslationFailedException(
+                originalExpression,
+                CoreStrings.QueryUnableToTranslateMember(
+                    member.Name,
+                    (source as StructuralTypeReferenceExpression)?.StructuralType.DisplayName()));
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -1209,11 +1205,6 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             property = complexProperty;
             return true;
         }
-
-        AddTranslationErrorDetails(
-            CoreStrings.QueryUnableToTranslateMember(
-                member.Name,
-                typeReference.StructuralType.DisplayName()));
 
         expression = null;
         property = null;
@@ -1432,13 +1423,13 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     /// <summary>
     ///     Generates a SQL GREATEST expression over the given expressions.
     /// </summary>
-    public virtual SqlExpression? GenerateGreatest(IReadOnlyList<SqlExpression> expressions, Type resultType)
-        => null;
+    public virtual SqlExpression GenerateGreatest(IReadOnlyList<SqlExpression> expressions, Type resultType)
+        => throw new TranslationFailedException(RelationalStrings.GreatestNotSupported);
 
     /// <summary>
     ///     Generates a SQL GREATEST expression over the given expressions.
     /// </summary>
-    public virtual SqlExpression? GenerateLeast(IReadOnlyList<SqlExpression> expressions, Type resultType)
+    public virtual SqlExpression GenerateLeast(IReadOnlyList<SqlExpression> expressions, Type resultType)
         => null;
 
     private bool TryTranslateAsEnumerableExpression(
@@ -2146,20 +2137,6 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     private static bool IsNullSqlConstantExpression(Expression expression)
         => expression is SqlConstantExpression { Value: null };
 
-    [DebuggerStepThrough]
-    private static bool TranslationFailed(Expression? original, Expression? translation, out SqlExpression? castTranslation)
-    {
-        if (original != null
-            && translation is not SqlExpression)
-        {
-            castTranslation = null;
-            return true;
-        }
-
-        castTranslation = translation as SqlExpression;
-        return false;
-    }
-
     [DebuggerDisplay("{DebuggerDisplay(),nq}")]
     private sealed class StructuralTypeReferenceExpression : Expression
     {
@@ -2175,7 +2152,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             StructuralType = ((StructuralTypeShaperExpression)subquery.ShaperExpression).StructuralType;
         }
 
-        private StructuralTypeReferenceExpression(StructuralTypeReferenceExpression typeReference, ITypeBase structuralType)
+        public StructuralTypeReferenceExpression(StructuralTypeReferenceExpression typeReference, ITypeBase structuralType)
         {
             Parameter = typeReference.Parameter;
             Subquery = typeReference.Subquery;
@@ -2191,20 +2168,6 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
 
         public override ExpressionType NodeType
             => ExpressionType.Extension;
-
-        public Expression Convert(Type type)
-        {
-            if (type == typeof(object) // Ignore object conversion
-                || type.IsAssignableFrom(Type)) // Ignore casting to base type/interface
-            {
-                return this;
-            }
-
-            return StructuralType is IEntityType entityType
-                && entityType.GetDerivedTypes().FirstOrDefault(et => et.ClrType == type) is IEntityType derivedEntityType
-                    ? new StructuralTypeReferenceExpression(this, derivedEntityType)
-                    : QueryCompilationContext.NotTranslatedExpression;
-        }
 
         private string DebuggerDisplay()
             => this switch
