@@ -82,6 +82,7 @@ public class ReplacingExpressionVisitor : ExpressionVisitor
     {
         var innerExpression = Visit(memberExpression.Expression);
 
+        // TODO: Remove the following (but nav expansion currently still relies on it)
         if (innerExpression is GroupByShaperExpression groupByShaperExpression
             && memberExpression.Member.Name == nameof(IGrouping<int, int>.Key))
         {

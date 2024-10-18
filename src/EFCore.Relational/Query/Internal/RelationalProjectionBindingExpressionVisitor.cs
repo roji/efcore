@@ -22,6 +22,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
     private readonly IncludeFindingExpressionVisitor _includeFindingExpressionVisitor;
 
     private SelectExpression _selectExpression;
+    private Dictionary<ParameterExpression, Expression> _parameterMap = null!;
 
     private bool _indexBasedBinding;
     private Dictionary<StructuralTypeProjectionExpression, ProjectionBindingExpression>? _projectionBindingCache;
@@ -52,9 +53,13 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual Expression Translate(SelectExpression selectExpression, Expression expression)
+    public virtual Expression Translate(
+        SelectExpression selectExpression,
+        Dictionary<ParameterExpression, Expression> parameterMap,
+        Expression expression)
     {
         _selectExpression = selectExpression;
+        _parameterMap = parameterMap;
         _indexBasedBinding = false;
 
         _projectionMembers.Push(new ProjectionMember());
@@ -104,6 +109,11 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
             case null:
                 return null;
 
+            // case ParameterExpression parameterExpression:
+            //     return _parameterMap.TryGetValue(parameterExpression, out var mappedExpression)
+            //         ? Visit(mappedExpression)
+            //         : throw new InvalidOperationException(CoreStrings.TranslationFailed(parameterExpression.Print()));
+
             case not null when _indexBasedBinding:
             {
                 switch (expression)
@@ -112,13 +122,29 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                         return expression;
 
                     case ParameterExpression parameterExpression:
-                        return parameterExpression.Name?.StartsWith(QueryCompilationContext.QueryParameterPrefix, StringComparison.Ordinal)
-                            == true
-                                ? Expression.Call(
-                                    GetParameterValueMethodInfo.MakeGenericMethod(parameterExpression.Type),
-                                    QueryCompilationContext.QueryContextParameter,
-                                    Expression.Constant(parameterExpression.Name))
-                                : throw new InvalidOperationException(CoreStrings.TranslationFailed(parameterExpression.Print()));
+                        if (_parameterMap.TryGetValue(parameterExpression, out var mappedExpression))
+                        {
+                            return Visit(mappedExpression);
+                        }
+
+                        if (parameterExpression.Name?.StartsWith(QueryCompilationContext.QueryParameterPrefix, StringComparison.Ordinal)
+                            == true)
+                        {
+                            return Expression.Call(
+                                GetParameterValueMethodInfo.MakeGenericMethod(parameterExpression.Type),
+                                QueryCompilationContext.QueryContextParameter,
+                                Expression.Constant(parameterExpression.Name));
+                        }
+
+                        throw new InvalidOperationException(CoreStrings.UnresolvedParameterExpression(parameterExpression.Name));
+
+                        // return parameterExpression.Name?.StartsWith(QueryCompilationContext.QueryParameterPrefix, StringComparison.Ordinal)
+                        //     == true
+                        //         ? Expression.Call(
+                        //             GetParameterValueMethodInfo.MakeGenericMethod(parameterExpression.Type),
+                        //             QueryCompilationContext.QueryContextParameter,
+                        //             Expression.Constant(parameterExpression.Name))
+                        //         : throw new InvalidOperationException(CoreStrings.TranslationFailed(parameterExpression.Print()));
 
                     case ProjectionBindingExpression projectionBindingExpression:
                         return _selectExpression.GetProjection(projectionBindingExpression) switch
@@ -166,7 +192,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
 
                         _clientProjections!.Add(
                             _queryableMethodTranslatingExpressionVisitor.TranslateSubquery(
-                                materializeCollectionNavigationExpression.Subquery)!);
+                                materializeCollectionNavigationExpression.Subquery, _parameterMap)!);
 
                         return new CollectionResultExpression(
                             // expression.Type will be CLR type of the navigation here so that is fine.
@@ -175,7 +201,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                             materializeCollectionNavigationExpression.Navigation.ClrType.GetSequenceType());
                 }
 
-                if (_sqlTranslator.TranslateProjection(expression) is SqlExpression sqlExpression)
+                if (_sqlTranslator.Translate(expression, _parameterMap) is SqlExpression sqlExpression)
                 {
                     return AddClientProjection(sqlExpression, expression.Type.MakeNullable());
                 }
@@ -192,7 +218,8 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                         && method.DeclaringType == typeof(Enumerable)
                         && argument.Type.TryGetElementType(typeof(IQueryable<>)) != null)
                     {
-                        if (_queryableMethodTranslatingExpressionVisitor.TranslateSubquery(argument) is ShapedQueryExpression subquery)
+                        if (_queryableMethodTranslatingExpressionVisitor.TranslateSubquery(argument, _parameterMap) is ShapedQueryExpression
+                            subquery)
                         {
                             _clientProjections!.Add(subquery);
                             // expression.Type here will be List<T>
@@ -204,7 +231,7 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                     }
                     else
                     {
-                        var subquery = _queryableMethodTranslatingExpressionVisitor.TranslateSubquery(methodCallExpression);
+                        var subquery = _queryableMethodTranslatingExpressionVisitor.TranslateSubquery(methodCallExpression, _parameterMap);
                         if (subquery != null)
                         {
                             _clientProjections!.Add(subquery);
@@ -230,19 +257,19 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
 
             default:
             {
-                switch (_sqlTranslator.TranslateProjection(expression))
+                var translated = _sqlTranslator.Translate(expression, _parameterMap);
+                switch (translated)
                 {
                     case SqlExpression sqlExpression:
                         _projectionMapping[_projectionMembers.Peek()] = sqlExpression;
                         return new ProjectionBindingExpression(
                             _selectExpression, _projectionMembers.Peek(), expression.Type.MakeNullable());
 
-                    // This handles the case of a complex type being projected out of a Select.
-                    // Note that an entity type being projected is (currently) handled differently
-                    case RelationalStructuralTypeShaperExpression { StructuralType: IComplexType } shaper:
-                        return base.Visit(shaper);
+                    case RelationalStructuralTypeShaperExpression or NewExpression or MemberInitExpression:
+                        return base.Visit(translated);
 
-                    case null or RelationalStructuralTypeShaperExpression { StructuralType: IEntityType }:
+                    case null:
+                    case var _ when translated == QueryCompilationContext.NotTranslatedExpression:
                         return QueryCompilationContext.NotTranslatedExpression;
 
                     default:

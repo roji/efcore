@@ -1155,7 +1155,7 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 entityType, property, expectedType, actualType);
 
         /// <summary>
-        ///     The methods '{methodName}' and '{asyncMethodName}' are not supported by the current database provider. Please contact the publisher of the database provider for more information. 
+        ///     The methods '{methodName}' and '{asyncMethodName}' are not supported by the current database provider. Please contact the publisher of the database provider for more information.
         /// </summary>
         public static string ExecuteQueriesNotSupported(object? methodName, object? asyncMethodName)
             => string.Format(
@@ -3200,6 +3200,14 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
             => string.Format(
                 GetString("UnknownKeyValue", nameof(entityType), nameof(property)),
                 entityType, property);
+
+        /// <summary>
+        ///     The query tree contains an unresolved LINQ ParameterExpression '{parameterName}' and is therefore malformed.
+        /// </summary>
+        public static string UnresolvedParameterExpression(object? parameterName)
+            => string.Format(
+                GetString("UnresolvedParameterExpression", nameof(parameterName)),
+                parameterName);
 
         /// <summary>
         ///     The value of shadow key property '{entityType}.{property}' is unknown when attempting to save changes. This is because shadow property values cannot be preserved when the entity is not being tracked. Consider adding the property to the entity's .NET type. See https://aka.ms/efcore-docs-owned-collections for more information.

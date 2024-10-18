@@ -1760,7 +1760,8 @@ public abstract class NorthwindGroupByQueryTestBase<TFixture>(TFixture fixture) 
         => AssertQuery(
             async,
             ss =>
-                from a in ss.Set<Order>().GroupBy(o => o.CustomerID)
+                from a in ss.Set<Order>()
+                    .GroupBy(o => o.CustomerID)
                     .Where(g => g.Count() > 5)
                     .Select(g => new { CustomerID = g.Key, LastOrderID = g.Max(o => o.OrderID) })
                 join c in ss.Set<Customer>() on a.CustomerID equals c.CustomerID

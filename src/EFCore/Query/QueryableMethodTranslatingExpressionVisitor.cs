@@ -24,6 +24,8 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     private readonly bool _subquery;
     private readonly EntityShaperNullableMarkingExpressionVisitor _entityShaperNullableMarkingExpressionVisitor;
 
+    protected Dictionary<ParameterExpression, Expression> ParameterMap = null!;
+
     /// <summary>
     ///     Creates a new instance of the <see cref="QueryableMethodTranslatingExpressionVisitor" /> class.
     /// </summary>
@@ -57,9 +59,13 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     ///     Translates an expression to an equivalent SQL representation.
     /// </summary>
     /// <param name="expression">An expression to translate.</param>
+    /// <param name="parameterMap">The mapping of <see cref="ParameterExpression" />s to the expressions they reference.</param>
     /// <returns>A SQL translation of the given expression.</returns>
-    public virtual Expression Translate(Expression expression)
+    [EntityFrameworkInternal]
+    public virtual Expression Translate(Expression expression, Dictionary<ParameterExpression, Expression>? parameterMap = null)
     {
+        ParameterMap = parameterMap ?? new();
+
         var translated = Visit(expression);
 
         // Note that we only throw if a specific node is recognized as untranslatable; we need to otherwise not throw in order to allow
@@ -134,6 +140,13 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
                 return base.VisitExtension(extensionExpression);
         }
     }
+
+    /// <inheritdoc />
+    protected override Expression VisitParameter(ParameterExpression parameterExpression)
+        // Note that parameter query roots (i.e. captured variables) are handled in TranslateParameterQueryRoot
+        => ParameterMap.TryGetValue(parameterExpression, out var mappedExpression)
+            ? Visit(mappedExpression)
+            : throw new InvalidOperationException(CoreStrings.TranslationFailed(parameterExpression.Print()));
 
     /// <inheritdoc />
     protected override Expression VisitMethodCall(MethodCallExpression methodCallExpression)
@@ -593,11 +606,14 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     ///     Translates the given subquery.
     /// </summary>
     /// <param name="expression">The subquery expression to translate.</param>
+    /// <param name="parameterMap">The mapping of <see cref="ParameterExpression" />s to the expressions they reference.</param>
     /// <returns>The translation of the given subquery.</returns>
-    public virtual ShapedQueryExpression? TranslateSubquery(Expression expression)
+    public virtual ShapedQueryExpression? TranslateSubquery(
+        Expression expression,
+        Dictionary<ParameterExpression, Expression>? parameterMap)
     {
         var subqueryVisitor = CreateSubqueryVisitor();
-        var translation = subqueryVisitor.Translate(expression) as ShapedQueryExpression;
+        var translation = subqueryVisitor.Translate(expression, parameterMap) as ShapedQueryExpression;
         if (translation == null && subqueryVisitor.TranslationErrorDetails != null)
         {
             AddTranslationErrorDetails(subqueryVisitor.TranslationErrorDetails);
@@ -607,7 +623,7 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
     }
 
     /// <summary>
-    ///     Creates a visitor customized to translate a subquery through <see cref="TranslateSubquery(Expression)" />.
+    ///     Creates a visitor customized to translate a subquery through <see cref="TranslateSubquery" />.
     /// </summary>
     /// <returns>A visitor to translate subquery.</returns>
     protected abstract QueryableMethodTranslatingExpressionVisitor CreateSubqueryVisitor();

@@ -119,7 +119,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
             foreach (var setter in setters)
             {
                 (propertySelector, var valueSelector) = setter;
-                var propertySelectorBody = RemapLambdaBody(source, propertySelector).UnwrapTypeConversion(out _);
+                var propertySelectorBody = ExpandSharedTypeEntities(source, propertySelector).UnwrapTypeConversion(out _);
 
                 // The top-most node on the property selector must be a member access; chop it off to get the base expression and member.
                 // We'll bind the member manually below, so as to get the IPropertyBase it represents - that's important for later.
@@ -138,7 +138,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 // Hack: when returning a StructuralTypeShaperExpression, _sqlTranslator returns it wrapped by a
                 // StructuralTypeReferenceExpression, which is supposed to be a private wrapper only with the SQL translator.
                 // Call TranslateProjection to unwrap it (need to look into getting rid StructuralTypeReferenceExpression altogether).
-                translatedBaseExpression = _sqlTranslator.TranslateProjection(translatedBaseExpression);
+                translatedBaseExpression = _sqlTranslator.Translate(translatedBaseExpression, ParameterMap);
 
                 switch (translatedBaseExpression)
                 {
@@ -402,7 +402,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
         Expression? TranslateSetterValueSelector(ShapedQueryExpression source, Expression valueSelector, Type propertyType)
         {
             var remappedValueSelector = valueSelector is LambdaExpression lambdaExpression
-                ? RemapLambdaBody(source, lambdaExpression)
+                ? ExpandSharedTypeEntities(source, lambdaExpression)
                 : valueSelector;
 
             if (remappedValueSelector.Type != propertyType)
@@ -410,7 +410,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 remappedValueSelector = Expression.Convert(remappedValueSelector, propertyType);
             }
 
-            if (_sqlTranslator.TranslateProjection(remappedValueSelector, applyDefaultTypeMapping: false) is not Expression
+            if (_sqlTranslator.Translate(remappedValueSelector, ParameterMap, applyDefaultTypeMapping: false) is not Expression
                 translatedValueSelector)
             {
                 AddTranslationErrorDetails(RelationalStrings.InvalidValueInSetProperty(valueSelector.Print()));
@@ -439,7 +439,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
             // been pruned from the source before remapping the lambda (#28727).
             var firstPropertySelector = setters[0].PropertySelector;
             if (!IsMemberAccess(
-                    RemapLambdaBody(source, firstPropertySelector).UnwrapTypeConversion(out _),
+                    ExpandSharedTypeEntities(source, firstPropertySelector).UnwrapTypeConversion(out _),
                     RelationalDependencies.Model,
                     out var baseExpression)
                 || baseExpression.UnwrapTypeConversion(out _) is not StructuralTypeShaperExpression shaper)
