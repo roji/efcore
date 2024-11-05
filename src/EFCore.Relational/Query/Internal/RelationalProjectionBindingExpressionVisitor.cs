@@ -201,7 +201,9 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                             materializeCollectionNavigationExpression.Navigation.ClrType.GetSequenceType());
                 }
 
-                if (_sqlTranslator.Translate(expression, _parameterMap) is SqlExpression sqlExpression)
+                var translated = _sqlTranslator.Translate(expression, _parameterMap);
+
+                if (translated is SqlExpression sqlExpression)
                 {
                     return AddClientProjection(sqlExpression, expression.Type.MakeNullable());
                 }
@@ -252,7 +254,9 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                     }
                 }
 
-                return base.Visit(expression);
+                return translated is null || translated == QueryCompilationContext.NotTranslatedExpression
+                    ? base.Visit(expression)
+                    : Visit(translated);
             }
 
             default:

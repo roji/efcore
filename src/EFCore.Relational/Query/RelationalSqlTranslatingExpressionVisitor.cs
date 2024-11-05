@@ -148,6 +148,9 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             StructuralTypeReferenceExpression { Parameter: StructuralTypeShaperExpression shaper }
                 => shaper,
 
+            StructuralTypeReferenceExpression { Subquery: not null }
+                => null,
+
             var e => e
         };
     }
