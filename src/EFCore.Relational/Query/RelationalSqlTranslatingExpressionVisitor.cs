@@ -611,53 +611,127 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
     protected override Expression VisitListInit(ListInitExpression listInitExpression)
         => QueryCompilationContext.NotTranslatedExpression;
 
+    private class Foo(IReadOnlyDictionary<ParameterExpression, Expression> parameterMap) : ExpressionVisitor
+    {
+        [return: NotNullIfNotNull("node")]
+        public override Expression? Visit(Expression? node)
+            => node switch
+            {
+                ParameterExpression parameterExpression
+                    => Visit(
+                        parameterMap.GetValueOrDefault(parameterExpression)
+                        ?? throw new InvalidOperationException(CoreStrings.UnresolvedParameterExpression(parameterExpression.Name))),
+
+                MemberExpression memberExpression => Visit(memberExpression.Expression) switch
+                {
+                    // new { Foo = x }.Foo => x
+                    NewExpression newExpression when newExpression.Members?.IndexOf(memberExpression.Member) is >= 0 and var index
+                        => Visit(newExpression.Arguments[index]),
+
+                    GroupByShaperExpression groupByShaperExpression when memberExpression.Member.Name == nameof(IGrouping<int, int>.Key)
+                        => Visit(groupByShaperExpression.KeySelector),
+
+                    var e when e.UnwrapTypeConversion(out _) is MemberInitExpression memberInitExpression
+                        && memberInitExpression.Bindings.SingleOrDefault(mb => mb.Member.IsSameAs(memberExpression.Member)) is
+                            MemberAssignment memberAssignment
+                        => Visit(memberAssignment.Expression),
+
+                    var expression => memberExpression.Update(expression)
+                },
+
+                _ => node
+            };
+    }
     /// <inheritdoc />
     protected override Expression VisitMember(MemberExpression memberExpression)
     {
-        var expression = Visit(memberExpression.Expression);
+        var reducedExpression = new Foo(ParameterMap).Visit(memberExpression);
+        if (reducedExpression != memberExpression)
+        {
+            if (reducedExpression is MemberExpression newMemberExpression)
+            {
+                memberExpression = newMemberExpression;
+            }
+            else
+            {
+                return Visit(reducedExpression);
+            }
+        }
 
-        return expression switch
+        var translated = Visit(memberExpression.Expression);
+
+        switch (translated)
         {
             // First try to bind a regular property on a modeled structural type.
-            StructuralTypeReferenceExpression structuralTypeReference
-                => TryBindMember(structuralTypeReference, MemberIdentity.Create(memberExpression.Member), out var boundExpression)
+            case StructuralTypeReferenceExpression structuralTypeReference:
+                return TryBindMember(
+                    structuralTypeReference, MemberIdentity.Create(memberExpression.Member), out var boundExpression)
                     ? boundExpression
-                    : QueryCompilationContext.NotTranslatedExpression,
+                    : QueryCompilationContext.NotTranslatedExpression;
 
             // Otherwise, when the expression translated as a scalar (SqlExpression), or is null (static member access), go through
             // the member translators.
-            SqlExpression or null
-                => Dependencies.MemberTranslatorProvider.Translate(
-                    expression as SqlExpression, memberExpression.Member, memberExpression.Type, _queryCompilationContext.Logger)
-                ?? QueryCompilationContext.NotTranslatedExpression,
+            case SqlExpression or null:
+                return Dependencies.MemberTranslatorProvider.Translate(
+                        translated as SqlExpression, memberExpression.Member, memberExpression.Type,
+                        _queryCompilationContext.Logger)
+                    ?? QueryCompilationContext.NotTranslatedExpression;
 
-            // TODO: Don't forget to go over VisitMethod as well
-            GroupByShaperExpression groupByShaperExpression when memberExpression.Member.Name == nameof(IGrouping<int, int>.Key)
-                => UnwrapNullableConvert(groupByShaperExpression.KeySelector),
+            default:
+                return QueryCompilationContext.NotTranslatedExpression;
+        }
 
-            // new { Foo = x }.Foo => x
-            NewExpression newExpression when newExpression.Members?.IndexOf(memberExpression.Member) is >= 0 and var index
-                => UnwrapNullableConvert(newExpression.Arguments[index]),
+        // Expression? ResolveParameter(Expression? expression)
+        //     => expression is ParameterExpression parameterExpression
+        //         ? ParameterMap.TryGetValue(parameterExpression, out var mappedExpression)
+        //             ? mappedExpression
+        //             : throw new InvalidOperationException(CoreStrings.UnresolvedParameterExpression(parameterExpression.Name))
+        //         : expression;
 
-            var e when e.UnwrapTypeConversion(out _) is MemberInitExpression memberInitExpression
-                && memberInitExpression.Bindings.SingleOrDefault(mb => mb.Member.IsSameAs(memberExpression.Member)) is MemberAssignment
-                    memberAssignment
-                => UnwrapNullableConvert(memberAssignment.Expression),
-
-            _ => QueryCompilationContext.NotTranslatedExpression
-            // var e when e == QueryCompilationContext.NotTranslatedExpression
-            //     => QueryCompilationContext.NotTranslatedExpression,
-            //
-            // _ => throw new UnreachableException()
-        };
-
-        // NewExpression/MemberInitExpression arguments may be wrapped in Convert nodes to preserve value nullability (e.g.
-        // a ColumnExpression with Type=int would need to be wrapped with a Convert to Nullable<int> to preserve proper typing).
-        Expression UnwrapNullableConvert(Expression expression)
-            => expression is UnaryExpression { NodeType: ExpressionType.Convert, Operand: var operand } convert
-                && Nullable.GetUnderlyingType(convert.Type) == operand.Type
-                    ? operand
-                    : expression;
+        // var expression = Visit(memberExpression.Expression);
+        //
+        // return expression switch
+        // {
+        //     // First try to bind a regular property on a modeled structural type.
+        //     StructuralTypeReferenceExpression structuralTypeReference
+        //         => TryBindMember(structuralTypeReference, MemberIdentity.Create(memberExpression.Member), out var boundExpression)
+        //             ? boundExpression
+        //             : QueryCompilationContext.NotTranslatedExpression,
+        //
+        //     // Otherwise, when the expression translated as a scalar (SqlExpression), or is null (static member access), go through
+        //     // the member translators.
+        //     SqlExpression or null
+        //         => Dependencies.MemberTranslatorProvider.Translate(
+        //             expression as SqlExpression, memberExpression.Member, memberExpression.Type, _queryCompilationContext.Logger)
+        //         ?? QueryCompilationContext.NotTranslatedExpression,
+        //
+        //     // TODO: Don't forget to go over VisitMethod as well
+        //     GroupByShaperExpression groupByShaperExpression when memberExpression.Member.Name == nameof(IGrouping<int, int>.Key)
+        //         => UnwrapNullableConvert(groupByShaperExpression.KeySelector),
+        //
+        //     // new { Foo = x }.Foo => x
+        //     NewExpression newExpression when newExpression.Members?.IndexOf(memberExpression.Member) is >= 0 and var index
+        //         => UnwrapNullableConvert(newExpression.Arguments[index]),
+        //
+        //     var e when e.UnwrapTypeConversion(out _) is MemberInitExpression memberInitExpression
+        //         && memberInitExpression.Bindings.SingleOrDefault(mb => mb.Member.IsSameAs(memberExpression.Member)) is MemberAssignment
+        //             memberAssignment
+        //         => UnwrapNullableConvert(memberAssignment.Expression),
+        //
+        //     _ => QueryCompilationContext.NotTranslatedExpression
+        //     // var e when e == QueryCompilationContext.NotTranslatedExpression
+        //     //     => QueryCompilationContext.NotTranslatedExpression,
+        //     //
+        //     // _ => throw new UnreachableException()
+        // };
+        //
+        // // NewExpression/MemberInitExpression arguments may be wrapped in Convert nodes to preserve value nullability (e.g.
+        // // a ColumnExpression with Type=int would need to be wrapped with a Convert to Nullable<int> to preserve proper typing).
+        // Expression UnwrapNullableConvert(Expression expression)
+        //     => expression is UnaryExpression { NodeType: ExpressionType.Convert, Operand: var operand } convert
+        //         && Nullable.GetUnderlyingType(convert.Type) == operand.Type
+        //             ? operand
+        //             : expression;
     }
 
     /// <inheritdoc />
@@ -1102,6 +1176,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             return constant;
         }
 
+        // return QueryCompilationContext.NotTranslatedExpression;
         var translatedArguments = new Expression[newExpression.Arguments.Count];
         for (var i = 0; i < newExpression.Arguments.Count; i++)
         {
