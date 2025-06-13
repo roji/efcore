@@ -1350,16 +1350,32 @@ public partial class NavigationExpandingExpressionVisitor : ExpressionVisitor
         return source;
     }
 
-    private static NavigationExpansionExpression ProcessSelect(NavigationExpansionExpression source, LambdaExpression selector)
+    private NavigationExpansionExpression ProcessSelect(NavigationExpansionExpression source, LambdaExpression selector)
     {
-        var selectorBody = ReplacingExpressionVisitor.Replace(
-            selector.Parameters[0],
-            source.PendingSelector,
-            selector.Body);
+        selector = ProcessLambdaExpression(source, selector);
 
-        source.ApplySelector(selectorBody);
+        source = (NavigationExpansionExpression)_pendingSelectorExpandingExpressionVisitor.Visit(source);
+        var newStructure = SnapshotExpression(source.PendingSelector);
+        var queryable = Reduce(source);
 
-        return source;
+        var result = Expression.Call(
+                QueryableMethods.Select.MakeGenericMethod(source.SourceElementType, selector.ReturnType),
+                queryable,
+                Expression.Quote(selector));
+
+        var navigationTree = new NavigationTreeExpression(selector.Body);
+        var parameterName = GetParameterName("e");
+
+        return new NavigationExpansionExpression(result, navigationTree, navigationTree, parameterName);
+
+        // var selectorBody = ReplacingExpressionVisitor.Replace(
+        //     selector.Parameters[0],
+        //     source.PendingSelector,
+        //     selector.Body);
+
+        // source.ApplySelector(selectorBody);
+
+        // return source;
     }
 
     private NavigationExpansionExpression ProcessSelectMany(

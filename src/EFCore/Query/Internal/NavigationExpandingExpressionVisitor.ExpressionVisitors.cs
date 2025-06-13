@@ -917,7 +917,7 @@ public partial class NavigationExpandingExpressionVisitor
     }
 
     /// <summary>
-    ///     <see cref="NavigationExpansionExpression" /> remembers the pending selector so we don't expand
+    ///     <see cref="NavigationExpansionExpression" /> remembers the pending selector so we donon't expand
     ///     navigations unless we need to. This visitor applies them when we need to.
     /// </summary>
     private sealed class PendingSelectorExpandingExpressionVisitor(
