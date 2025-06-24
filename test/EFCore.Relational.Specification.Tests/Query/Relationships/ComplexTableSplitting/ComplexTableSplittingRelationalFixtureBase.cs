@@ -23,6 +23,7 @@ public abstract class ComplexTableSplittingRelationalFixtureBase : Relationships
             .HasForeignKey<RelationshipsRoot>(x => x.OptionalReferenceTrunkId)
             .IsRequired(false);
 
+        // TODO: Why is this a navigation and not a complex property?
         modelBuilder.Entity<RelationshipsRoot>()
             .HasOne(x => x.RequiredReferenceTrunk)
             .WithOne(x => x.RequiredReferenceInverseRoot)
@@ -30,12 +31,39 @@ public abstract class ComplexTableSplittingRelationalFixtureBase : Relationships
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(true);
 
-        modelBuilder.Entity<RelationshipsRoot>().Ignore(x => x.CollectionTrunk);
-        modelBuilder.Entity<RelationshipsTrunk>().Ignore(x => x.CollectionInverseRoot);
+        // As this fixture is for table splitting and that's only supported for non-collections,
+        // we configure collections as regular navigations.
+        modelBuilder.Entity<RelationshipsRoot>()
+            .HasMany(x => x.CollectionTrunk)
+            .WithOne(x => x.CollectionInverseRoot)
+            .HasForeignKey(x => x.CollectionRootId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<RelationshipsTrunk>()
+            .HasMany(x => x.CollectionBranch)
+            .WithOne(x => x.CollectionInverseTrunk)
+            .HasForeignKey(x => x.CollectionTrunkId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<RelationshipsBranch>()
+            .HasMany(x => x.CollectionLeaf)
+            .WithOne(x => x.CollectionInverseBranch)
+            .HasForeignKey(x => x.CollectionBranchId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // TODO: issue #31376 - complex optional references
-        modelBuilder.Entity<RelationshipsTrunk>()
-            .Ignore(x => x.OptionalReferenceBranch);
+        modelBuilder.Entity<RelationshipsTrunk>().Ignore(x => x.OptionalReferenceBranch);
+        modelBuilder.Entity<RelationshipsBranch>().Ignore(x => x.OptionalReferenceInverseTrunk);
+
+        modelBuilder.Entity<RelationshipsBranch>().Ignore(x => x.OptionalReferenceLeaf);
+
+        // TODO: Convert to complex property
+        modelBuilder.Entity<RelationshipsBranch>()
+            .HasOne(x => x.RequiredReferenceLeaf)
+            .WithOne(x => x.RequiredReferenceInverseBranch)
+            .HasForeignKey<RelationshipsBranch>(x => x.RequiredReferenceLeafId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(true);
 
         modelBuilder.Entity<RelationshipsTrunk>()
             .ComplexProperty(x => x.RequiredReferenceBranch, bb =>
@@ -66,7 +94,7 @@ public abstract class ComplexTableSplittingRelationalFixtureBase : Relationships
             });
 
         //  collections are not supported for non-json compex types
-        modelBuilder.Entity<RelationshipsTrunk>().Ignore(x => x.CollectionBranch);
+        // modelBuilder.Entity<RelationshipsTrunk>().Ignore(x => x.CollectionBranch);
     }
 
     protected override Task SeedAsync(RelationshipsContext context)

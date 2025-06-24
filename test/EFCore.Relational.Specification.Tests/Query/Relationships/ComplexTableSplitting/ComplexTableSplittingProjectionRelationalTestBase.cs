@@ -10,7 +10,7 @@ public abstract class ComplexTableSplittingProjectionRelationalTestBase<TFixture
     where TFixture : ComplexTableSplittingRelationalFixtureBase, new()
 {
     [ConditionalTheory]
-    [MemberData(nameof(IsAsyncData))]
+    [MemberData(nameof(AsyncAndTrackingData))]
     public virtual Task Select_everything(bool async, QueryTrackingBehavior queryTrackingBehavior)
         => AssertQuery(
             async,

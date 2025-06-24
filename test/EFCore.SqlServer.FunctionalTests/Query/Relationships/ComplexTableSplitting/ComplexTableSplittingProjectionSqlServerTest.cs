@@ -3,10 +3,10 @@
 
 namespace Microsoft.EntityFrameworkCore.Query.Relationships.ComplexTableSplitting;
 
-public class ComplexProjectionSqlServerTest
+public class ComplexTableSplittingProjectionSqlServerTest
     : ComplexTableSplittingProjectionRelationalTestBase<ComplexTableSplittingSqlServerFixture>
 {
-    public ComplexProjectionSqlServerTest(ComplexTableSplittingSqlServerFixture fixture, ITestOutputHelper testOutputHelper)
+    public ComplexTableSplittingProjectionSqlServerTest(ComplexTableSplittingSqlServerFixture fixture, ITestOutputHelper testOutputHelper)
         : base(fixture)
     {
         Fixture.TestSqlLoggerFactory.Clear();
@@ -56,9 +56,9 @@ ORDER BY [r].[Id]
 
         AssertSql(
             """
-SELECT [t].[Id], [t].[CollectionRootId], [t].[Name], [t].[OptionalReferenceBranchId], [t].[RequiredReferenceBranchId], [t].[RequiredReferenceBranch_Name], [t].[RequiredReferenceBranch_RequiredReferenceLeaf_Name]
+SELECT [r].[Id], [t].[Id], [t].[CollectionRootId], [t].[Name], [t].[OptionalReferenceBranchId], [t].[RequiredReferenceBranchId], [t].[RequiredReferenceBranch_Name], [t].[RequiredReferenceBranch_RequiredReferenceLeaf_Name]
 FROM [RootEntities] AS [r]
-INNER JOIN [TrunkEntities] AS [t] ON [r].[RequiredReferenceTrunkId] = [t].[Id]
+LEFT JOIN [TrunkEntities] AS [t] ON [r].[Id] = [t].[CollectionRootId]
 ORDER BY [r].[Id]
 """);
     }
