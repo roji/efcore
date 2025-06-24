@@ -28,12 +28,12 @@ public class OwnedJsonRelationshipsCosmosFixture : OwnedJsonRelationshipsFixture
     {
         base.OnModelCreating(modelBuilder, context);
 
-        modelBuilder.Entity<RelationshipsRootEntity>()
+        modelBuilder.Entity<RelationshipsRoot>()
             .ToContainer("RootEntities")
             .HasDiscriminatorInJsonId()
             .HasDiscriminator<string>("Discriminator").HasValue("Root");
 
-        modelBuilder.Entity<RelationshipsRootEntity>()
+        modelBuilder.Entity<RelationshipsRoot>()
             .ToContainer("RootEntities");
     }
 }

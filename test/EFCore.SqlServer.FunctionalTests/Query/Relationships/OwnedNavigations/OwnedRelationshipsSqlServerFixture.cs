@@ -1,12 +1,12 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-namespace Microsoft.EntityFrameworkCore.Query.Relationships;
+namespace Microsoft.EntityFrameworkCore.Query.Relationships.OwnedNavigations;
 
-public class ComplexRelationshipsSqliteFixture : ComplexTableSplittingRelationshipsRelationalFixtureBase, ITestSqlLoggerFactory
+public class OwnedRelationshipsSqlServerFixture : OwnedNavigationsRelationalFixtureBase, ITestSqlLoggerFactory
 {
     protected override ITestStoreFactory TestStoreFactory
-        => SqliteTestStoreFactory.Instance;
+        => SqlServerTestStoreFactory.Instance;
 
     public TestSqlLoggerFactory TestSqlLoggerFactory
         => (TestSqlLoggerFactory)ListLoggerFactory;

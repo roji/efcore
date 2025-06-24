@@ -4,7 +4,7 @@
 namespace Microsoft.EntityFrameworkCore.Query.Relationships.Projection;
 
 public class ComplexProjectionSqliteTest
-    : ComplexProjectionRelationalTestBase<ComplexRelationshipsSqliteFixture>
+    : ComplexTableSplittingProjectionRelationalTestBase<ComplexRelationshipsSqliteFixture>
 {
     public ComplexProjectionSqliteTest(ComplexRelationshipsSqliteFixture fixture, ITestOutputHelper testOutputHelper)
         : base(fixture)

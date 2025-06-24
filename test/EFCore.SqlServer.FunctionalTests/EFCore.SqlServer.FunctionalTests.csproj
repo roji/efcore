@@ -78,4 +78,8 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Query/Relationships/Projection/" />
+  </ItemGroup>
 </Project>
