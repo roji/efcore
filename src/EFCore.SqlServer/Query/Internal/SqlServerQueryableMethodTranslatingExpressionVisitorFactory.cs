@@ -14,6 +14,7 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
 public class SqlServerQueryableMethodTranslatingExpressionVisitorFactory : IQueryableMethodTranslatingExpressionVisitorFactory
 {
     private readonly ISqlServerSingletonOptions _sqlServerSingletonOptions;
+    private readonly RuntimeModelDependencies _runtimeModelDependencies;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -24,11 +25,13 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitorFactory : IQuer
     public SqlServerQueryableMethodTranslatingExpressionVisitorFactory(
         QueryableMethodTranslatingExpressionVisitorDependencies dependencies,
         RelationalQueryableMethodTranslatingExpressionVisitorDependencies relationalDependencies,
-        ISqlServerSingletonOptions sqlServerSingletonOptions)
+        ISqlServerSingletonOptions sqlServerSingletonOptions,
+        RuntimeModelDependencies runtimeModelDependencies)
     {
         Dependencies = dependencies;
         RelationalDependencies = relationalDependencies;
         _sqlServerSingletonOptions = sqlServerSingletonOptions;
+        _runtimeModelDependencies = runtimeModelDependencies;
     }
 
     /// <summary>
@@ -50,5 +53,5 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitorFactory : IQuer
     [DebuggerStepThrough]
     public virtual QueryableMethodTranslatingExpressionVisitor Create(QueryCompilationContext queryCompilationContext)
         => new SqlServerQueryableMethodTranslatingExpressionVisitor(
-            Dependencies, RelationalDependencies, (SqlServerQueryCompilationContext)queryCompilationContext, _sqlServerSingletonOptions);
+            Dependencies, RelationalDependencies, (SqlServerQueryCompilationContext)queryCompilationContext, _sqlServerSingletonOptions, _runtimeModelDependencies);
 }

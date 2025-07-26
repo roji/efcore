@@ -1431,6 +1431,12 @@ public sealed partial class SelectExpression : TableExpressionBase
                             ProcessType(nestedProjection);
                             break;
 
+                        case StructuralTypeShaperExpression { ValueBufferExpression: ProjectionBindingExpression projectingBinding2 }
+                            when projectingBinding2.QueryExpression is SelectExpression select
+                                && select.GetProjection(projectingBinding2) is StructuralTypeProjectionExpression nestedProjection:
+                            ProcessType(nestedProjection);
+                            break;
+
                         // Complex (not owned) JSON, single (non-collection)
                         case StructuralTypeShaperExpression { ValueBufferExpression: JsonQueryExpression jsonQuery }:
                             projections[complexProperty] = ((JsonProjectionInfo)AddJsonProjection(jsonQuery).Value!).JsonColumnIndex;

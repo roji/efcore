@@ -190,6 +190,11 @@ public class LiftableConstantProcessor : ExpressionVisitor, ILiftableConstantPro
 
     protected virtual ConstantExpression InlineConstant(LiftableConstantExpression liftableConstant)
     {
+        if (liftableConstant.OriginalExpression is not null)
+        {
+            return liftableConstant.OriginalExpression;
+        }
+
         if (liftableConstant.ResolverExpression is Expression<Func<MaterializerLiftableConstantContext, object>>
             resolverExpression)
         {

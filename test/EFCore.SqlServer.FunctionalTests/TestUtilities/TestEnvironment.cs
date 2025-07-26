@@ -16,8 +16,10 @@ public static class TestEnvironment
         .Build()
         .GetSection("Test:SqlServer");
 
-    public static string DefaultConnection { get; } = Config["DefaultConnection"]
-        ?? "Data Source=(localdb)\\MSSQLLocalDB;Database=master;Integrated Security=True;Connect Timeout=60;ConnectRetryCount=0";
+    // public static string DefaultConnection { get; } = Config["DefaultConnection"]
+    //     ?? "Data Source=(localdb)\\MSSQLLocalDB;Database=master;Integrated Security=True;Connect Timeout=60;ConnectRetryCount=0";
+
+    public static string DefaultConnection { get; } = "Server=shaysql.database.windows.net;Initial Catalog=test;Authentication=Active Directory Default";
 
     private static readonly string _dataSource = new SqlConnectionStringBuilder(DefaultConnection).DataSource;
 

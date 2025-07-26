@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Data.SqlTypes;
 
 namespace Microsoft.EntityFrameworkCore.Query.Translations;
@@ -62,6 +63,30 @@ SELECT TOP(@p) [v].[Id], [v].[Vector]
 FROM [VectorEntities] AS [v]
 ORDER BY VECTOR_DISTANCE('cosine', [v].[Vector], CAST('[1,2,100]' AS VECTOR(3)))
 """);
+    }
+
+    public class MyWrapper(int value)
+    {
+        public int Value { get; set; } = value;
+    }
+
+    [ConditionalFact]
+    [Experimental("FOO")]
+    public async Task VectorSearch()
+    {
+        using var ctx = CreateContext();
+
+        var results = await ctx.VectorEntities
+            .VectorSearch(e => e.Vector, "cosine")
+            .Where(e => e.Distance > 8)
+            // .Select(e => e.Value.Id)
+            // .Select(e => new { e.Value, e.Distance })
+            .Select(e => e.Value)
+            .ToListAsync();
+
+        // Assert.Equal(2, results.Single().Id);
+
+        AssertSql();
     }
 
     [ConditionalFact]

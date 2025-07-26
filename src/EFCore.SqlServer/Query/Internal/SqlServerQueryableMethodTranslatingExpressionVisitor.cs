@@ -1,8 +1,11 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
+using Microsoft.EntityFrameworkCore.SqlServer.Extensions;
 using Microsoft.EntityFrameworkCore.SqlServer.Infrastructure.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Metadata.Internal;
@@ -24,6 +27,7 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
     private readonly IRelationalTypeMappingSource _typeMappingSource;
     private readonly ISqlExpressionFactory _sqlExpressionFactory;
     private readonly ISqlServerSingletonOptions _sqlServerSingletonOptions;
+    private readonly RuntimeModelDependencies _runtimeModelDependencies;
 
     private HashSet<ColumnExpression>? _columnsWithMultipleSetters;
 
@@ -37,13 +41,15 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
         QueryableMethodTranslatingExpressionVisitorDependencies dependencies,
         RelationalQueryableMethodTranslatingExpressionVisitorDependencies relationalDependencies,
         SqlServerQueryCompilationContext queryCompilationContext,
-        ISqlServerSingletonOptions sqlServerSingletonOptions)
+        ISqlServerSingletonOptions sqlServerSingletonOptions,
+        RuntimeModelDependencies runtimeModelDependencies)
         : base(dependencies, relationalDependencies, queryCompilationContext)
     {
         _queryCompilationContext = queryCompilationContext;
         _typeMappingSource = relationalDependencies.TypeMappingSource;
         _sqlExpressionFactory = relationalDependencies.SqlExpressionFactory;
         _sqlServerSingletonOptions = sqlServerSingletonOptions;
+        _runtimeModelDependencies = runtimeModelDependencies;
     }
 
     /// <summary>
@@ -60,6 +66,7 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
         _typeMappingSource = parentVisitor._typeMappingSource;
         _sqlExpressionFactory = parentVisitor._sqlExpressionFactory;
         _sqlServerSingletonOptions = parentVisitor._sqlServerSingletonOptions;
+        _runtimeModelDependencies = parentVisitor._runtimeModelDependencies;
     }
 
     /// <summary>
@@ -70,6 +77,227 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
     /// </summary>
     protected override QueryableMethodTranslatingExpressionVisitor CreateSubqueryVisitor()
         => new SqlServerQueryableMethodTranslatingExpressionVisitor(this);
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    protected override Expression VisitMethodCall(MethodCallExpression methodCallExpression)
+    {
+        var method = methodCallExpression.Method;
+        if (method.DeclaringType == typeof(SqlServerQueryableExtensions)
+            && Visit(methodCallExpression.Arguments[0]) is ShapedQueryExpression source)
+        {
+            // var (query, shaper) = (source.QueryExpression, source.ShaperExpression);
+
+            switch (method.Name)
+            {
+                case "VectorSearchInternal" // TODO: nameof
+                    when methodCallExpression.Arguments is
+                    [
+                        _,
+                        UnaryExpression { NodeType: ExpressionType.Quote, Operand: LambdaExpression vectorPropertySelector },
+                        var distanceFunction
+                    ]:
+                {
+                    if (TranslateLambdaExpression(source, vectorPropertySelector) is not ColumnExpression vectorColumn)
+                    {
+                        throw new InvalidOperationException("Invalid vector column selector");
+                    }
+
+                    if (TranslateExpression(distanceFunction) is not { } translatedDistanceFunction)
+                    {
+                        throw new InvalidOperationException();
+                    }
+
+                    if (source.QueryExpression is not SelectExpression { Tables: [TableExpression table] } sourceSelect
+                        || source.ShaperExpression is not StructuralTypeShaperExpression { StructuralType: IEntityType containedEntityType })
+                    {
+                        // Since EF.Functions.VectorSearch() is an extension over DbSet directly (not IQueryable<T>), we know the query
+                        // expression is an empty SelectExpression
+                        throw new UnreachableException();
+                    }
+
+                    // TODO: Need a SQL Server-specific TVF expression for the special X = Y syntax.
+                    var stringTypeMapping = _typeMappingSource.FindMapping(typeof(string))!;
+                    var vectorSearchFunction = new TableValuedFunctionExpression(
+                        table.Alias,
+                        "VECTOR_SEARCH",
+                        [
+                            new SqlConstantExpression(table.Name, stringTypeMapping),
+                            new SqlConstantExpression(vectorColumn.Name, stringTypeMapping),
+                            translatedDistanceFunction
+                        ]);
+
+#pragma warning disable EF1001
+                    var vectorSearchResultType = method.ReturnType.GetSequenceType();
+
+                    // var tempModel = new Model();
+                    // var wrapperEntityType = new EntityType(
+                    //     vectorSearchResultType, tempModel, owned: false, ConfigurationSource.Explicit);
+                    var tempModel = new RuntimeModel(
+                        skipDetectChanges: true,
+                        modelId: Guid.NewGuid(),
+                        entityTypeCount: 1);
+                    var wrapperEntityType = new RuntimeEntityType(
+                        "VectorSearchResult",
+                        vectorSearchResultType,
+                        sharedClrType: false,
+                        tempModel,
+                        baseType: null,
+                        ChangeTrackingStrategy.ChangedNotifications,
+                        indexerPropertyInfo: null,
+                        propertyBag: false,
+                        discriminatorProperty: null,
+                        discriminatorValue: null,
+                        derivedTypesCount: 0,
+                        propertyCount: 1,
+                        complexPropertyCount: 1, // UNSURE
+                        foreignKeyCount: 0,
+                        navigationCount: 0,
+                        skipNavigationCount: 0,
+                        servicePropertyCount: 0,
+                        unnamedIndexCount: 0,
+                        namedIndexCount: 0,
+                        keyCount: 0,
+                        triggerCount: 0);
+
+                    // ((IModel)tempModel).ModelDependencies = new RuntimeModelDependencies(_typeMappingSource, null!, null!);
+                    ((IModel)tempModel).ModelDependencies = _runtimeModelDependencies;
+
+                    var distanceProperty = wrapperEntityType.AddProperty(
+                        nameof(VectorSearchResult<,>.Distance),
+                        typeof(float), // UNSURE
+                        vectorSearchResultType.GetProperty(nameof(VectorSearchResult<,>.Distance))!);
+
+
+                    // var valueProperty = wrapperEntityType.AddComplexProperty(
+                    //     name: nameof(VectorSearchResult<,>.Value),
+                    //     clrType: containedEntityType.ClrType,
+                    //     targetTypeName: containedEntityType.Name,
+                    //     targetType: containedEntityType.ClrType,
+                    //     propertyInfo: vectorSearchResultType.GetProperty(nameof(VectorSearchResult<,>.Value))!,
+                    //     collection: false);
+
+                    // AS (POSSIBLY OWNED) NAVIGATION
+
+                    // var valueProperty = wrapperEntityType.AddNavigation(
+                    //     vectorSearchResultType.GetProperty(nameof(VectorSearchResult<,>.Value))!,
+                    //     new ForeignKey(),
+                    //     pointsToPrincipal: false);
+
+                    var foreignKey = new RuntimeForeignKey(
+                        dependentProperties: [],
+                        principalKey: (RuntimeKey)containedEntityType.FindPrimaryKey()!, // UNSURE
+                        dependentEntityType: wrapperEntityType,
+                        principalEntityType: (RuntimeEntityType)containedEntityType,
+                        DeleteBehavior.NoAction,
+                        unique: false,
+                        required: true,
+                        requiredDependent: false,
+                        ownership: false); // UNSURE
+
+                    wrapperEntityType.AddNavigation(
+                        name: nameof(VectorSearchResult<,>.Value) + "Navigation",
+                        foreignKey: foreignKey,
+                        onDependent: true,
+                        clrType: containedEntityType.ClrType,
+                        propertyInfo: vectorSearchResultType.GetProperty(nameof(VectorSearchResult<,>.Value))!);
+
+                    var structuralTypeProjection = new StructuralTypeProjectionExpression(
+                        wrapperEntityType,
+                        propertyExpressionMap: new Dictionary<IProperty, ColumnExpression>()
+                        {
+                            [distanceProperty] = new ColumnExpression(distanceProperty.Name, vectorSearchFunction.Alias, typeof(float), _typeMappingSource.FindMapping(typeof(float)), nullable: false),
+                        },
+                        // complexPropertyCache: new Dictionary<IComplexProperty, Expression>()
+                        // {
+                        //     [valueProperty] = source.ShaperExpression
+                        // },
+                        tableMap: new Dictionary<ITableBase, string>()); // TODO: We have no relational model table. Hopefully this works (for the important scenarios).
+
+                    var select = new SelectExpression(
+                        tables: [vectorSearchFunction],
+                        structuralTypeProjection,
+                        identifier: [], // TODO, sourceSelect._identifier, _identifier is closed off as private. Though at least for now, we don't allow projecting out the wrapper in any case
+                        _queryCompilationContext.SqlAliasManager);
+
+                    var shaper = new RelationalStructuralTypeShaperExpression(
+                        wrapperEntityType,
+                        new ProjectionBindingExpression(select, new ProjectionMember(), typeof(ValueBuffer)),
+                        nullable: false);
+
+                    return new ShapedQueryExpression(select, shaper);
+#pragma warning restore EF1001
+                }
+            }
+        }
+
+//         if (methodCallExpression.Method.Name == nameof(Queryable.Select)
+            //             && methodCallExpression.Method.DeclaringType == typeof(Queryable))
+            //         {
+            //             if (methodCallExpression.Arguments[1] is UnaryExpression
+            //                 {
+            //                     NodeType: ExpressionType.Quote,
+            //                     Operand: LambdaExpression
+            //                     {
+            //                         Body: NewExpression
+            //                         {
+            //                             Type: { IsGenericType: true } instantiatedType,
+            //                             Arguments:
+            //                             [
+            //                                 UnaryExpression { NodeType: ExpressionType.Quote, Operand: LambdaExpression vectorPropertySelector },
+            //                                 ConstantExpression { Value: string distanceFunction }
+            //                             ]
+            //                         }
+            //                     }
+            //                 }
+            //                 && instantiatedType.GetGenericTypeDefinition() == typeof(VectorSearchResult<,>))
+            //             {
+            //                 var source = Visit(methodCallExpression.Arguments[0]);
+            //                 if (source is ShapedQueryExpression { QueryExpression: SelectExpression select } shapedQueryExpression
+            //                     && TranslateLambdaExpression(shapedQueryExpression, vectorPropertySelector) is ColumnExpression vectorColumn)
+            //                 {
+            //                     var tableAlias = vectorColumn.TableAlias;
+            //                     var newTables = new TableExpressionBase[select.Tables.Count];
+
+            //                     for (var i = 0; i < select.Tables.Count; i++)
+            //                     {
+            //                         var table = select.Tables[i];
+            //                         var unwrappedTable = table.UnwrapJoin();
+
+            //                         if (unwrappedTable.Alias == tableAlias)
+            //                         {
+            //                             var table2 = (TableExpression)table;
+            //                             unwrappedTable = new TableValuedFunctionExpression(
+            //                                 tableAlias,
+            //                                 "VECTOR_SEARCH",
+            //                                 [
+            //                                     _sqlExpressionFactory.ApplyDefaultTypeMapping(new SqlConstantExpression(table2.Name, typeMapping: null)),
+            //                                     _sqlExpressionFactory.ApplyDefaultTypeMapping(new SqlConstantExpression(vectorColumn.Name, typeMapping: null)),
+            //                                     _sqlExpressionFactory.ApplyDefaultTypeMapping(new SqlConstantExpression(distanceFunction, typeMapping: null)),
+            //                                 ]);
+
+            //                             table = table is JoinExpressionBase join
+            //                                 ? join.Update(unwrappedTable)
+            //                                 : unwrappedTable;
+            //                         }
+
+            //                         newTables[i] = table;
+            //                     }
+
+            // #pragma warning disable EF1001 // Internal EF Core API usage.
+            //                     select.SetTables(newTables);
+            // #pragma warning restore EF1001 // Internal EF Core API usage.
+            //                     return source;
+            //                 }
+            //             }
+            //         }
+
+            return base.VisitMethodCall(methodCallExpression);
+    }
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
