@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Microsoft.EntityFrameworkCore;
 
 /// <summary>
@@ -50,6 +52,8 @@ public static class CosmosDbFunctionsExtensions
         T expression2)
         => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(CoalesceUndefined)));
 
+    #region Full-text search
+
     /// <summary>
     ///     Checks if the specified property contains the given keyword using full-text search.
     /// </summary>
@@ -58,6 +62,20 @@ public static class CosmosDbFunctionsExtensions
     /// <param name="keyword">The keyword to search for.</param>
     /// <returns><see langword="true" /> if the property contains the keyword; otherwise, <see langword="false" />.</returns>
     public static bool FullTextContains(this DbFunctions _, string property, string keyword)
+        => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(FullTextContains)));
+
+    /// <summary>
+    ///     Checks if the specified property contains the given keyword using fuzzy full-text search.
+    /// </summary>
+    /// <param name="_">The <see cref="DbFunctions" /> instance.</param>
+    /// <param name="property">The property to search.</param>
+    /// <param name="fuzzySearchTerms">The term to search for.</param>
+    /// <returns><see langword="true" /> if the property contains the keyword; otherwise, <see langword="false" />.</returns>
+    /// <remarks>
+    ///     Cosmos fuzzy search is in preview and may change.
+    /// </remarks>
+    [Experimental(EFDiagnostics.CosmosFullTextSearchExperimental)]
+    public static bool FullTextContains(this DbFunctions _, string property, CosmosFuzzySearchTerm fuzzySearchTerms)
         => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(FullTextContains)));
 
     /// <summary>
@@ -71,6 +89,20 @@ public static class CosmosDbFunctionsExtensions
         => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(FullTextContainsAll)));
 
     /// <summary>
+    ///     Checks if the specified property contains all the given keywords fuzzy using full-text search.
+    /// </summary>
+    /// <param name="_">The <see cref="DbFunctions" /> instance.</param>
+    /// <param name="property">The property to search.</param>
+    /// <param name="fuzzySearchTerms">The terms to search for.</param>
+    /// <returns><see langword="true" /> if the property contains all the keywords; otherwise, <see langword="false" />.</returns>
+    /// <remarks>
+    ///     Cosmos fuzzy search is in preview and may change.
+    /// </remarks>
+    [Experimental(EFDiagnostics.CosmosFullTextSearchExperimental)]
+    public static bool FullTextContainsAll(this DbFunctions _, string property, params CosmosFuzzySearchTerm[] fuzzySearchTerms)
+        => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(FullTextContainsAll)));
+
+    /// <summary>
     ///     Checks if the specified property contains any of the given keywords using full-text search.
     /// </summary>
     /// <param name="_">The <see cref="DbFunctions" /> instance.</param>
@@ -78,6 +110,20 @@ public static class CosmosDbFunctionsExtensions
     /// <param name="keywords">The keywords to search for.</param>
     /// <returns><see langword="true" /> if the property contains any of the keywords; otherwise, <see langword="false" />.</returns>
     public static bool FullTextContainsAny(this DbFunctions _, string property, params string[] keywords)
+        => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(FullTextContainsAny)));
+
+    /// <summary>
+    ///     Checks if the specified property contains any of the given keywords using fuzzy full-text search.
+    /// </summary>
+    /// <param name="_">The <see cref="DbFunctions" /> instance.</param>
+    /// <param name="property">The property to search.</param>
+    /// <param name="fuzzySearchTerms">The terms to search for.</param>
+    /// <returns><see langword="true" /> if the property contains any of the keywords; otherwise, <see langword="false" />.</returns>
+    /// <remarks>
+    ///     Cosmos fuzzy search is in preview and may change.
+    /// </remarks>
+    [Experimental(EFDiagnostics.CosmosFullTextSearchExperimental)]
+    public static bool FullTextContainsAny(this DbFunctions _, string property, params CosmosFuzzySearchTerm[] fuzzySearchTerms)
         => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(FullTextContainsAny)));
 
     /// <summary>
@@ -98,6 +144,8 @@ public static class CosmosDbFunctionsExtensions
     /// <returns>The combined score.</returns>
     public static double Rrf(this DbFunctions _, params double[] scores)
         => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(Rrf)));
+
+    #endregion Full-text search
 
     #region VectorDistance
 
@@ -162,4 +210,29 @@ public static class CosmosDbFunctionsExtensions
         => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(VectorDistance)));
 
     #endregion VectorDistance
+}
+
+/// <summary>
+///     Represents a fuzzy search term for use with <see cref="CosmosDbFunctionsExtensions.FullTextContains(DbFunctions, string, CosmosFuzzySearchTerm)" />,
+///     <see cref="CosmosDbFunctionsExtensions.FullTextContainsAny(DbFunctions, string, CosmosFuzzySearchTerm[])" /> and
+///     <see cref="CosmosDbFunctionsExtensions.FullTextContainsAll(DbFunctions, string, CosmosFuzzySearchTerm[])" />.
+/// </summary>
+/// <remarks>
+///     Cosmos fuzzy search is in preview and may change.
+/// </remarks>
+[Experimental(EFDiagnostics.CosmosFullTextSearchExperimental)]
+public record CosmosFuzzySearchTerm
+{
+    /// <summary>
+    ///     The term to search for.
+    /// </summary>
+    public required string Term { get; init; }
+
+    /// <summary>
+    ///     The maximum allowable distance (number of edits) between the search term and document text, allowing near matches to be considered a hit.
+    /// </summary>
+    /// <remarks>
+    ///     The maximum distance that can be specified is 2 (two edits).
+    /// </remarks>
+    public required int Distance { get; init; }
 }

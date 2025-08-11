@@ -1,6 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Azure.Cosmos;
 using Microsoft.EntityFrameworkCore.Cosmos.Internal;
 
@@ -82,6 +83,50 @@ WHERE FullTextContains(c["Description"], @beaver)
 SELECT c["Description"], FullTextContains(c["Description"], "beaver") AS ContainsBeaver
 FROM root c
 ORDER BY c["Id"]
+""");
+    }
+
+    [ConditionalFact]
+    [Experimental(EFDiagnostics.CosmosFullTextSearchExperimental)]
+    public virtual async Task FullTextContains_fuzzy_with_constant()
+    {
+        await using var context = CreateContext();
+
+        var result = await context.Set<FullTextSearchAnimals>()
+            .Where(x => EF.Functions.FullTextContains(x.Description, new CosmosFuzzySearchTerm { Term = "beaver", Distance = 1 }))
+            .ToListAsync();
+
+        Assert.Equal(3, result.Count);
+        Assert.True(result.All(x => x.Description.Contains("beaver")));
+
+        AssertSql(
+"""
+SELECT VALUE c
+FROM root c
+WHERE FullTextContains(c["Description"], { "term": "beaver", "distance": 1 })
+""");
+    }
+
+    [ConditionalFact]
+    [Experimental(EFDiagnostics.CosmosFullTextSearchExperimental)]
+    public virtual async Task FullTextContains_fuzzy_with_parameterized_term()
+    {
+        await using var context = CreateContext();
+
+        var term = "beaver";
+
+        var result = await context.Set<FullTextSearchAnimals>()
+            .Where(x => EF.Functions.FullTextContains(x.Description, new CosmosFuzzySearchTerm { Term = term, Distance = 1 }))
+            .ToListAsync();
+
+        Assert.Equal(3, result.Count);
+        Assert.True(result.All(x => x.Description.Contains("beaver")));
+
+        AssertSql(
+"""
+SELECT VALUE c
+FROM root c
+WHERE FullTextContains(c["Description"], { "term": "beaver", "distance": 1 })
 """);
     }
 

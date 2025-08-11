@@ -3,6 +3,8 @@
 
 namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal;
 
+#pragma warning disable EF9104 // Fuzzy full-text search is experimental
+
 /// <summary>
 ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
 ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
@@ -34,7 +36,15 @@ public class CosmosFullTextSearchTranslator(ISqlExpressionFactory sqlExpressionF
             nameof(CosmosDbFunctionsExtensions.FullTextContains) when arguments is [_, var property, var keyword]
                 => sqlExpressionFactory.Function(
                     "FullTextContains",
-                    [property, keyword],
+                    [property, keyword switch
+                    {
+                        { Type: var type } when type == typeof(string) => keyword,
+
+                        SqlConstantExpression { Value: CosmosFuzzySearchTerm v }
+                            => new FragmentExpression($$"""{ "term": "{{v.Term}}", "distance": {{v.Distance}} }"""),
+
+                        _ => throw new UnreachableException()
+                    }],
                     typeof(bool),
                     typeMappingSource.FindMapping(typeof(bool))),
 
@@ -66,6 +76,8 @@ public class CosmosFullTextSearchTranslator(ISqlExpressionFactory sqlExpressionF
 
             _ => throw new UnreachableException()
         };
+#pragma warning restore EF9104 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+
 
         IEnumerable<SqlExpression>? GetKeywords(Expression inputExpression)
             => inputExpression switch
