@@ -22,26 +22,24 @@ public static class TestEnvironment
         .Build()
         .GetSection("Test:Cosmos");
 
-    public static string DefaultConnection { get; } = string.IsNullOrEmpty(Config["DefaultConnection"])
-        ? "https://localhost:8081"
-        : Config["DefaultConnection"];
+    public static string DefaultConnection { get; } = "https://rojitest.documents.azure.com:443";
 
     public static string AuthToken { get; } = string.IsNullOrEmpty(Config["AuthToken"])
         ? _emulatorAuthToken
         : Config["AuthToken"];
 
-    public static string ConnectionString { get; } = $"AccountEndpoint={DefaultConnection};AccountKey={AuthToken}";
+    public static string ConnectionString { get; } = $"AccountEndpoint={DefaultConnection}";
 
-    public static bool UseTokenCredential { get; } = Config["UseTokenCredential"] == "true";
+    public static bool UseTokenCredential { get; } = true;
 
     public static TokenCredential TokenCredential { get; } = new AzureCliCredential();
 
-    public static string SubscriptionId { get; } = Config["SubscriptionId"];
+    public static string SubscriptionId { get; } = "a8a5e977-272e-4e06-9bad-ff9b686a99d4";
 
-    public static string ResourceGroup { get; } = Config["ResourceGroup"];
+    public static string ResourceGroup { get; } = "test";
 
     public static AzureLocation AzureLocation { get; } = string.IsNullOrEmpty(Config["AzureLocation"])
-        ? AzureLocation.WestUS
+        ? AzureLocation.NorthEurope
         : Enum.Parse<AzureLocation>(Config["AzureLocation"]);
 
     public static bool IsEmulator { get; } = !UseTokenCredential && (AuthToken == _emulatorAuthToken);

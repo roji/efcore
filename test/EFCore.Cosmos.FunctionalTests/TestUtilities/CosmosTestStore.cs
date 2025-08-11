@@ -289,14 +289,14 @@ public class CosmosTestStore : TestStore
             modelThroughput = ThroughputProperties.CreateManualThroughput(400);
         }
 
-        if (modelThroughput != null)
-        {
-            sqlDatabaseCreateUpdateContent.Options = new CosmosDBCreateUpdateConfig
-            {
-                Throughput = modelThroughput.Throughput,
-                AutoscaleMaxThroughput = modelThroughput.AutoscaleMaxThroughput
-            };
-        }
+        // if (modelThroughput != null)
+        // {
+        //     sqlDatabaseCreateUpdateContent.Options = new CosmosDBCreateUpdateConfig
+        //     {
+        //         Throughput = modelThroughput.Throughput,
+        //         AutoscaleMaxThroughput = modelThroughput.AutoscaleMaxThroughput
+        //     };
+        // }
 
         var databaseResponse = await collection.CreateOrUpdateAsync(
             WaitUntil.Completed, Name, sqlDatabaseCreateUpdateContent, cancellationToken).ConfigureAwait(false);
