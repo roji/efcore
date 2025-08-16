@@ -244,7 +244,7 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
         var lastNamedPathSegment = jsonQueryExpression.Path.LastOrDefault(ps => ps.PropertyName is not null);
         var tableAlias =
             _queryCompilationContext.SqlAliasManager.GenerateTableAlias(
-                lastNamedPathSegment.PropertyName ?? jsonQueryExpression.JsonColumn.Name);
+                lastNamedPathSegment.PropertyName ?? jsonQueryExpression.Json.Name);
 
         // We now add all of projected entity's the properties and navigations into the OPENJSON's WITH clause. Note that navigations
         // get AS JSON, which projects out the JSON sub-document for them as text, which can be further navigated into.
@@ -309,7 +309,7 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
         }
 
         var openJsonExpression = new SqlServerOpenJsonExpression(
-            tableAlias, jsonQueryExpression.JsonColumn, jsonQueryExpression.Path, columnInfos);
+            tableAlias, jsonQueryExpression.Json, jsonQueryExpression.Path, columnInfos);
 
 #pragma warning disable EF1001 // Internal EF Core API usage.
         var selectExpression = CreateSelect(

@@ -531,7 +531,7 @@ public sealed partial class SelectExpression : TableExpressionBase
     /// <param name="resultCardinality">The result cardinality of this query expression.</param>
     /// <param name="querySplittingBehavior">The query splitting behavior to use when applying projection for nested collections.</param>
     /// <returns>Returns modified shaper expression to shape results of this select expression.</returns>
-    public Expression ApplyProjection(
+    public Expression ApplyFinalProjection(
         Expression shaperExpression,
         ResultCardinality resultCardinality,
         QuerySplittingBehavior querySplittingBehavior)
@@ -1024,7 +1024,7 @@ public sealed partial class SelectExpression : TableExpressionBase
                                 }
                             }
 
-                            innerShaperExpression = innerSelectExpression.ApplyProjection(
+                            innerShaperExpression = innerSelectExpression.ApplyFinalProjection(
                                 innerShaperExpression, shapedQueryExpression.ResultCardinality, querySplittingBehavior);
 
                             var (childIdentifier, childIdentifierValueComparers) = GetIdentifierAccessor(
@@ -1050,7 +1050,7 @@ public sealed partial class SelectExpression : TableExpressionBase
                                 AppendOrdering(new OrderingExpression(identifier.Column, ascending: true));
                             }
 
-                            innerShaperExpression = innerSelectExpression.ApplyProjection(
+                            innerShaperExpression = innerSelectExpression.ApplyFinalProjection(
                                 innerShaperExpression, shapedQueryExpression.ResultCardinality, querySplittingBehavior);
 
                             var containsOrdering = innerSelectExpression.Orderings.Count > 0;
@@ -1458,10 +1458,10 @@ public sealed partial class SelectExpression : TableExpressionBase
         ConstantExpression AddJsonProjection(JsonQueryExpression jsonQueryExpression)
         {
             var jsonScalarExpression = new JsonScalarExpression(
-                jsonQueryExpression.JsonColumn,
+                jsonQueryExpression.Json,
                 jsonQueryExpression.Path,
-                jsonQueryExpression.JsonColumn.Type,
-                jsonQueryExpression.JsonColumn.TypeMapping!,
+                jsonQueryExpression.Json.Type,
+                jsonQueryExpression.Json.TypeMapping!,
                 jsonQueryExpression.IsNullable);
 
             _projection.Add(new ProjectionExpression(jsonScalarExpression, ""));
@@ -2394,16 +2394,16 @@ public sealed partial class SelectExpression : TableExpressionBase
                         // Convert the JsonQueryExpression to a JsonScalarExpression, which is our current representation for a complex
                         // JSON in the SQL tree (as opposed to in the shaper) - see #36392.
                         var jsonScalar1 = new JsonScalarExpression(
-                            jsonQuery1.JsonColumn,
+                            jsonQuery1.Json,
                             jsonQuery1.Path,
                             jsonQuery1.Type,
-                            jsonQuery1.JsonColumn.TypeMapping,
+                            jsonQuery1.Json.TypeMapping,
                             jsonQuery1.IsNullable);
                         var jsonScalar2 = new JsonScalarExpression(
-                            jsonQuery2.JsonColumn,
+                            jsonQuery2.Json,
                             jsonQuery2.Path,
                             jsonQuery2.Type,
-                            jsonQuery2.JsonColumn.TypeMapping,
+                            jsonQuery2.Json.TypeMapping,
                             jsonQuery2.IsNullable);
 
                         var alias = GenerateUniqueColumnAlias(complexProperty.Name);
@@ -3993,10 +3993,10 @@ public sealed partial class SelectExpression : TableExpressionBase
         JsonQueryExpression LiftJsonQueryFromSubquery(JsonQueryExpression jsonQueryExpression)
         {
             var jsonScalarExpression = new JsonScalarExpression(
-                jsonQueryExpression.JsonColumn,
+                jsonQueryExpression.Json,
                 jsonQueryExpression.Path,
-                jsonQueryExpression.JsonColumn.TypeMapping!.ClrType,
-                jsonQueryExpression.JsonColumn.TypeMapping,
+                jsonQueryExpression.Json.TypeMapping!.ClrType,
+                jsonQueryExpression.Json.TypeMapping,
                 jsonQueryExpression.IsNullable);
 
             var newJsonColumn = subquery.GenerateOuterColumn(subqueryAlias, jsonScalarExpression);

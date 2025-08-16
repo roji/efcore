@@ -552,14 +552,15 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 keyPropertiesMap[keyProperties[i]] = propertyExpressions[correspondingParentKeyProperty];
             }
 
-            var entityShaperExpression = new RelationalStructuralTypeShaperExpression(
+            if (ownedJsonNavigation.IsCollection)
+            {
+                throw new NotImplementedException("JsonCollectionShaperExpression");
+            }
+
+            var entityShaperExpression = new RelationalJsonStructuralTypeShaperExpression(
                 targetEntityType,
-                new JsonQueryExpression(
-                    targetEntityType,
-                    column,
-                    keyPropertiesMap,
-                    ownedJsonNavigation.ClrType,
-                    ownedJsonNavigation.IsCollection),
+                column,
+                keyPropertiesMap,
                 isNullable);
 
             projection.AddNavigationBinding(ownedJsonNavigation, entityShaperExpression);

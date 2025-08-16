@@ -133,10 +133,10 @@ public partial class RelationalSqlTranslatingExpressionVisitor
                 if (nonNullEntityReference is { Parameter.ValueBufferExpression: JsonQueryExpression jsonQueryExpression })
                 {
                     var jsonScalarExpression = new JsonScalarExpression(
-                        jsonQueryExpression.JsonColumn,
+                        jsonQueryExpression.Json,
                         jsonQueryExpression.Path,
-                        jsonQueryExpression.JsonColumn.Type,
-                        jsonQueryExpression.JsonColumn.TypeMapping!,
+                        jsonQueryExpression.Json.Type,
+                        jsonQueryExpression.Json.TypeMapping!,
                         jsonQueryExpression.IsNullable);
 
                     result = nodeType == ExpressionType.Equal
@@ -366,19 +366,19 @@ public partial class RelationalSqlTranslatingExpressionVisitor
                                     Parameter: { ValueBufferExpression: JsonQueryExpression jsonQuery }
                                 }
                                 => new JsonScalarExpression(
-                                    jsonQuery.JsonColumn,
+                                    jsonQuery.Json,
                                     jsonQuery.Path,
                                     jsonQuery.Type,
-                                    jsonQuery.JsonColumn.TypeMapping,
+                                    jsonQuery.Json.TypeMapping,
                                     jsonQuery.IsNullable),
 
                             // As above, but for a complex JSON collection
                             CollectionResultExpression { QueryExpression: JsonQueryExpression jsonQuery }
                                 => new JsonScalarExpression(
-                                    jsonQuery.JsonColumn,
+                                    jsonQuery.Json,
                                     jsonQuery.Path,
                                     jsonQuery.Type,
-                                    jsonQuery.JsonColumn.TypeMapping,
+                                    jsonQuery.Json.TypeMapping,
                                     jsonQuery.IsNullable),
 
                             // When an object is instantiated inline (e.g. Where(c => c.ShippingAddress == new Address { ... })), we get a SqlConstantExpression

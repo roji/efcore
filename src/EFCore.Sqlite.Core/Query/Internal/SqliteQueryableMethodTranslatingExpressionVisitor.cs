@@ -331,7 +331,7 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
         // Calculate the table alias for the json_each expression based on the last named path segment
         // (or the JSON column name if there are none)
         var lastNamedPathSegment = jsonQueryExpression.Path.LastOrDefault(ps => ps.PropertyName is not null);
-        var tableAlias = _sqlAliasManager.GenerateTableAlias(lastNamedPathSegment.PropertyName ?? jsonQueryExpression.JsonColumn.Name);
+        var tableAlias = _sqlAliasManager.GenerateTableAlias(lastNamedPathSegment.PropertyName ?? jsonQueryExpression.Json.Name);
 
         // Handling a non-primitive JSON array is complicated on SQLite; unlike SQL Server OPENJSON and PostgreSQL jsonb_to_recordset,
         // SQLite's json_each can only project elements of the array, and not properties within those elements. For example:
@@ -351,7 +351,7 @@ public class SqliteQueryableMethodTranslatingExpressionVisitor : RelationalQuery
         // with a member for each JSON property that needs to be projected. We then wrap it with a SelectExpression the projects a proper
         // EntityProjectionExpression.
 
-        var jsonEachExpression = new JsonEachExpression(tableAlias, jsonQueryExpression.JsonColumn, jsonQueryExpression.Path);
+        var jsonEachExpression = new JsonEachExpression(tableAlias, jsonQueryExpression.Json, jsonQueryExpression.Path);
 
 #pragma warning disable EF1001 // Internal EF Core API usage.
         var selectExpression = CreateSelect(

@@ -35,7 +35,7 @@ public class SelectExpressionProjectionApplyingExpressionVisitor : ExpressionVis
         {
             ShapedQueryExpression { QueryExpression: SelectExpression selectExpression } shapedQueryExpression
                 => shapedQueryExpression.UpdateShaperExpression(
-                    selectExpression.ApplyProjection(
+                    selectExpression.ApplyFinalProjection(
                         shapedQueryExpression.ShaperExpression, shapedQueryExpression.ResultCardinality, _querySplittingBehavior)),
 
             UpdateExpression update => update,

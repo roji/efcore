@@ -496,7 +496,6 @@ public partial class RelationalSqlTranslatingExpressionVisitor : ExpressionVisit
             case StructuralTypeReferenceExpression:
             case SqlExpression:
             case EnumerableExpression:
-            case JsonQueryExpression:
                 return extensionExpression;
 
             case QueryParameterExpression queryParameter:
@@ -1240,14 +1239,12 @@ public partial class RelationalSqlTranslatingExpressionVisitor : ExpressionVisit
     {
         switch (typeReference)
         {
-            case { Parameter: { } shaper }:
+            case { Parameter: RelationalJsonStructuralTypeShaperExpression jsonShaper }:
+                return jsonShaper.BindProperty(property);
+
+            case { Parameter: RelationalStructuralTypeShaperExpression shaper }:
             {
                 var valueBufferExpression = Visit(shaper.ValueBufferExpression);
-                if (valueBufferExpression is JsonQueryExpression jsonQueryExpression)
-                {
-                    return jsonQueryExpression.BindProperty(property);
-                }
-
                 var projection = (StructuralTypeProjectionExpression)valueBufferExpression;
                 var propertyAccess = projection.BindProperty(property);
 
@@ -1337,36 +1334,29 @@ public partial class RelationalSqlTranslatingExpressionVisitor : ExpressionVisit
     {
         switch (typeReference)
         {
-            case { Parameter: { } shaper }:
-                switch (Visit(shaper.ValueBufferExpression))
+            case { Parameter: RelationalJsonStructuralTypeShaperExpression jsonShaper }:
+                var nestedJsonQuery = jsonShaper.BindStructuralProperty(complexProperty);
+
+                return complexProperty.IsCollection
+                    ? new CollectionResultExpression(nestedJsonQuery, complexProperty, elementType: complexProperty.ComplexType.ClrType)
+                    : new StructuralTypeReferenceExpression(
+                        new RelationalStructuralTypeShaperExpression(
+                            complexProperty.ComplexType,
+                            nestedJsonQuery,
+                            jsonShaper.IsNullable || complexProperty.IsNullable));
+
+            case { Parameter: RelationalStructuralTypeShaperExpression shaper }:
+                var structuralTypeProjection = (StructuralTypeProjectionExpression)Visit(shaper.ValueBufferExpression);
+                // TODO: Move all this logic into StructuralTypeProjectionExpression, #31376
+                Check.DebugAssert(structuralTypeProjection.IsNullable == shaper.IsNullable, "Nullability mismatch");
+
+                return structuralTypeProjection.BindComplexProperty(complexProperty) switch
                 {
-                    case StructuralTypeProjectionExpression structuralTypeProjection:
-                        // TODO: Move all this logic into StructuralTypeProjectionExpression, #31376
-                        Check.DebugAssert(structuralTypeProjection.IsNullable == shaper.IsNullable, "Nullability mismatch");
+                    StructuralTypeShaperExpression s => new StructuralTypeReferenceExpression(s),
+                    CollectionResultExpression c => c,
 
-                        return structuralTypeProjection.BindComplexProperty(complexProperty) switch
-                        {
-                            StructuralTypeShaperExpression s => new StructuralTypeReferenceExpression(s),
-                            CollectionResultExpression c => c,
-
-                            _ => throw new UnreachableException()
-                        };
-
-                    case JsonQueryExpression jsonQuery:
-                        var nestedJsonQuery = jsonQuery.BindRelationship(complexProperty);
-
-                        return complexProperty.IsCollection
-                            ? new CollectionResultExpression(
-                                nestedJsonQuery, complexProperty, elementType: complexProperty.ComplexType.ClrType)
-                            : new StructuralTypeReferenceExpression(
-                                new RelationalStructuralTypeShaperExpression(
-                                    complexProperty.ComplexType,
-                                    nestedJsonQuery,
-                                    nestedJsonQuery.IsNullable));
-
-                    default:
-                        throw new UnreachableException();
-                }
+                    _ => throw new UnreachableException()
+                };
 
             case { Subquery: not null }:
                 throw new InvalidOperationException("Complex property binding over a subquery"); // TODO: #36296

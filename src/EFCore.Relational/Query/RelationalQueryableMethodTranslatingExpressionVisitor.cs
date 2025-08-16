@@ -1749,7 +1749,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
             }
 
             static bool JsonQueryExpressionIsRootedIn(JsonQueryExpression expressionToTest, JsonQueryExpression root)
-                => expressionToTest.JsonColumn == root.JsonColumn
+                => expressionToTest.Json == root.Json
                     && expressionToTest.Path.Count >= root.Path.Count
                     && expressionToTest.Path.Take(root.Path.Count).SequenceEqual(root.Path);
 
