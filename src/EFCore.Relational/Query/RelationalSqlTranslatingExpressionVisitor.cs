@@ -1689,9 +1689,6 @@ public partial class RelationalSqlTranslatingExpressionVisitor : ExpressionVisit
             _ => false
         };
 
-    private static bool IsNullSqlConstantExpression(Expression expression)
-        => expression is SqlConstantExpression { Value: null };
-
     [DebuggerStepThrough]
     private static bool TranslationFailed(Expression? original, Expression? translation, out SqlExpression? castTranslation)
     {
