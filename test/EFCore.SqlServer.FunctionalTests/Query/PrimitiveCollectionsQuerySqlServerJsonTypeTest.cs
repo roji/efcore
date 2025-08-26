@@ -489,14 +489,11 @@ WHERE GREATEST(30, [p].[NullableInt], NULL) = 30
 
         AssertSql(
             """
-@p='[2,999,1000]' (Size = 4000)
+@p='[2,999,1000]' (Size = 8000)
 
 SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[NullableString], [p].[NullableStrings], [p].[NullableWrappedId], [p].[NullableWrappedIdWithNullableComparer], [p].[String], [p].[Strings], [p].[WrappedId]
 FROM [PrimitiveCollectionsEntity] AS [p]
-WHERE [p].[Id] IN (
-    SELECT [p0].[value]
-    FROM OPENJSON(@p) WITH ([value] int '$') AS [p0]
-)
+WHERE JSON_CONTAINS(@p, [p].[Id]) = CAST(1 AS bit)
 """);
     }
 
@@ -974,10 +971,7 @@ WHERE 0 = 1
             """
 SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[NullableString], [p].[NullableStrings], [p].[NullableWrappedId], [p].[NullableWrappedIdWithNullableComparer], [p].[String], [p].[Strings], [p].[WrappedId]
 FROM [PrimitiveCollectionsEntity] AS [p]
-WHERE 10 IN (
-    SELECT [i].[value]
-    FROM OPENJSON([p].[Ints]) WITH ([value] int '$') AS [i]
-)
+WHERE JSON_CONTAINS([p].[Ints], 10) = CAST(1 AS bit)
 """);
     }
 
@@ -989,10 +983,7 @@ WHERE 10 IN (
             """
 SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[NullableString], [p].[NullableStrings], [p].[NullableWrappedId], [p].[NullableWrappedIdWithNullableComparer], [p].[String], [p].[Strings], [p].[WrappedId]
 FROM [PrimitiveCollectionsEntity] AS [p]
-WHERE 10 IN (
-    SELECT [n].[value]
-    FROM OPENJSON([p].[NullableInts]) WITH ([value] int '$') AS [n]
-)
+WHERE JSON_CONTAINS([p].[NullableInts], 10) = CAST(1 AS bit)
 """);
     }
 
@@ -1046,10 +1037,7 @@ WHERE EXISTS (
             """
 SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[NullableString], [p].[NullableStrings], [p].[NullableWrappedId], [p].[NullableWrappedIdWithNullableComparer], [p].[String], [p].[Strings], [p].[WrappedId]
 FROM [PrimitiveCollectionsEntity] AS [p]
-WHERE CAST(1 AS bit) IN (
-    SELECT [b].[value]
-    FROM OPENJSON([p].[Bools]) WITH ([value] bit '$') AS [b]
-)
+WHERE JSON_CONTAINS([p].[Bools], CAST(1 AS bit)) = CAST(1 AS bit)
 """);
     }
 

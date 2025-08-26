@@ -449,14 +449,11 @@ WHERE (
 
         AssertSql(
             """
-@p='[2,999,1000]' (Size = 4000)
+@p='[2,999,1000]' (Size = 8000)
 
 SELECT [p].[Id], [p].[Bool], [p].[Bools], [p].[DateTime], [p].[DateTimes], [p].[Enum], [p].[Enums], [p].[Int], [p].[Ints], [p].[NullableInt], [p].[NullableInts], [p].[NullableString], [p].[NullableStrings], [p].[NullableWrappedId], [p].[NullableWrappedIdWithNullableComparer], [p].[String], [p].[Strings], [p].[WrappedId]
 FROM [PrimitiveCollectionsEntity] AS [p]
-WHERE [p].[Id] IN (
-    SELECT [p0].[value]
-    FROM OPENJSON(@p) WITH ([value] int '$') AS [p0]
-)
+WHERE JSON_CONTAINS(@p, [p].[Id]) = CAST(1 AS bit)
 """);
     }
 
