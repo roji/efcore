@@ -1,16 +1,14 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
-using Microsoft.EntityFrameworkCore.SqlServer.Extensions;
 using Microsoft.EntityFrameworkCore.SqlServer.Infrastructure.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Query.Internal.SqlExpressions;
 using Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
+using Microsoft.EntityFrameworkCore.Storage.Internal;
 using Microsoft.VisualBasic;
 
 namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
@@ -90,8 +88,6 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
         if (method.DeclaringType == typeof(SqlServerQueryableExtensions)
             && Visit(methodCallExpression.Arguments[0]) is ShapedQueryExpression source)
         {
-            // var (query, shaper) = (source.QueryExpression, source.ShaperExpression);
-
             switch (method.Name)
             {
                 case "VectorSearchInternal" // TODO: nameof
@@ -99,7 +95,9 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
                     [
                         _,
                         UnaryExpression { NodeType: ExpressionType.Quote, Operand: LambdaExpression vectorPropertySelector },
-                        var distanceFunction
+                        var similarTo,
+                        var distanceFunction,
+                        var topN
                     ]:
                 {
                     if (TranslateLambdaExpression(source, vectorPropertySelector) is not ColumnExpression vectorColumn)
@@ -107,10 +105,17 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
                         throw new InvalidOperationException("Invalid vector column selector");
                     }
 
-                    if (TranslateExpression(distanceFunction) is not { } translatedDistanceFunction)
+                    // TODO: Better error handling, translation failure message
+                    if (TranslateExpression(similarTo) is not { } translatedSimilarTo
+                        || TranslateExpression(distanceFunction, applyDefaultTypeMapping: false) is not { } translatedDistanceFunction
+                        || TranslateExpression(topN) is not { } translatedTopN)
                     {
                         throw new InvalidOperationException();
                     }
+
+                    // Apply varchar instead of the default nvarchar to avoid the N'...' syntax
+                    translatedDistanceFunction = _sqlExpressionFactory.ApplyTypeMapping(
+                        translatedDistanceFunction, _typeMappingSource.FindMapping("varchar(max)"));
 
                     if (source.QueryExpression is not SelectExpression { Tables: [TableExpression table] } sourceSelect
                         || source.ShaperExpression is not StructuralTypeShaperExpression { StructuralType: IEntityType containedEntityType })
@@ -126,9 +131,13 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
                         table.Alias,
                         "VECTOR_SEARCH",
                         [
-                            new SqlConstantExpression(table.Name, stringTypeMapping),
+                            // Slightly hacky - flow the TableExpression to SQL generation (need the name and schema)
+                            // by wrapping it in an SqlConstantExpression.
+                            new SqlConstantExpression(table, RelationalTypeMapping.NullMapping),
                             new SqlConstantExpression(vectorColumn.Name, stringTypeMapping),
-                            translatedDistanceFunction
+                            translatedSimilarTo,
+                            translatedDistanceFunction,
+                            translatedTopN
                         ]);
 
 #pragma warning disable EF1001

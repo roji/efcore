@@ -124,6 +124,68 @@ public class SqlServerQuerySqlGenerator : QuerySqlGenerator
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    protected override Expression VisitTableValuedFunction(TableValuedFunctionExpression function)
+    {
+        switch (function)
+        {
+            case
+            {
+                Name: "VECTOR_SEARCH",
+                Arguments:
+                [
+                    SqlConstantExpression { Value: TableExpression table },
+                    SqlConstantExpression { Value: string column },
+                    SqlExpression similarTo,
+                    SqlConstantExpression { Value: string } metric,
+                    SqlExpression topN
+                ]
+            }:
+                // VECTOR_SEARCH(
+                //     TABLE = Articles AS t,
+                //     COLUMN = embedding,
+                //     SIMILAR_TO = @qv,
+                //     METRIC = 'Cosine',
+                //     TOP_N = 3
+                // )
+                Sql.AppendLine("VECTOR_SEARCH(");
+
+                using (Sql.Indent())
+                {
+                    // TODO: Schema... maybe pass the relational table as the argument or something
+                    Sql.Append("TABLE = ").Append(_sqlGenerationHelper.DelimitIdentifier(table.Name, table.Schema)).AppendLine(","); // TODO: AS?
+
+                    Sql.Append("COLUMN = ").Append(_sqlGenerationHelper.DelimitIdentifier(column)).AppendLine(",");
+
+                    Sql.Append("SIMILAR_TO = ");
+                    Visit(similarTo);
+                    Sql.AppendLine(",");
+
+                    Sql.Append("METRIC = ");
+                    Visit(metric);
+                    Sql.AppendLine(",");
+
+                    Sql.Append("TOP_N = ");
+                    Visit(topN);
+                    Sql.AppendLine();
+                }
+
+                Sql.Append(")")
+                    .Append(AliasSeparator)
+                    .Append(_sqlGenerationHelper.DelimitIdentifier(function.Alias));
+
+                return function;
+
+            default:
+                return base.VisitTableValuedFunction(function);
+        }
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     protected override Expression VisitUpdate(UpdateExpression updateExpression)
     {
         var selectExpression = updateExpression.SelectExpression;

@@ -19,8 +19,10 @@ public static class SqlServerQueryableExtensions
     public static IQueryable<VectorSearchResult<T, TVector>> VectorSearch<T, TVector>(
         this DbSet<T> source,
         Expression<Func<T, TVector>> vectorPropertySelector,
-        // TODO: Should be [NotParameterized]? Check if the function accepts parameters
-        string distanceFunction = "cosine")
+        TVector similarTo,
+        [NotParameterized] // TODO: Should be [NotParameterized]? Check if the function accepts parameters
+        string distanceMetric,
+        int topN)
         where T : class
         where TVector : unmanaged
     {
@@ -33,7 +35,9 @@ public static class SqlServerQueryableExtensions
                     VectorSearchMethodInfo.MakeGenericMethod(typeof(T), typeof(TVector)),
                     root,
                     Expression.Quote(vectorPropertySelector),
-                    Expression.Constant(distanceFunction)))
+                    Expression.Constant(similarTo),
+                    Expression.Constant(distanceMetric),
+                    Expression.Constant(topN)))
             : throw new InvalidOperationException(
                 "VectorSearch can only be used with an Entity Framework Core SQL Server query provider.");
     }
@@ -42,7 +46,10 @@ public static class SqlServerQueryableExtensions
     private static IQueryable<VectorSearchResult<T, TVector>> VectorSearchInternal<T, TVector>(
         this IQueryable<T> source,
         Expression<Func<T, TVector>> vectorPropertySelector,
-        string distanceFunction = "cosine")
+        TVector similarTo,
+        [NotParameterized] // TODO: Should be [NotParameterized]? Check if the function accepts parameters
+        string distanceMetric,
+        int topN)
         where T : class
         where TVector : unmanaged
         => throw new UnreachableException();
