@@ -3,8 +3,6 @@
 
 namespace Microsoft.EntityFrameworkCore.BulkUpdates;
 
-#nullable disable
-
 public abstract class BulkUpdatesTestBase<TFixture> : IClassFixture<TFixture>
     where TFixture : class, IBulkUpdatesFixtureBase, new()
 {
@@ -39,7 +37,7 @@ public abstract class BulkUpdatesTestBase<TFixture> : IClassFixture<TFixture>
         Expression<Func<TResult, TEntity>> entitySelector,
         Action<UpdateSettersBuilder<TResult>> setPropertyCalls,
         int rowsAffectedCount,
-        Action<IReadOnlyList<TEntity>, IReadOnlyList<TEntity>> asserter = null)
+        Action<IReadOnlyList<TEntity>, IReadOnlyList<TEntity>>? asserter = null)
         where TResult : class
         => AssertUpdate(async: true, query, entitySelector, setPropertyCalls, rowsAffectedCount, asserter);
 
@@ -49,7 +47,13 @@ public abstract class BulkUpdatesTestBase<TFixture> : IClassFixture<TFixture>
         Expression<Func<TResult, TEntity>> entitySelector,
         Action<UpdateSettersBuilder<TResult>> setPropertyCalls,
         int rowsAffectedCount,
-        Action<IReadOnlyList<TEntity>, IReadOnlyList<TEntity>> asserter = null)
+        Action<IReadOnlyList<TEntity>, IReadOnlyList<TEntity>>? asserter = null)
         where TResult : class
         => BulkUpdatesAsserter.AssertUpdate(async, query, entitySelector, setPropertyCalls, rowsAffectedCount, asserter);
+
+    public Task AssertUpdate<TResult, TEntity>(
+        Expression<Func<ISetSource, int>> update,
+        int rowsAffectedCount)
+        where TResult : class
+        => BulkUpdatesAsserter.AssertUpdate(query, rowsAffectedCount);
 }
