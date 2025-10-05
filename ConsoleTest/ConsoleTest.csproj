@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../src/EFCore.SqlServer/EFCore.SqlServer.csproj" />
+    <ProjectReference Include="../src/EFCore.Cosmos/EFCore.Cosmos.csproj" />
   </ItemGroup>
 
 </Project>
