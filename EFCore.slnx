@@ -82,4 +82,5 @@
     <Project Path="benchmark/EFCore.Sqlite.Benchmarks/EFCore.Sqlite.Benchmarks.csproj" />
     <Project Path="benchmark/EFCore.SqlServer.Benchmarks/EFCore.SqlServer.Benchmarks.csproj" />
   </Folder>
+  <Project Path="ConsoleTest/ConsoleTest.csproj" />
 </Solution>
