@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../src/EFCore.SqlServer/EFCore.SqlServer.csproj" />
+    <ProjectReference Include="../../EFCore.PG/src/EFCore.PG/EFCore.PG.csproj" />
   </ItemGroup>
 
 </Project>

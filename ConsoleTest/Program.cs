@@ -14,7 +14,7 @@ public class BlogContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         => optionsBuilder
-            .UseSqlServer(Environment.GetEnvironmentVariable("Test__SqlServer__DefaultConnection"))
+            .UseNpgsql(Environment.GetEnvironmentVariable("Test__Npgsql__DefaultConnection"))
             .LogTo(Console.WriteLine, LogLevel.Information)
             .EnableSensitiveDataLogging();
 

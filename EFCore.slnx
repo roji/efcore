@@ -13,6 +13,13 @@
     <File Path="NuGet.config" />
     <File Path="tools/Resources.tt" />
   </Folder>
+  <Folder Name="/npgsql/">
+    <Project Path="../EFCore.PG/src/EFCore.PG/EFCore.PG.csproj" />
+    <Project Path="../EFCore.PG/src/EFCore.PG.NTS/EFCore.PG.NTS.csproj" />
+    <Project Path="../EFCore.PG/src/EFCore.PG.NodaTime/EFCore.PG.NodaTime.csproj" />
+    <Project Path="../EFCore.PG/test/EFCore.PG.FunctionalTests/EFCore.PG.FunctionalTests.csproj" />
+    <Project Path="../EFCore.PG/test/EFCore.PG.Tests/EFCore.PG.Tests.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <File Path="src/Directory.Build.props" />
     <Project Path="src/dotnet-ef/dotnet-ef.csproj" />
