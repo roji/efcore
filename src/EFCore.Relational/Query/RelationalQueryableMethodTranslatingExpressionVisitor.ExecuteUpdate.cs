@@ -540,9 +540,25 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                             RelationalStrings.ExecuteUpdateOverJsonIsNotSupported(complexProperty.ComplexType.DisplayName()));
                     }
 
-                    var nestedShaperExpression = (StructuralTypeShaperExpression)projection.BindComplexProperty(complexProperty);
-                    var nestedValueExpression = CreateComplexPropertyAccessExpression(valueExpression, complexProperty);
-                    ProcessComplexType(nestedShaperExpression, nestedValueExpression);
+                    var nestedTargetExpression = (StructuralTypeShaperExpression)projection.BindComplexProperty(complexProperty);
+
+                    // If the value expression is a shaper with its own complex type (as opposed to a constant/parameter), we're assigning
+                    // one (modeled) column to another. In that case, find the corresponding property on the value complex type (which is
+                    // different than the target complex type, despite the two having the same CLR type, e.g. compare ShippingAddress to
+                    // BillingAddress).
+                    // Otherwise, if the value expression is a constant/parameter, just use the target complex property.
+                    var nestedValueComplexProperty = valueExpression is StructuralTypeShaperExpression
+                        {
+                            StructuralType: IComplexType valueNestedComplexType
+                        }
+                        ? valueNestedComplexType!.FindComplexProperty(complexProperty.Name)
+                            ?? throw new InvalidOperationException(RelationalStrings.IncompatibleComplexTypesInAssignment(
+                                complexProperty.ComplexType.DisplayName(), valueNestedComplexType.DisplayName(), complexProperty.Name))
+                        : complexProperty;
+
+                    var nestedValueExpression = CreateComplexPropertyAccessExpression(valueExpression, nestedValueComplexProperty);
+
+                    ProcessComplexType(nestedTargetExpression, nestedValueExpression);
                 }
 
                 Expression CreatePropertyAccessExpression(Expression target, IProperty property)

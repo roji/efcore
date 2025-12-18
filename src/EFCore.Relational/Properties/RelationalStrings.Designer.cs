@@ -934,6 +934,22 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 constraintNameCandidate);
 
         /// <summary>
+        ///     The complex types '{complexType1}' and '{complexType2}' are being compared, but the latter is lacking property '{property}' of the former.
+        /// </summary>
+        public static string IncompatibleComplexTypesInComparison(object? complexType1, object? complexType2, object? property)
+            => string.Format(
+                GetString("IncompatibleComplexTypesInComparison", nameof(complexType1), nameof(complexType2), nameof(property)),
+                complexType1, complexType2, property);
+
+        /// <summary>
+        ///     The complex types '{complexType1}' and '{complexType2}' are being assigned, but the latter is lacking property '{property}' of the former.
+        /// </summary>
+        public static string IncompatibleComplexTypesInAssignment(object? complexType1, object? complexType2, object? property)
+            => string.Format(
+                GetString("IncompatibleComplexTypesInAssignment", nameof(complexType1), nameof(complexType2), nameof(property)),
+                complexType1, complexType2, property);
+
+        /// <summary>
         ///     The table '{table}' cannot be used for entity type '{entityType}' since it is being used for entity type '{otherEntityType}' and the comment '{comment}' does not match the comment '{otherComment}'.
         /// </summary>
         public static string IncompatibleTableCommentMismatch(object? table, object? entityType, object? otherEntityType, object? comment, object? otherComment)
