@@ -12,7 +12,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
     /// <summary>
     ///     Used to create a root <see cref="SelectExpression" /> representing a query of the given entity type.
     /// </summary>
-    protected virtual SelectExpression CreateSelect(IEntityType entityType)
+    // TODO: Think about a possibly better refactoring - this is now used from both queryable and scalar translation
+    public virtual SelectExpression CreateSelect(IEntityType entityType)
     {
         var select = CreateRootSelectExpressionCore(entityType);
         AddEntitySelectConditions(select, entityType);
@@ -735,17 +736,18 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                 keyPropertiesMap[keyProperties[i]] = propertyExpressions[correspondingParentKeyProperty];
             }
 
-            var entityShaperExpression = new RelationalStructuralTypeShaperExpression(
-                targetEntityType,
-                new JsonQueryExpression(
+            var jsonQuery = new JsonQueryExpression(
                     targetEntityType,
                     column,
                     keyPropertiesMap,
                     ownedJsonNavigation.ClrType,
-                    ownedJsonNavigation.IsCollection),
-                isNullable);
+                    ownedJsonNavigation.IsCollection);
 
-            projection.AddNavigationBinding(ownedJsonNavigation, entityShaperExpression);
+            Expression shaper = ownedJsonNavigation.IsCollection
+                ? new CollectionResultExpression(jsonQuery, ownedJsonNavigation, elementType: targetEntityType.ClrType)
+                : new RelationalStructuralTypeShaperExpression(targetEntityType, jsonQuery, isNullable);
+
+            projection.AddNavigationBinding(ownedJsonNavigation, shaper);
         }
     }
 
@@ -858,17 +860,18 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                     newKeyPropertyMap[target] = jsonQueryExpression.KeyPropertyMap[source];
                 }
 
-                var entityShaperExpression = new RelationalStructuralTypeShaperExpression(
-                    targetEntityType,
-                    new JsonQueryExpression(
+                var jsonQuery = new JsonQueryExpression(
                         targetEntityType,
                         column,
                         newKeyPropertyMap,
                         ownedJsonNavigation.ClrType,
-                        ownedJsonNavigation.IsCollection),
-                    isNullable);
+                        ownedJsonNavigation.IsCollection);
 
-                projection.AddNavigationBinding(ownedJsonNavigation, entityShaperExpression);
+                Expression shaper = ownedJsonNavigation.IsCollection
+                    ? new CollectionResultExpression(jsonQuery, ownedJsonNavigation, elementType: targetEntityType.ClrType)
+                    : new RelationalStructuralTypeShaperExpression(targetEntityType, jsonQuery, isNullable);
+
+                projection.AddNavigationBinding(ownedJsonNavigation, shaper);
             }
         }
 

@@ -17,6 +17,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 ///     and <see href="https://aka.ms/efcore-docs-how-query-works">How EF Core queries work</see> for more information and examples.
 /// </remarks>
 [DebuggerDisplay("{Microsoft.EntityFrameworkCore.Query.ExpressionPrinter.Print(this), nq}")]
+// TODO: Remove/obsolete this, was only being produced by nav expansion
 public class MaterializeCollectionNavigationExpression : Expression, IPrintableExpression
 {
     /// <summary>

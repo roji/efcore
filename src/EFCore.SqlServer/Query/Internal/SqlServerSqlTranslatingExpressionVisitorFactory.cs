@@ -42,10 +42,12 @@ public class SqlServerSqlTranslatingExpressionVisitorFactory : IRelationalSqlTra
     /// </summary>
     public virtual RelationalSqlTranslatingExpressionVisitor Create(
         QueryCompilationContext queryCompilationContext,
-        QueryableMethodTranslatingExpressionVisitor queryableMethodTranslatingExpressionVisitor)
+        RelationalTranslationContext translationContext,
+        RelationalQueryableMethodTranslatingExpressionVisitor queryableMethodTranslatingExpressionVisitor)
         => new SqlServerSqlTranslatingExpressionVisitor(
             Dependencies,
             (SqlServerQueryCompilationContext)queryCompilationContext,
+            translationContext,
             queryableMethodTranslatingExpressionVisitor,
             _sqlServerSingletonOptions);
 }

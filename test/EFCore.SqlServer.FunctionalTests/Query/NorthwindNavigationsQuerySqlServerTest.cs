@@ -942,10 +942,10 @@ WHERE [c].[Country] IN (N'USA', N'Redania')
             """
 SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
 FROM [Orders] AS [o]
-LEFT JOIN [Customers] AS [c] ON [o].[CustomerID] = [c].[CustomerID]
 WHERE (
     SELECT COUNT(*)
     FROM [Order Details] AS [o0]
+    LEFT JOIN [Customers] AS [c] ON [o].[CustomerID] = [c].[CustomerID]
     INNER JOIN [Orders] AS [o1] ON [o0].[OrderID] = [o1].[OrderID]
     LEFT JOIN [Customers] AS [c0] ON [o1].[CustomerID] = [c0].[CustomerID]
     WHERE [c].[Country] = [c0].[Country] OR ([c].[Country] IS NULL AND [c0].[Country] IS NULL)) > 0 AND [o].[OrderID] IN (10643, 10692)
@@ -1020,11 +1020,11 @@ ORDER BY [o0].[OrderID]
 SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
 FROM [Customers] AS [c]
 LEFT JOIN (
-    SELECT [c0].[CustomerID] AS [CustomerID0]
+    SELECT [c0].[CustomerID]
     FROM [Order Details] AS [o]
     INNER JOIN [Orders] AS [o0] ON [o].[OrderID] = 10260
     INNER JOIN [Customers] AS [c0] ON [o0].[CustomerID] = [c0].[CustomerID]
-) AS [s] ON [c].[CustomerID] = [s].[CustomerID0]
+) AS [s] ON [c].[CustomerID] = [s].[CustomerID]
 """);
     }
 
@@ -1037,11 +1037,11 @@ LEFT JOIN (
 SELECT [c].[CustomerID]
 FROM [Customers] AS [c]
 LEFT JOIN (
-    SELECT [c0].[CustomerID] AS [CustomerID0]
+    SELECT [c0].[CustomerID]
     FROM [Order Details] AS [o]
     INNER JOIN [Orders] AS [o0] ON [o].[OrderID] = 10260
     INNER JOIN [Customers] AS [c0] ON [o0].[CustomerID] = [c0].[CustomerID]
-) AS [s] ON [c].[CustomerID] = [s].[CustomerID0]
+) AS [s] ON [c].[CustomerID] = [s].[CustomerID]
 """);
     }
 
@@ -1084,12 +1084,12 @@ WHERE [c].[City] = N'London'
             """
 SELECT [o].[OrderID], [o].[CustomerID], [o].[EmployeeID], [o].[OrderDate]
 FROM [Orders] AS [o]
-LEFT JOIN [Customers] AS [c] ON [o].[CustomerID] = [c].[CustomerID]
 WHERE [o].[OrderID] IN (10643, 10692) AND (
     SELECT COUNT(*)
     FROM (
         SELECT DISTINCT [o0].[OrderID], [o0].[ProductID], [o0].[Discount], [o0].[Quantity], [o0].[UnitPrice]
         FROM [Order Details] AS [o0]
+        LEFT JOIN [Customers] AS [c] ON [o].[CustomerID] = [c].[CustomerID]
         INNER JOIN [Orders] AS [o1] ON [o0].[OrderID] = [o1].[OrderID]
         LEFT JOIN [Customers] AS [c0] ON [o1].[CustomerID] = [c0].[CustomerID]
         WHERE [c].[Country] = [c0].[Country] OR ([c].[Country] IS NULL AND [c0].[Country] IS NULL)

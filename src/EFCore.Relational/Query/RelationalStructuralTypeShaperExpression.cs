@@ -1,6 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Query;
@@ -17,6 +18,10 @@ namespace Microsoft.EntityFrameworkCore.Query;
 /// </summary>
 public class RelationalStructuralTypeShaperExpression : StructuralTypeShaperExpression
 {
+    private IncludeTreeNode? _includeTree;
+
+    public Dictionary<INavigationBase, Expression> BoundNavigations { get; private set; } = [];
+
     /// <summary>
     ///     Creates a new instance of the <see cref="RelationalStructuralTypeShaperExpression" /> class.
     /// </summary>
@@ -26,6 +31,10 @@ public class RelationalStructuralTypeShaperExpression : StructuralTypeShaperExpr
     public RelationalStructuralTypeShaperExpression(ITypeBase structuralType, Expression valueBufferExpression, bool nullable)
         : base(structuralType, valueBufferExpression, nullable)
     {
+        if (structuralType is IEntityType entityType)
+        {
+            _includeTree = new IncludeTreeNode(entityType, setLoaded: true);
+        }
     }
 
     /// <summary>
@@ -47,6 +56,10 @@ public class RelationalStructuralTypeShaperExpression : StructuralTypeShaperExpr
         Type clrType)
         : base(type, valueBufferExpression, nullable, materializationCondition, clrType)
     {
+        if (type is IEntityType entityType)
+        {
+            _includeTree = new IncludeTreeNode(entityType, setLoaded: true);
+        }
     }
 
     /// <inheritdoc />
@@ -181,9 +194,15 @@ public class RelationalStructuralTypeShaperExpression : StructuralTypeShaperExpr
     }
 
     /// <inheritdoc />
-    public override StructuralTypeShaperExpression Update(Expression valueBufferExpression)
+    public override RelationalStructuralTypeShaperExpression Update(Expression valueBufferExpression)
         => valueBufferExpression != ValueBufferExpression
             ? new RelationalStructuralTypeShaperExpression(StructuralType, valueBufferExpression, IsNullable, MaterializationCondition, Type)
+            {
+                // TODO: Make sure this makes sense
+                BoundNavigations = BoundNavigations,
+                _includeTree = _includeTree,
+                LastIncludeTreeNode = LastIncludeTreeNode
+            }
             : this;
 
     /// <inheritdoc />
@@ -197,4 +216,72 @@ public class RelationalStructuralTypeShaperExpression : StructuralTypeShaperExpr
         => Type != Type.UnwrapNullableType()
             ? new RelationalStructuralTypeShaperExpression(StructuralType, ValueBufferExpression, IsNullable, MaterializationCondition, Type.UnwrapNullableType())
             : this;
+
+    public IncludeTreeNode IncludeTree
+        => StructuralType is IEntityType
+            ? _includeTree!
+            : throw new InvalidOperationException("IncludeTree is only available for entity types.");
+
+    public IncludeTreeNode? LastIncludeTreeNode;
+}
+
+// TODO: Should this be immutable...
+// TODO: INavigationBase
+public class IncludeTreeNode(IEntityType entityType, bool setLoaded)
+    : Dictionary<INavigation, IncludeTreeNode>
+{
+    // TODO: Is this really needed?
+    public IEntityType EntityType { get; } = entityType;
+    // private readonly RelationalStructuralTypeShaperExpression? _shaper = shaper;
+    public bool SetLoaded { get; private set; } = setLoaded;
+
+    // TODO: INavigationBase
+    public IncludeTreeNode AddNavigation(INavigation navigation, bool setLoaded)
+    {
+        if (TryGetValue(navigation, out var existingValue))
+        {
+            if (setLoaded && !existingValue.SetLoaded)
+            {
+                existingValue.SetLoaded = true;
+            }
+
+            return existingValue;
+        }
+
+        // IncludeTreeNode? nodeToAdd = null;
+
+        // nodeToAdd = navigation switch
+        // {
+        //     INavigation concreteNavigation when _reference.ForeignKeyExpansionMap.TryGetValue(
+        //         (concreteNavigation.ForeignKey, concreteNavigation.IsOnDependent), out var expansion) => UnwrapEntityReference(
+        //         expansion)!.IncludePaths,
+        //     ISkipNavigation skipNavigation when _reference.ForeignKeyExpansionMap.TryGetValue(
+        //             (skipNavigation.ForeignKey, skipNavigation.IsOnDependent), out var firstExpansion)
+        //         // Value known to be non-null
+        //         && UnwrapEntityReference(firstExpansion)!.ForeignKeyExpansionMap.TryGetValue(
+        //             (skipNavigation.Inverse.ForeignKey, !skipNavigation.Inverse.IsOnDependent),
+        //             out var secondExpansion) => UnwrapEntityReference(secondExpansion)!.IncludePaths,
+        //     _ => nodeToAdd
+        // };
+
+        // nodeToAdd ??= new IncludeTreeNode(navigation.TargetEntityType, null, setLoaded);
+
+        // this[navigation] = nodeToAdd;
+
+        // return this[navigation];
+
+        return this[navigation] = new IncludeTreeNode(navigation.TargetEntityType, setLoaded);
+    }
+
+    public void Merge(IncludeTreeNode includeTreeNode)
+    {
+        // EntityReference is intentionally ignored
+        // FilterExpression = includeTreeNode.FilterExpression;
+        foreach (var (navigationBase, value) in includeTreeNode)
+        {
+            AddNavigation(navigationBase, value.SetLoaded).Merge(value);
+        }
+    }
+
+    public override string ToString() => $"";
 }

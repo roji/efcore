@@ -147,6 +147,14 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
                 var genericMethod = method.IsGenericMethod ? method.GetGenericMethodDefinition() : null;
                 switch (method.Name)
                 {
+                    case nameof(EntityFrameworkQueryableExtensions.Include)
+                        when methodCallExpression.Arguments is [_, Expression navigationSelector]: // TODO: Match types more closely?
+                        return CheckTranslated(TranslateInclude(shapedQueryExpression, navigationSelector));
+
+                    case nameof(EntityFrameworkQueryableExtensions.ThenInclude)
+                        when methodCallExpression.Arguments is [_, Expression navigationSelector]: // TODO: Match types more closely?
+                        return CheckTranslated(TranslateThenInclude(shapedQueryExpression, navigationSelector));
+
                     case nameof(EntityFrameworkQueryableExtensions.ExecuteDelete)
                         when genericMethod == EntityFrameworkQueryableExtensions.ExecuteDeleteMethodInfo:
                     {
@@ -595,19 +603,6 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
                         [DebuggerStepThrough]
                         LambdaExpression GetLambdaExpressionFromArgument(int argumentIndex)
                             => methodCallExpression.Arguments[argumentIndex].UnwrapLambdaFromQuote();
-
-                        [DebuggerStepThrough]
-                        Expression CheckTranslated(ShapedQueryExpression? translated)
-                        {
-                            if (translated is not null)
-                            {
-                                return translated;
-                            }
-
-                            _untranslatedExpression ??= methodCallExpression;
-
-                            return QueryCompilationContext.NotTranslatedExpression;
-                        }
                 }
             }
             else if (source == QueryCompilationContext.NotTranslatedExpression)
@@ -632,6 +627,19 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
                 ? throw new InvalidOperationException(CoreStrings.TranslationFailed(methodCallExpression.Print()))
                 : throw new InvalidOperationException(
                     CoreStrings.TranslationFailedWithDetails(methodCallExpression.Print(), TranslationErrorDetails));
+
+        [DebuggerStepThrough]
+        Expression CheckTranslated(ShapedQueryExpression? translated)
+        {
+            if (translated is not null)
+            {
+                return translated;
+            }
+
+            _untranslatedExpression ??= methodCallExpression;
+
+            return QueryCompilationContext.NotTranslatedExpression;
+        }
     }
 
     /// <inheritdoc />
@@ -1127,6 +1135,16 @@ public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVi
         => null;
 
     #endregion Queryable collection support
+
+    #region Include
+
+    protected virtual ShapedQueryExpression? TranslateInclude(ShapedQueryExpression source, Expression navigationPropertyPath) // TODO: parameter name
+        => null; // TODO: Maybe throw with a specific exception message?
+
+    protected virtual ShapedQueryExpression? TranslateThenInclude(ShapedQueryExpression source, Expression navigationPropertyPath) // TODO: parameter name
+        => null; // TODO: Maybe throw with a specific exception message?
+
+    #endregion Include
 
     #region ExecuteUpdate/ExecuteDelete
 

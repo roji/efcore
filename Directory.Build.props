@@ -12,6 +12,9 @@
     <IsUnitTestProject Condition=" '$(IsUnitTestProject)' == '' ">false</IsUnitTestProject>
     <IsTestUtilityProject Condition="'$(IsSpecificationTestProject)' == 'true'">true</IsTestUtilityProject>
     <SolutionRoot>$(MSBuildThisFileDirectory)</SolutionRoot>
+
+    <!-- TODO: Development-time -->
+    <NoWarn>$(NoWarn);CS1591;CS0162;CS0414</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>

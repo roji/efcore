@@ -16,12 +16,25 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
-public class SqlServerSqlTranslatingExpressionVisitor : RelationalSqlTranslatingExpressionVisitor
+/// <remarks>
+///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+///     any release. You should only use it directly in your code with extreme caution and knowing that
+///     doing so can result in application failures when updating to a new Entity Framework Core release.
+/// </remarks>
+public class SqlServerSqlTranslatingExpressionVisitor(
+    RelationalSqlTranslatingExpressionVisitorDependencies dependencies,
+    SqlServerQueryCompilationContext queryCompilationContext,
+    RelationalTranslationContext translationContext,
+    RelationalQueryableMethodTranslatingExpressionVisitor queryableMethodTranslatingExpressionVisitor,
+    ISqlServerSingletonOptions sqlServerSingletonOptions)
+    : RelationalSqlTranslatingExpressionVisitor(
+        dependencies, queryCompilationContext, translationContext, queryableMethodTranslatingExpressionVisitor)
 {
-    private readonly SqlServerQueryCompilationContext _queryCompilationContext;
-    private readonly ISqlExpressionFactory _sqlExpressionFactory;
-    private readonly IRelationalTypeMappingSource _typeMappingSource;
-    private readonly ISqlServerSingletonOptions _sqlServerSingletonOptions;
+    private readonly SqlServerQueryCompilationContext _queryCompilationContext = queryCompilationContext;
+    private readonly ISqlExpressionFactory _sqlExpressionFactory = dependencies.SqlExpressionFactory;
+    private readonly IRelationalTypeMappingSource _typeMappingSource = dependencies.TypeMappingSource;
+    private readonly ISqlServerSingletonOptions _sqlServerSingletonOptions = sqlServerSingletonOptions;
 
     private static readonly HashSet<string> DateTimeDataTypes
         =
@@ -79,25 +92,6 @@ public class SqlServerSqlTranslatingExpressionVisitor : RelationalSqlTranslating
 
     private const char LikeEscapeChar = '\\';
     private const string LikeEscapeString = "\\";
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
-    public SqlServerSqlTranslatingExpressionVisitor(
-        RelationalSqlTranslatingExpressionVisitorDependencies dependencies,
-        SqlServerQueryCompilationContext queryCompilationContext,
-        QueryableMethodTranslatingExpressionVisitor queryableMethodTranslatingExpressionVisitor,
-        ISqlServerSingletonOptions sqlServerSingletonOptions)
-        : base(dependencies, queryCompilationContext, queryableMethodTranslatingExpressionVisitor)
-    {
-        _queryCompilationContext = queryCompilationContext;
-        _sqlExpressionFactory = dependencies.SqlExpressionFactory;
-        _typeMappingSource = dependencies.TypeMappingSource;
-        _sqlServerSingletonOptions = sqlServerSingletonOptions;
-    }
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to

@@ -17,7 +17,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 public class StructuralTypeProjectionExpression : Expression
 {
     private readonly IReadOnlyDictionary<IProperty, ColumnExpression> _propertyExpressionMap;
-    private readonly Dictionary<INavigation, StructuralTypeShaperExpression> _ownedNavigationMap;
+    private readonly Dictionary<INavigation, Expression> _ownedNavigationMap;
     private readonly IReadOnlyDictionary<IComplexProperty, Expression> _complexPropertyMap;
 
     private static readonly bool UseOldBehavior37205 =
@@ -49,7 +49,7 @@ public class StructuralTypeProjectionExpression : Expression
     private StructuralTypeProjectionExpression(
         ITypeBase type,
         IReadOnlyDictionary<IProperty, ColumnExpression> propertyExpressionMap,
-        Dictionary<INavigation, StructuralTypeShaperExpression> ownedNavigationMap,
+        Dictionary<INavigation, Expression> ownedNavigationMap,
         IReadOnlyDictionary<IComplexProperty, Expression> complexPropertyMap,
         bool nullable,
         SqlExpression? discriminatorExpression = null)
@@ -128,10 +128,10 @@ public class StructuralTypeProjectionExpression : Expression
         var discriminatorExpression = (SqlExpression?)visitor.Visit(DiscriminatorExpression);
         changed |= discriminatorExpression != DiscriminatorExpression;
 
-        var ownedNavigationMap = new Dictionary<INavigation, StructuralTypeShaperExpression>();
+        var ownedNavigationMap = new Dictionary<INavigation, Expression>();
         foreach (var (navigation, entityShaperExpression) in _ownedNavigationMap)
         {
-            var newExpression = (StructuralTypeShaperExpression)visitor.Visit(entityShaperExpression);
+            var newExpression = visitor.Visit(entityShaperExpression);
             changed |= newExpression != entityShaperExpression;
             ownedNavigationMap[navigation] = newExpression;
         }
@@ -174,18 +174,24 @@ public class StructuralTypeProjectionExpression : Expression
             discriminatorExpression = ce.MakeNullable();
         }
 
-        var ownedNavigationMap = new Dictionary<INavigation, StructuralTypeShaperExpression>();
-        foreach (var (navigation, shaper) in _ownedNavigationMap)
+        var ownedNavigationMap = new Dictionary<INavigation, Expression>();
+        foreach (var (navigation, expression) in _ownedNavigationMap)
         {
-            if (shaper.StructuralType is IEntityType entityType && entityType.IsMappedToJson())
+            switch (expression)
             {
-                // even if shaper is nullable, we need to make sure key property map contains nullable keys,
-                // if json entity itself is optional, the shaper would be null, but the PK of the owner entity would be non-nullable
-                // initially
-                var jsonQueryExpression = (JsonQueryExpression)shaper.ValueBufferExpression;
-                var newJsonQueryExpression = jsonQueryExpression.MakeNullable();
-                var newShaper = shaper.Update(newJsonQueryExpression).MakeNullable();
-                ownedNavigationMap[navigation] = newShaper;
+                case StructuralTypeShaperExpression { StructuralType: IEntityType entityType } shaper when entityType.IsMappedToJson():
+                    // even if shaper is nullable, we need to make sure key property map contains nullable keys,
+                    // if json entity itself is optional, the shaper would be null, but the PK of the owner entity would be non-nullable
+                    // initially
+                    var jsonQueryExpression = (JsonQueryExpression)shaper.ValueBufferExpression;
+                    var newJsonQueryExpression = jsonQueryExpression.MakeNullable();
+                    var newShaper = shaper.Update(newJsonQueryExpression).MakeNullable();
+                    ownedNavigationMap[navigation] = newShaper;
+                    continue;
+
+                case CollectionResultExpression collectionResultExpression:
+                    ownedNavigationMap[navigation] = collectionResultExpression;
+                    continue;
             }
         }
 
@@ -239,7 +245,7 @@ public class StructuralTypeProjectionExpression : Expression
             }
         }
 
-        var ownedNavigationMap = new Dictionary<INavigation, StructuralTypeShaperExpression>();
+        var ownedNavigationMap = new Dictionary<INavigation, Expression>();
         foreach (var (navigation, entityShaperExpression) in _ownedNavigationMap)
         {
             if (derivedType.IsAssignableFrom(navigation.DeclaringEntityType)
@@ -305,7 +311,7 @@ public class StructuralTypeProjectionExpression : Expression
     /// </summary>
     /// <param name="navigation">A navigation to add binding for.</param>
     /// <param name="shaper">An entity shaper expression for the target type.</param>
-    public virtual void AddNavigationBinding(INavigation navigation, StructuralTypeShaperExpression shaper)
+    public virtual void AddNavigationBinding(INavigation navigation, Expression shaper)
     {
         if (StructuralType is not IEntityType entityType)
         {
@@ -324,11 +330,11 @@ public class StructuralTypeProjectionExpression : Expression
 
     /// <summary>
     ///     Binds a navigation with this entity projection to get entity shaper for the target entity type of the navigation which was
-    ///     previously added using <see cref="AddNavigationBinding(INavigation, StructuralTypeShaperExpression)" /> method.
+    ///     previously added using <see cref="AddNavigationBinding(INavigation, Expression)" /> method.
     /// </summary>
     /// <param name="navigation">A navigation to bind.</param>
     /// <returns>An entity shaper expression for the target entity type of the navigation.</returns>
-    public virtual StructuralTypeShaperExpression? BindNavigation(INavigation navigation)
+    public virtual Expression? BindNavigation(INavigation navigation)
     {
         if (StructuralType is not IEntityType entityType)
         {

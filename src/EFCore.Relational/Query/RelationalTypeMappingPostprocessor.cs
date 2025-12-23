@@ -383,6 +383,11 @@ public class RelationalTypeMappingPostprocessor(
             bool WasMaybeOriginallyUntyped(ColumnExpression columnExpression)
             {
                 var found = _tableAliasMap.TryGetValue(columnExpression.TableAlias, out var table);
+                // TODO: Remove, just for playing around
+                if (!found)
+                {
+                    return false;
+                }
                 Check.DebugAssert(found, $"Column '{columnExpression}' points to a table that isn't in scope");
 
                 return table switch

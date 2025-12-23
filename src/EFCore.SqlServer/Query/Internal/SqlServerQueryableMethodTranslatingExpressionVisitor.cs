@@ -278,8 +278,7 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
         var containerColumnName = structuralType.GetContainerColumnName();
         var containerColumn = structuralType.ContainingEntityType.GetTableMappings()
             .SelectMany(m => m.Table.Columns)
-            .Where(c => c.Name == containerColumnName)
-            .Single();
+            .Single(c => c.Name == containerColumnName);
 
         var nestedJsonPropertyNames = jsonQueryExpression.StructuralType switch
         {
@@ -374,10 +373,10 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
 #pragma warning restore EF1001
                     Limit: null,
                     Offset: null
-                } selectExpression
+                }
                     when TranslateExpression(index) is { } translatedIndex
                     && _sqlServerSingletonOptions.SupportsJsonFunctions
-                    && TryTranslate(selectExpression, valuesParameter, path: null, translatedIndex, out var result):
+                    && TryTranslate(valuesParameter, path: null, translatedIndex, out var result):
                     return result;
 
                 // Index on JSON array
@@ -403,10 +402,10 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
                             }
                         }
                         ]
-                } selectExpression
+                }
                     when orderingTableAlias == openJsonExpression.Alias
                     && TranslateExpression(index) is { } translatedIndex
-                    && TryTranslate(selectExpression, jsonArrayColumn, openJsonExpression.Path, translatedIndex, out var result):
+                    && TryTranslate(jsonArrayColumn, openJsonExpression.Path, translatedIndex, out var result):
                     return result;
             }
         }
@@ -414,39 +413,35 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
         return base.TranslateElementAtOrDefault(source, index, returnDefault);
 
         bool TryTranslate(
-            SelectExpression selectExpression,
-            SqlExpression jsonColumn,
+            SqlExpression json,
             IReadOnlyList<PathSegment>? path,
             SqlExpression translatedIndex,
             [NotNullWhen(true)] out ShapedQueryExpression? result)
         {
             // Extract the column projected out of the source, and simplify the subquery to a simple JsonScalarExpression
-            if (!TryGetProjection(source, selectExpression, out var projection))
-            {
-                result = null;
-                return false;
-            }
+            var projection = GetProjection(source);
 
-            // OPENJSON's value column is an nvarchar(max); if this is a collection column whose type mapping is know, the projection
-            // contains a CAST node which we unwrap
-            var projectionColumn = projection switch
-            {
-                ColumnExpression c => c,
-                SqlUnaryExpression { OperatorType: ExpressionType.Convert, Operand: ColumnExpression c } => c,
-                _ => null
-            };
+            // // OPENJSON's value column is an nvarchar(max); if this is a collection column whose type mapping is know, the projection
+            // // contains a CAST node which we unwrap
+            // Expression? projectionColumn = projection switch
+            // {
+            //     ColumnExpression c => c,
+            //     SqlUnaryExpression { OperatorType: ExpressionType.Convert, Operand: ColumnExpression c } => c,
+            //     StructuralTypeProjectionExpression p => p,
+            //     _ => null
+            // };
 
-            if (projectionColumn is null)
-            {
-                result = null;
-                return false;
-            }
+            // if (projectionColumn is null)
+            // {
+            //     result = null;
+            //     return false;
+            // }
 
             // If the inner expression happens to itself be a JsonScalarExpression, simply append the paths to avoid creating
             // JSON_VALUE within JSON_VALUE.
-            var (json, newPath) = jsonColumn is JsonScalarExpression innerJsonScalarExpression
+            (json, var newPath) = json is JsonScalarExpression innerJsonScalarExpression
                 ? (innerJsonScalarExpression.Json, new List<PathSegment>(innerJsonScalarExpression.Path))
-                : (jsonColumn, []);
+                : (json, []);
 
             if (path is not null)
             {
@@ -455,17 +450,74 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
 
             newPath.Add(new(translatedIndex));
 
-            var translation = new JsonScalarExpression(
-                json,
-                newPath,
-                projection.Type,
-                projection.TypeMapping,
-                projectionColumn.IsNullable);
+#pragma warning disable EF1001 // SelectExpression constructors are pubternal
+            switch (projection)
+            {
+                case ColumnExpression projectedColumn:
+                    var jsonScalar = new JsonScalarExpression(
+                        json,
+                        newPath,
+                        projectedColumn.Type,
+                        projectedColumn.TypeMapping,
+                        projectedColumn.IsNullable);
+                    result = source.UpdateQueryExpression(new SelectExpression(jsonScalar, _queryCompilationContext.SqlAliasManager));
+                    return true;
 
-#pragma warning disable EF1001
-            result = source.UpdateQueryExpression(new SelectExpression(translation, _queryCompilationContext.SqlAliasManager));
+                case StructuralTypeShaperExpression structuralTypeShaper:
+                    // TODO: JsonQueryExpression currently requires a ColumnExpression, though it should allow for arbitrary SqlExpressions.
+                    // In any case, we don't currently have a use case requiring this.
+                    var jsonColumn = json as ColumnExpression ?? throw new UnreachableException();
+
+                    var jsonQuery = new JsonQueryExpression(
+                        structuralTypeShaper.StructuralType,
+                        jsonColumn,
+                        BuildKeyPropertyMap(structuralTypeShaper),
+                        newPath,
+                        type: structuralTypeShaper.Type,
+                        collection: false,
+                        jsonColumn.IsNullable);
+                    result = source.UpdateQueryExpression(
+                        new SelectExpression(
+                            tables: [],
+                            projection: jsonQuery,
+                            // The SelectExpression is acting as a pure wrapper over the JsonQueryExpression, and will be unwrapped later
+                            // in RelationalSqlTranslatingExpressionVisitor. And in any case, we're dealing with JSON data that has no
+                            // (real) keys, so there aren't any identifiers.
+                            // TODO: NOT SURE. blogs.Select(b => b.Reference) does have an identifier - the blog's key.
+                            // TODO: Think about this.
+                            identifier: [],
+                            _queryCompilationContext.SqlAliasManager));
+                    return true;
+
+                default:
+                    result = null;
+                    return false;
+            }
 #pragma warning restore EF1001
-            return true;
+
+            static IReadOnlyDictionary<IProperty, ColumnExpression>? BuildKeyPropertyMap(StructuralTypeShaperExpression structuralTypeShaper)
+            {
+                if (structuralTypeShaper.StructuralType is not IEntityType targetEntityType)
+                {
+                    // Complex types do not need a key property map, only owned JSON.
+                    return null;
+                }
+
+                throw new NotImplementedException("Need to recreate the key property map for owned JSON.");
+                // Dictionary<IProperty, ColumnExpression> keyPropertyMap = [];
+                // var keyProperties = targetEntityType.FindPrimaryKey()!.Properties;
+                // var keyPropertiesCount = ownedJsonNavigation.IsCollection
+                //     ? keyProperties.Count - 1
+                //     : keyProperties.Count;
+
+                // for (var i = 0; i < keyPropertiesCount; i++)
+                // {
+                //     var correspondingParentKeyProperty = ownedJsonNavigation.ForeignKey.PrincipalKey.Properties[i];
+                //     keyPropertyMap[keyProperties[i]] = propertyExpressions[correspondingParentKeyProperty];
+                // }
+
+                // return keyPropertyMap;
+            }
         }
     }
 
@@ -731,29 +783,25 @@ public class SqlServerQueryableMethodTranslatingExpressionVisitor : RelationalQu
 
     #endregion ExecuteUpdate
 
-    private bool TryGetProjection(
-        ShapedQueryExpression shapedQueryExpression,
-        SelectExpression selectExpression,
-        [NotNullWhen(true)] out SqlExpression? projection)
+    private Expression GetProjection(ShapedQueryExpression shapedQuery)
     {
-        var shaperExpression = shapedQueryExpression.ShaperExpression;
+        var projection = shapedQuery.ShaperExpression;
+        var select = (SelectExpression)shapedQuery.QueryExpression;
+
         // No need to check ConvertChecked since this is convert node which we may have added during projection
-        if (shaperExpression is UnaryExpression { NodeType: ExpressionType.Convert } unaryExpression
+        if (projection is UnaryExpression { NodeType: ExpressionType.Convert } unaryExpression
             && unaryExpression.Operand.Type.IsNullableType()
             && unaryExpression.Operand.Type.UnwrapNullableType() == unaryExpression.Type)
         {
-            shaperExpression = unaryExpression.Operand;
+            projection = unaryExpression.Operand;
         }
 
-        if (shaperExpression is ProjectionBindingExpression projectionBindingExpression
-            && selectExpression.GetProjection(projectionBindingExpression) is SqlExpression sqlExpression)
+        if (projection is ProjectionBindingExpression pbe)
         {
-            projection = sqlExpression;
-            return true;
+            projection = select.GetProjection(pbe);
         }
 
-        projection = null;
-        return false;
+        return projection;
     }
 
     private sealed class TemporalAnnotationApplyingExpressionVisitor(Func<TableExpression, TableExpressionBase> annotationApplyingFunc)

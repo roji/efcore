@@ -106,6 +106,24 @@ public abstract class AssociationsCollectionTestBase<TFixture>(TFixture fixture)
         => AssertQuery(ss => ss.Set<RootEntity>().Select(e =>
             e.AssociateCollection.Select(r => r.NestedCollection.Select(n => n.Int).Max()).Sum()));
 
+    // TODO: Also add a referencing entity that has a collection of RootEntities, perform the subquery on the RootEntities.
+    // TODO: Then add coverage for accessing a nested associate
+
+    [ConditionalFact]
+    public virtual Task Access_nested_associate_on_associate_collection_subquery()
+        => AssertQuery(ss => ss.Set<RootEntity>()
+            .Where(r => r.AssociateCollection.Single(a => a.Int == 8).RequiredNestedAssociate.Int == 8));
+
+    [ConditionalFact]
+    public virtual Task Project_nested_associate_on_associate_collection_subquery()
+        => AssertQuery(ss => ss.Set<RootEntity>()
+            .Select(r => r.AssociateCollection.Single(a => a.Int == 8).RequiredNestedAssociate));
+
+    [ConditionalFact]
+    public virtual Task Project_nested_associates_on_associate_collection_subquery()
+        => AssertQuery(ss => ss.Set<RootEntity>()
+            .Select(r => r.AssociateCollection.Single(a => a.Int == 8).NestedCollection));
+
     /// <summary>
     ///     Utility for tests that depend on the collection being naturally ordered
     ///     (e.g. JSON collection as opposed to a classical relational collection navigation, which is unordered).

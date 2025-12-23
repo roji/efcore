@@ -66,16 +66,16 @@ public class CollectionResultExpression(
         expressionPrinter.AppendLine("CollectionResultExpression:");
         using (expressionPrinter.Indent())
         {
-            expressionPrinter.Append("QueryExpression:");
+            expressionPrinter.Append("QueryExpression: ");
             expressionPrinter.Visit(QueryExpression);
             expressionPrinter.AppendLine();
 
             if (StructuralProperty is not null)
             {
-                expressionPrinter.Append("Structural Property:").AppendLine(StructuralProperty.ToString()!);
+                expressionPrinter.Append("Structural Property: ").AppendLine(StructuralProperty.ToString()!);
             }
 
-            expressionPrinter.Append("ElementType:").AppendLine(ElementType.ShortDisplayName());
+            expressionPrinter.Append("ElementType: ").AppendLine(ElementType.ShortDisplayName());
         }
     }
 
