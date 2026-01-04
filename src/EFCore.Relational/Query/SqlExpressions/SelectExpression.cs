@@ -2882,9 +2882,11 @@ public sealed partial class SelectExpression : TableExpressionBase
             }
         }
 
-        if (Limit != null
-            || Offset != null
-            || IsDistinct
+        // Perform a subquery pushdown on the main/outer query if needed.
+        // If the query has limit/offset/distinct, applying an inner join without pushing down first would change the semantics, as the
+        // inner join's filter would apply before the limit/offset/distinct.
+        // However, left join/outer apply do not have a filtering function, and so can be applied without pushdown.
+        if ((Limit is not null || Offset is not null || IsDistinct) && joinType is not JoinType.LeftJoin and not JoinType.OuterApply
             || GroupBy.Count > 0)
         {
             var sqlRemappingVisitor = PushdownIntoSubqueryInternal();
@@ -2892,6 +2894,7 @@ public sealed partial class SelectExpression : TableExpressionBase
             joinPredicate = sqlRemappingVisitor.Remap(joinPredicate);
         }
 
+        // Perform a pushdown on the inner query if needed.
         if (innerSelect.Limit != null
             || innerSelect.Offset != null
             || innerSelect.IsDistinct

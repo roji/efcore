@@ -119,16 +119,16 @@ public class ShapedQueryExpression : Expression, IPrintableExpression
     /// <inheritdoc />
     void IPrintableExpression.Print(ExpressionPrinter expressionPrinter)
     {
-        expressionPrinter.AppendLine(nameof(ShapedQueryExpression) + ": ");
+        expressionPrinter.AppendLine($"{nameof(ShapedQueryExpression)} ({ResultCardinality}): ");
         using (expressionPrinter.Indent())
         {
-            expressionPrinter.AppendLine(nameof(QueryExpression) + ": ");
+            expressionPrinter.AppendLine($"{nameof(QueryExpression)}: ");
             using (expressionPrinter.Indent())
             {
                 expressionPrinter.Visit(QueryExpression);
             }
 
-            expressionPrinter.AppendLine().Append(nameof(ShaperExpression) + ": ");
+            expressionPrinter.AppendLine().Append($"{nameof(ShaperExpression)}: ");
             using (expressionPrinter.Indent())
             {
                 expressionPrinter.Visit(ShaperExpression);

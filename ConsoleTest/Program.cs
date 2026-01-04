@@ -9,26 +9,16 @@ await context.Database.EnsureDeletedAsync();
 await context.Database.EnsureCreatedAsync();
 
 // _ = await context.Blogs
-//     .Where(b => b.Posts.Single().ComplexThing.Foo == 8)
+//     .Where(b => b.Collection.Single().NestedReference2.Bar == 8)
+//     .ToListAsync();
+
+// _ = await context.Blogs
+//     .Select(b => b.Collection.Single().NestedReference2)
 //     .ToListAsync();
 
 _ = await context.Blogs
-    .Select(b => b.Posts.SingleOrDefault()!.ComplexThing)
+    .Select(b => b.Collection.Single().NestedReference2)
     .ToListAsync();
-
-// _ = await context.Blogs
-//     .Select(b => b.Posts.Single().ComplexThings)
-//     .ToListAsync();
-
-// _ = await context.Blogs
-//     .Select(b => b.Posts.Single())
-//     .ToListAsync();
-
-// var complexThing = new ComplexThing { Foo = 8, Bar = 16 };
-
-// _ = await context.Blogs
-//     .Where(b => b.Posts.Single().ComplexThing == complexThing)
-//     .ToListAsync();
 
 public class BlogContext : DbContext
 {
@@ -42,8 +32,9 @@ public class BlogContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Post>().ComplexProperty(b => b.ComplexThing);
-        modelBuilder.Entity<Post>().ComplexCollection(b => b.ComplexThings, b => b.ToJson());
+        // modelBuilder.Entity<Collection>().ComplexProperty(b => b.NestedReference2);
+
+        // modelBuilder.Entity<Blog>().Navigation(b => b.Details).AutoInclude();
     }
 }
 
@@ -52,22 +43,56 @@ public class Blog
     public int Id { get; set; }
     public string Name { get; set; }
 
-    public List<Post> Posts { get; set; }
+    // public Reference Reference { get; set; }
+    public List<Collection> Collection { get; set; }
 }
 
-public class Post
+public class Reference
 {
     public int Id { get; set; }
+    public int Foo { get; set; }
 
-    public ComplexThing ComplexThing { get; set; }
-    public List<ComplexThing> ComplexThings { get; set; }
+    // public NestedReference NestedReference { get; set; }
+
+    // public int BlogId { get; set; }
+    // public Blog Blog { get; set; }
+}
+
+public class NestedReference
+{
+    public int Id { get; set; }
+    public int Bar { get; set; }
+
+    public int ReferenceId { get; set; }
+    public Reference Reference { get; set; }
+}
+
+public class Collection
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+
+    // public NestedCollection NestedCollection { get; set; }
+    public NestedReference2 NestedReference2 { get; set; }
 
     public int BlogId { get; set; }
     public Blog Blog { get; set; }
 }
 
-public class ComplexThing
+public class NestedCollection
 {
-    public int Foo { get; set; }
+    public int Id { get; set; }
+    public string Description { get; set; }
+
+    public int CollectionId { get; set; }
+    public Collection Collection { get; set; }
+}
+
+public class NestedReference2
+{
+    public int Id { get; set; }
     public int Bar { get; set; }
+
+    public int CollectionId { get; set; }
+    public Collection Collection { get; set; }
 }

@@ -562,7 +562,10 @@ public partial class RelationalSqlTranslatingExpressionVisitor(
                     if (shapedQueryExpression.QueryExpression is SelectExpression { Tables.Count: 0 } subquery2
                         && ese.ValueBufferExpression is ProjectionBindingExpression pbe3)
                     {
-                        return new StructuralTypeReferenceExpression(ese.Update(subquery2.GetProjection(pbe3)));
+                        // TDOO: Careful, this "converts" a subquery into a non-subquery; this notably means that any
+                        // navigations bound over this result will get cached and reused. Make sure that makes sense.
+                        throw new NotImplementedException("INVESTIGATE THIS AROUND CACHED BOUND NAVIGATIONS");
+                        // return new StructuralTypeReferenceExpression(ese.Update(subquery2.GetProjection(pbe3)));
                     }
 
                     return new StructuralTypeReferenceExpression(shapedQueryExpression.UpdateShaperExpression(innerExpression));
@@ -1435,39 +1438,52 @@ public partial class RelationalSqlTranslatingExpressionVisitor(
                 Subquery:
                 {
                     ResultCardinality: ResultCardinality.Single or ResultCardinality.SingleOrDefault,
-                    QueryExpression: SelectExpression select,
-                    ShaperExpression: RelationalStructuralTypeShaperExpression
-                    {
-                        ValueBufferExpression: ProjectionBindingExpression projectionBinding
-                    }
+                    QueryExpression: SelectExpression,
+                    ShaperExpression: RelationalStructuralTypeShaperExpression shaper
                 } subquery
             }:
-                var projection = (StructuralTypeProjectionExpression)select.GetProjection(projectionBinding);
+                // TODO: No, this is problematic. Using the generic Select() here means we cache bound navigations,
+                // which we should never do over subqueries. We need to manually translate selector - specifying
+                // that bound navigations shouldn't be cached.
+                throw new NotImplementedException();
 
-                switch (projection.BindComplexProperty(complexProperty))
-                {
-                    case RelationalStructuralTypeShaperExpression
-                    {
-                        ValueBufferExpression: var innerProjection
-                    } innerShaper:
-                    {
-                        var projectionMember = new ProjectionMember();
-                        select.ReplaceProjection(new Dictionary<ProjectionMember, Expression> { [projectionMember] = innerProjection });
-                        innerShaper = innerShaper.Update(new ProjectionBindingExpression(select, projectionMember, typeof(ValueBuffer)));
+                // // TODO: Figure out a nicer API around CreateSubqueryVisitor2/TranslateSelect2
+                // var parameter = Expression.Parameter(shaper.Type);
 
-                        return new StructuralTypeReferenceExpression(subquery.UpdateShaperExpression(innerShaper));
-                    }
+                // return new StructuralTypeReferenceExpression(
+                //     _queryableMethodTranslatingExpressionVisitor.CreateSubqueryVisitor2()
+                //         .TranslateSelect2(
+                //             subquery,
+                //             Expression.Lambda(
+                //                 Infrastructure.ExpressionExtensions.CreateEFPropertyExpression(parameter, complexProperty),
+                //                 parameter)));
 
-                    case CollectionResultExpression collectionResult:
-                    {
-                        select.ReplaceProjection([collectionResult.QueryExpression]);
+                // var projection = (StructuralTypeProjectionExpression)select.GetProjection(projectionBinding);
 
-                        return subquery.UpdateShaperExpression(collectionResult.Update(new ProjectionBindingExpression(select, index: 0, typeof(ValueBuffer))));
-                    }
+                // switch (projection.BindComplexProperty(complexProperty))
+                // {
+                //     case RelationalStructuralTypeShaperExpression
+                //     {
+                //         ValueBufferExpression: var innerProjection
+                //     } innerShaper:
+                //     {
+                //         var projectionMember = new ProjectionMember();
+                //         select.ReplaceProjection(new Dictionary<ProjectionMember, Expression> { [projectionMember] = innerProjection });
+                //         innerShaper = innerShaper.Update(new ProjectionBindingExpression(select, projectionMember, typeof(ValueBuffer)));
 
-                    default:
-                        throw new UnreachableException();
-                }
+                //         return new StructuralTypeReferenceExpression(subquery.UpdateShaperExpression(innerShaper));
+                //     }
+
+                //     case CollectionResultExpression collectionResult:
+                //     {
+                //         select.ReplaceProjection([collectionResult.QueryExpression]);
+
+                //         return subquery.UpdateShaperExpression(collectionResult.Update(new ProjectionBindingExpression(select, index: 0, typeof(ValueBuffer))));
+                //     }
+
+                //     default:
+                //         throw new UnreachableException();
+                // }
 
             default:
                 throw new UnreachableException();
@@ -1510,7 +1526,22 @@ public partial class RelationalSqlTranslatingExpressionVisitor(
 
                         if (shaper.BoundNavigations.TryGetValue(navigation, out var boundExpression))
                         {
-                            return new StructuralTypeReferenceExpression((StructuralTypeShaperExpression)boundExpression);
+                            var innerShaper2 = (RelationalStructuralTypeShaperExpression)boundExpression;
+
+                            // In theory, if the navigation has already been bound on this shaper, a JOIN has also been added and we can
+                            // skip adding it again. However, there are various cases in the query pipeline where we attempt to translate
+                            // in a certain way, and if we fail, we backtrack and try a different translation, discarding the first. In
+                            // such cases, the first discarded translation would have a JOIN, and the second would see the bound navigation
+                            // and skip adding it again, leading to incorrect SQL.
+                            // Instead, we always flag the JOIN for adding, and when actually adding it, we check if a the table already exists
+
+                            // TODO: Change PendingJoin structure to deduplicate based on the navigation, so that
+                            // we at least don't repeatedly add joins for the same navigation as it's repeatedly
+                            // bound.
+
+                            _translationContext.PendingJoins.Add((navigation, shaper, innerShaper2));
+
+                            return new StructuralTypeReferenceExpression(innerShaper2);
                         }
 
                         var innerSelect = _queryableMethodTranslatingExpressionVisitor.CreateSelect(navigation.TargetEntityType);
@@ -1542,9 +1573,6 @@ public partial class RelationalSqlTranslatingExpressionVisitor(
                         {
                             innerShaper.IncludeTree.Merge(includeSubTree);
                         }
-
-                        // TODO: Organize by root
-                        _translationContext.PendingJoins.Add((navigation, shaper, innerShaper));
 
                         shaper.BoundNavigations.Add(navigation, innerShaper);
 
@@ -1617,41 +1645,25 @@ public partial class RelationalSqlTranslatingExpressionVisitor(
                 Subquery:
                 {
                     ResultCardinality: ResultCardinality.Single or ResultCardinality.SingleOrDefault,
-                    QueryExpression: SelectExpression select,
-                    ShaperExpression: RelationalStructuralTypeShaperExpression
-                    {
-                        ValueBufferExpression: ProjectionBindingExpression projectionBinding
-                    }
+                    QueryExpression: SelectExpression,
+                    ShaperExpression: RelationalStructuralTypeShaperExpression shaper
                 } subquery
             }:
+                // TODO: No, this is problematic. Using the generic Select() here means we cache bound navigations,
+                // which we should never do over subqueries. We need to manually translate selector - specifying
+                // that bound navigations shouldn't be cached.
                 throw new NotImplementedException();
-                // var projection = (StructuralTypeProjectionExpression)select.GetProjection(projectionBinding);
 
-                // switch (projection.BindComplexProperty(complexProperty))
-                // {
-                //     case RelationalStructuralTypeShaperExpression
-                //     {
-                //         ValueBufferExpression: StructuralTypeProjectionExpression innerProjection
-                //     } innerShaper:
-                //     {
-                //         var projectionMember = new ProjectionMember();
-                //         select.ReplaceProjection(new Dictionary<ProjectionMember, Expression> { [projectionMember] = innerProjection });
-                //         innerShaper = innerShaper.Update(new ProjectionBindingExpression(select, projectionMember, typeof(ValueBuffer)));
+                // // TODO: Figure out a nicer API around CreateSubqueryVisitor2/TranslateSelect2
+                // var parameter = Expression.Parameter(shaper.Type);
 
-                //         return new StructuralTypeReferenceExpression(subquery.UpdateShaperExpression(innerShaper));
-                //     }
-
-                //     case CollectionResultExpression collectionResult:
-                //     {
-                //         select.ReplaceProjection([collectionResult.QueryExpression]);
-
-                //         return subquery.UpdateShaperExpression(collectionResult.Update(new ProjectionBindingExpression(select, index: 0, typeof(ValueBuffer))));
-                //     }
-
-                //     default:
-                //         throw new UnreachableException();
-                // }
-
+                // return new StructuralTypeReferenceExpression(
+                //     _queryableMethodTranslatingExpressionVisitor.CreateSubqueryVisitor2()
+                //         .TranslateSelect2(
+                //             subquery,
+                //             Expression.Lambda(
+                //                 Infrastructure.ExpressionExtensions.CreateEFPropertyExpression(parameter, navigation),
+                //                 parameter)));
 
             default:
                 throw new UnreachableException();

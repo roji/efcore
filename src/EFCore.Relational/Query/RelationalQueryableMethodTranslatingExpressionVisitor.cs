@@ -498,8 +498,12 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
             encounteredNull);
     }
 
+    [EntityFrameworkInternal]
+    public virtual RelationalQueryableMethodTranslatingExpressionVisitor CreateSubqueryVisitor2()
+        => CreateSubqueryVisitor();
+
     /// <inheritdoc />
-    protected override QueryableMethodTranslatingExpressionVisitor CreateSubqueryVisitor()
+    protected override RelationalQueryableMethodTranslatingExpressionVisitor CreateSubqueryVisitor()
         => new RelationalQueryableMethodTranslatingExpressionVisitor(this);
 
     /// <inheritdoc />
@@ -1571,6 +1575,15 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
         Expression outerShaper,
         StructuralTypeShaperExpression innerShaper)
     {
+        var innerSelect = (SelectExpression)((ProjectionBindingExpression)innerShaper.ValueBufferExpression).QueryExpression;
+
+        // Because we sometimes attempt to translate something more than once (the first attempt fails), a join may already
+        // have been added form the first attempt. We use the alias as a dedu
+        if (select.Tables.Any(t => t.Alias == innerSelect.Tables.Single().Alias))
+        {
+            return;
+        }
+
         var foreignKey = navigation.ForeignKey;
 
         // Strip off any Include expressions from the outer shaper, as these will interfere with key property binding
@@ -1594,8 +1607,6 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
         // TODO: Look into using CreateJoinPredicate instead; figure out null semantics of predicate when used in
         // navigation binding (as opposed to explicit Join)
         var translatedJoinPredicate = _sqlTranslator.Translate(joinPredicate) ?? throw new InvalidOperationException();
-
-        var innerSelect = (SelectExpression)((ProjectionBindingExpression)innerShaper.ValueBufferExpression).QueryExpression;
 
         // TODO: Verify the condition. Possibly look at the inverse navigation's foreign key when on dependent.
         // if (outerStructuralTypeShaper.IsNullable || navigation.IsCollection || !navigation.ForeignKey.IsRequired || !navigation.IsOnDependent)
