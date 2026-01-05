@@ -859,7 +859,7 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
                 [groupByShaper.KeySelector, groupByShaper])
             .Visit(resultSelector.Body);
 
-        newResultSelectorBody = ExpandSharedTypeEntities(selectExpression, newResultSelectorBody);
+        // newResultSelectorBody = ExpandSharedTypeEntities(selectExpression, newResultSelectorBody);
 
         return source.UpdateShaperExpression(
             _projectionBindingExpressionVisitor.Translate(selectExpression, newResultSelectorBody));
@@ -1586,8 +1586,8 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor : Que
 
         var foreignKey = navigation.ForeignKey;
 
-        // Strip off any Include expressions from the outer shaper, as these will interfere with key property binding
-        // TODO: Probably no longer needed as we've moved Include processing to the end
+        // Strip off any Include expressions from the outer shaper, as these will interfere with key property binding.
+        // Just in case we need to bind properties in postprocessing, after applying Includes at the end of translation.
         while (outerShaper is IncludeExpression includeExpression)
         {
             outerShaper = includeExpression.EntityExpression;

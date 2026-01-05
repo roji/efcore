@@ -1496,148 +1496,7 @@ public partial class RelationalSqlTranslatingExpressionVisitor(
         switch (typeReference)
         {
             case { Parameter: RelationalStructuralTypeShaperExpression shaper }:
-                switch (Visit(shaper.ValueBufferExpression))
-                {
-                    // Owned navigation from a regular (non-JSON) table to a JSON document
-                    case StructuralTypeProjectionExpression structuralTypeProjection when navigation.TargetEntityType.IsMappedToJson():
-                        return navigation.IsCollection
-                            ? structuralTypeProjection.BindNavigation(navigation)!
-                            : new StructuralTypeReferenceExpression(
-                                (StructuralTypeShaperExpression)structuralTypeProjection.BindNavigation(navigation)!);
-
-                    // Nested JSON owned navigation inside a JSON document
-                    case JsonQueryExpression jsonQuery:
-                        return BindNestedJsonProperty(jsonQuery, navigation);
-
-                    // TODO: Confirm that we don't have cases where a target owned entity is mapped to multiple tables (entity splitting, inheritance)
-                    // Owned navigation mapped to the same table as the owner (table splitting/sharing)
-                    case StructuralTypeProjectionExpression
-                        when navigation is { ForeignKey.IsOwnership: true, IsCollection: false }
-                            // TODO: Better way to identify table sharing?
-                            && navigation.TargetEntityType.GetViewOrTableMappings().Single().Table is { } targetTable
-                            && navigation.DeclaringEntityType.GetViewOrTableMappings().Select(m => m.Table).Contains(targetTable):
-                    {
-                        throw new NotImplementedException("Table splitting");
-                    }
-
-                    case StructuralTypeProjectionExpression when !navigation.IsCollection:
-                    {
-                        // Check.DebugAssert(projection.IsNullable == shaper.IsNullable, "Nullability mismatch");
-
-                        if (shaper.BoundNavigations.TryGetValue(navigation, out var boundExpression))
-                        {
-                            var innerShaper2 = (RelationalStructuralTypeShaperExpression)boundExpression;
-
-                            // In theory, if the navigation has already been bound on this shaper, a JOIN has also been added and we can
-                            // skip adding it again. However, there are various cases in the query pipeline where we attempt to translate
-                            // in a certain way, and if we fail, we backtrack and try a different translation, discarding the first. In
-                            // such cases, the first discarded translation would have a JOIN, and the second would see the bound navigation
-                            // and skip adding it again, leading to incorrect SQL.
-                            // Instead, we always flag the JOIN for adding, and when actually adding it, we check if a the table already exists
-
-                            // TODO: Change PendingJoin structure to deduplicate based on the navigation, so that
-                            // we at least don't repeatedly add joins for the same navigation as it's repeatedly
-                            // bound.
-
-                            _translationContext.PendingJoins.Add((navigation, shaper, innerShaper2));
-
-                            return new StructuralTypeReferenceExpression(innerShaper2);
-                        }
-
-                        var innerSelect = _queryableMethodTranslatingExpressionVisitor.CreateSelect(navigation.TargetEntityType);
-
-                        // TODO: This needs to be centralized, need to apply auto-includes, owned entities to it.
-                        // var innerNullable = navigation.IsOnDependent ? !navigation.ForeignKey.IsRequired : !navigation.ForeignKey.IsRequiredDependent;
-                        var innerNullable = shaper.IsNullable
-                            || !navigation.IsOnDependent
-                            || !navigation.ForeignKey.IsRequired;
-
-                        if (innerNullable)
-                        {
-                            // Make the inner select's projection nullable
-                            var emptyProjection = new ProjectionBindingExpression(innerSelect, new ProjectionMember(), typeof(ValueBuffer));
-                            var nullableProjection = SelectExpression.MakeNullable(innerSelect.GetProjection(emptyProjection), nullable: true);
-                            innerSelect.ReplaceProjection(emptyProjection, nullableProjection);
-                        }
-
-                        var innerShaper = new RelationalStructuralTypeShaperExpression(
-                            navigation.TargetEntityType,
-                            new ProjectionBindingExpression(
-                                innerSelect,
-                                new ProjectionMember(),
-                                typeof(ValueBuffer)),
-                            innerNullable);
-
-                        // If an Include() has been called on the outer for the inner, copy over that subtree of the include tree
-                        if (shaper.IncludeTree.TryGetValue(navigation, out var includeSubTree))
-                        {
-                            innerShaper.IncludeTree.Merge(includeSubTree);
-                        }
-
-                        shaper.BoundNavigations.Add(navigation, innerShaper);
-
-                        return new StructuralTypeReferenceExpression(innerShaper);
-                    }
-
-                    case StructuralTypeProjectionExpression when navigation.IsCollection:
-                    {
-                        // TODO: Consider folding into a single case with the non-collection case above
-
-                        // Collection navigations aren't re-bound like reference navigations:
-                        // With reference navigations, you can have: Where(x => x.Details.Foo == 8 && x.Details.Bar == 9)
-                        // (x.Details is a reference navigation that's bound twice, and we don't want to add two JOINs).
-                        // With collection navigations, a subquery is (generally) composed on top:
-                        // Where(x => x.Posts.Count() == 3 && x.Posts.Any(...))
-                        // Each subquery is its own separate subquery, so the navigation itself (x.Posts) isn't re-bound.
-                        // However, there are some edge cases that require us to cache bound navigations. For example, the same Select()
-                        // selector may get evaluated twice by RelationalProjectionBindingExpressionVisitor - once in regular mode, and
-                        // then in client eval mode.
-
-                        if (shaper.BoundNavigations.TryGetValue(navigation, out var boundExpression))
-                        {
-                            var collectionResult = (CollectionResultExpression)boundExpression;
-
-                            // Since SelectExpression is mutable, clone it first so that subsequent processing doesn't modify what we cache
-                            // as a bound navigation
-                            return collectionResult.Update(Clone((ShapedQueryExpression)collectionResult.QueryExpression));
-                        }
-
-                        var innerShapedQuery = _queryableMethodTranslatingExpressionVisitor.CreateShapedQueryExpression2(navigation.TargetEntityType);
-
-                        var innerSelect = (SelectExpression)innerShapedQuery.QueryExpression;
-                        var joinPredicate = _queryableMethodTranslatingExpressionVisitor.CreateJoinPredicate(navigation, shaper, innerShapedQuery.ShaperExpression);
-                        innerSelect.ApplyPredicate(joinPredicate);
-
-                        // Since SelectExpression is mutable, clone it first so that subsequent processing doesn't modify what we cache as a bound navigation
-                        var clonedInnerShapedQuery = Clone(innerShapedQuery);
-
-                        // shaper.BoundNavigations.Add(
-                        //     navigation,
-                        //     new MaterializeCollectionNavigationExpression(clonedInnerShapedQuery, navigation));
-
-                        // return new MaterializeCollectionNavigationExpression(innerShapedQuery, navigation);
-
-                        shaper.BoundNavigations.Add(
-                            navigation,
-                            new CollectionResultExpression(
-                                clonedInnerShapedQuery, navigation, elementType: navigation.TargetEntityType.ClrType));
-
-                        return new CollectionResultExpression(innerShapedQuery, navigation, elementType: navigation.TargetEntityType.ClrType);
-
-                        static ShapedQueryExpression Clone(ShapedQueryExpression shapedQuery)
-                        {
-                            var clonedSelectExpression = ((SelectExpression)shapedQuery.QueryExpression).Clone();
-
-                            return new ShapedQueryExpression(
-                                clonedSelectExpression,
-                                new QueryExpressionReplacingExpressionVisitor(shapedQuery.QueryExpression, clonedSelectExpression)
-                                    .Visit(shapedQuery.ShaperExpression));
-                        }
-                    }
-
-                    default:
-                        throw new UnreachableException();
-                }
+                return BindNavigation(shaper, onSubquery: false);
 
             // Bind a navigation over a single-row-returning subquery
             case
@@ -1645,14 +1504,57 @@ public partial class RelationalSqlTranslatingExpressionVisitor(
                 Subquery:
                 {
                     ResultCardinality: ResultCardinality.Single or ResultCardinality.SingleOrDefault,
-                    QueryExpression: SelectExpression,
+                    QueryExpression: SelectExpression select,
                     ShaperExpression: RelationalStructuralTypeShaperExpression shaper
                 } subquery
             }:
+                switch (BindNavigation(shaper, onSubquery: true))
+                {
+                    case StructuralTypeReferenceExpression
+                    {
+                        Parameter: RelationalStructuralTypeShaperExpression
+                        {
+                            ValueBufferExpression: var innerProjection
+                        } innerShaper
+                    }:
+                    {
+                        // NO, this approach is incorrect: BindNavigation() above adds pending joins, but these need to get applied here in the subquery,
+                        // and not bubble up to be applied to the outer query.
+                        // Testcase:
+                        // _ = await context.Blogs
+                        //     .Select(b => b.Collection.Single().NestedReference2)
+                        //     .ToListAsync();
+                        throw new NotImplementedException();
+
+                        // // BindNavigation above has add a pending JOIN referencing the subquery's select; this will be perform the actual JOIN later.
+                        // // Here we need to modify the subquery to project the inner projection (being bound), but if we mutate the SelectExpression
+                        // // we'd be affecting the JOIN as well (multiple references to mutable expression). So clone the SelectExpression first
+                        // // (this won't be necessary once we make SelectExpression properly immutable).
+                        // var clonedSelect = select.Clone();
+                        // var projectionMember = new ProjectionMember();
+                        // clonedSelect.ReplaceProjection(new Dictionary<ProjectionMember, Expression> { [projectionMember] = innerProjection });
+                        // var newSubquery = subquery.Update(
+                        //     clonedSelect,
+                        //     innerShaper.Update(new ProjectionBindingExpression(clonedSelect, projectionMember, typeof(ValueBuffer))));
+
+                        // return new StructuralTypeReferenceExpression(newSubquery);
+                    }
+
+                    case CollectionResultExpression collectionResult:
+                    {
+                        select.ReplaceProjection([collectionResult.QueryExpression]);
+
+                        return subquery.UpdateShaperExpression(collectionResult.Update(new ProjectionBindingExpression(select, index: 0, typeof(ValueBuffer))));
+                    }
+
+                    default:
+                        throw new UnreachableException();
+                }
+
                 // TODO: No, this is problematic. Using the generic Select() here means we cache bound navigations,
                 // which we should never do over subqueries. We need to manually translate selector - specifying
                 // that bound navigations shouldn't be cached.
-                throw new NotImplementedException();
+                // throw new NotImplementedException();
 
                 // // TODO: Figure out a nicer API around CreateSubqueryVisitor2/TranslateSelect2
                 // var parameter = Expression.Parameter(shaper.Type);
@@ -1667,6 +1569,166 @@ public partial class RelationalSqlTranslatingExpressionVisitor(
 
             default:
                 throw new UnreachableException();
+        }
+
+        Expression BindNavigation(RelationalStructuralTypeShaperExpression outerShaper, bool onSubquery)
+        {
+            switch (Visit(outerShaper.ValueBufferExpression))
+            {
+                // Owned navigation from a regular (non-JSON) table to a JSON document
+                case StructuralTypeProjectionExpression structuralTypeProjection when navigation.TargetEntityType.IsMappedToJson():
+                    return navigation.IsCollection
+                        ? structuralTypeProjection.BindNavigation(navigation)!
+                        : new StructuralTypeReferenceExpression(
+                            (StructuralTypeShaperExpression)structuralTypeProjection.BindNavigation(navigation)!);
+
+                // Nested JSON owned navigation inside a JSON document
+                case JsonQueryExpression jsonQuery:
+                    return BindNestedJsonProperty(jsonQuery, navigation);
+
+                // TODO: Confirm that we don't have cases where a target owned entity is mapped to multiple tables (entity splitting, inheritance)
+                // Owned navigation mapped to the same table as the owner (table splitting/sharing)
+                case StructuralTypeProjectionExpression
+                    when navigation is { ForeignKey.IsOwnership: true, IsCollection: false }
+                        // TODO: Better way to identify table sharing?
+                        && navigation.TargetEntityType.GetViewOrTableMappings().Single().Table is { } targetTable
+                        && navigation.DeclaringEntityType.GetViewOrTableMappings().Select(m => m.Table).Contains(targetTable):
+                {
+                    throw new NotImplementedException("Table splitting");
+                }
+
+                case StructuralTypeProjectionExpression when !navigation.IsCollection:
+                {
+                    RelationalStructuralTypeShaperExpression innerShaper;
+                    // Check.DebugAssert(projection.IsNullable == shaper.IsNullable, "Nullability mismatch");
+
+                    if (!onSubquery && outerShaper.BoundNavigations.TryGetValue(navigation, out var boundExpression))
+                    {
+                        innerShaper = (RelationalStructuralTypeShaperExpression)boundExpression;
+
+                        // In theory, if the navigation has already been bound on this shaper, a JOIN has also been added and we can
+                        // skip adding it again. However, there are various cases in the query pipeline where we attempt to translate
+                        // in a certain way, and if we fail, we backtrack and try a different translation, discarding the first. In
+                        // such cases, the first discarded translation would have a JOIN, and the second would see the bound navigation
+                        // and skip adding it again, leading to incorrect SQL.
+                        // Instead, we always flag the JOIN for adding, and when actually adding it, we check if a the table already exists
+
+                        // TODO: Change PendingJoin structure to deduplicate based on the navigation, so that
+                        // we at least don't repeatedly add joins for the same navigation as it's repeatedly
+                        // bound.
+
+                        _translationContext.PendingJoins.Add((navigation, outerShaper, innerShaper));
+
+                        return new StructuralTypeReferenceExpression(innerShaper);
+                    }
+
+                    var innerSelect = _queryableMethodTranslatingExpressionVisitor.CreateSelect(navigation.TargetEntityType);
+                    var emptyProjectionBinding = new ProjectionBindingExpression(innerSelect, new ProjectionMember(), typeof(ValueBuffer));
+                    var projection = (StructuralTypeProjectionExpression)innerSelect.GetProjection(emptyProjectionBinding);
+
+                    // TODO: This needs to be centralized, need to apply auto-includes, owned entities to it.
+                    // var innerNullable = navigation.IsOnDependent ? !navigation.ForeignKey.IsRequired : !navigation.ForeignKey.IsRequiredDependent;
+                    var innerNullable = outerShaper.IsNullable
+                        || !navigation.IsOnDependent
+                        || !navigation.ForeignKey.IsRequired;
+
+                    if (innerNullable)
+                    {
+                        projection = projection.MakeNullable();
+                        innerSelect.ReplaceProjection(emptyProjectionBinding, projection);
+                    }
+
+                    innerShaper = new RelationalStructuralTypeShaperExpression(navigation.TargetEntityType, projection, innerNullable);
+
+                    // If an Include() has been called on the outer for the inner, copy over that subtree of the include tree
+                    if (outerShaper.IncludeTree.TryGetValue(navigation, out var includeSubTree))
+                    {
+                        innerShaper.IncludeTree.Merge(includeSubTree);
+                    }
+
+                    if (!onSubquery)
+                    {
+                        outerShaper.BoundNavigations.Add(navigation, innerShaper);
+                    }
+
+                    // Below, we return a shaper directly over the StructuralTypeProjectionExpression (wrapped in
+                    // StructuralTypeReferenceExpression), as is standard in this visitor.
+                    // But for the pending JOIN that we register, we need the actual inner SelectExpression to get joined.
+                    _translationContext.PendingJoins.Add((
+                        navigation,
+                        outerShaper,
+                        // TODO: Register ShapedQueryExpression instead? That's the more standard way to return a subquery,
+                        // which this basically is. Also more consistent with how join works generally.
+                        new RelationalStructuralTypeShaperExpression(
+                            navigation.TargetEntityType,
+                            new ProjectionBindingExpression(
+                                innerSelect,
+                                new ProjectionMember(),
+                                typeof(ValueBuffer)),
+                            innerNullable)));
+
+                    return new StructuralTypeReferenceExpression(innerShaper);
+                }
+
+                case StructuralTypeProjectionExpression when navigation.IsCollection:
+                {
+                    // TODO: Consider folding into a single case with the non-collection case above
+
+                    // Collection navigations aren't re-bound like reference navigations:
+                    // With reference navigations, you can have: Where(x => x.Details.Foo == 8 && x.Details.Bar == 9)
+                    // (x.Details is a reference navigation that's bound twice, and we don't want to add two JOINs).
+                    // With collection navigations, a subquery is (generally) composed on top:
+                    // Where(x => x.Posts.Count() == 3 && x.Posts.Any(...))
+                    // Each subquery is its own separate subquery, so the navigation itself (x.Posts) isn't re-bound.
+                    // However, there are some edge cases that require us to cache bound navigations. For example, the same Select()
+                    // selector may get evaluated twice by RelationalProjectionBindingExpressionVisitor - once in regular mode, and
+                    // then in client eval mode.
+
+                    if (outerShaper.BoundNavigations.TryGetValue(navigation, out var boundExpression))
+                    {
+                        var collectionResult = (CollectionResultExpression)boundExpression;
+
+                        // Since SelectExpression is mutable, clone it first so that subsequent processing doesn't modify what we cache
+                        // as a bound navigation
+                        return collectionResult.Update(Clone((ShapedQueryExpression)collectionResult.QueryExpression));
+                    }
+
+                    var innerShapedQuery = _queryableMethodTranslatingExpressionVisitor.CreateShapedQueryExpression2(navigation.TargetEntityType);
+
+                    var innerSelect = (SelectExpression)innerShapedQuery.QueryExpression;
+                    var joinPredicate = _queryableMethodTranslatingExpressionVisitor.CreateJoinPredicate(navigation, outerShaper, innerShapedQuery.ShaperExpression);
+                    innerSelect.ApplyPredicate(joinPredicate);
+
+                    // Since SelectExpression is mutable, clone it first so that subsequent processing doesn't modify what we cache as a bound navigation
+                    var clonedInnerShapedQuery = Clone(innerShapedQuery);
+
+                    // shaper.BoundNavigations.Add(
+                    //     navigation,
+                    //     new MaterializeCollectionNavigationExpression(clonedInnerShapedQuery, navigation));
+
+                    // return new MaterializeCollectionNavigationExpression(innerShapedQuery, navigation);
+
+                    outerShaper.BoundNavigations.Add(
+                        navigation,
+                        new CollectionResultExpression(
+                            clonedInnerShapedQuery, navigation, elementType: navigation.TargetEntityType.ClrType));
+
+                    return new CollectionResultExpression(innerShapedQuery, navigation, elementType: navigation.TargetEntityType.ClrType);
+
+                    static ShapedQueryExpression Clone(ShapedQueryExpression shapedQuery)
+                    {
+                        var clonedSelectExpression = ((SelectExpression)shapedQuery.QueryExpression).Clone();
+
+                        return new ShapedQueryExpression(
+                            clonedSelectExpression,
+                            new QueryExpressionReplacingExpressionVisitor(shapedQuery.QueryExpression, clonedSelectExpression)
+                                .Visit(shapedQuery.ShaperExpression));
+                    }
+                }
+
+                default:
+                    throw new UnreachableException();
+            }
         }
     }
 

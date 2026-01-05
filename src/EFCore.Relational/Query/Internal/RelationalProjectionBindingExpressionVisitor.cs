@@ -250,8 +250,8 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                     case CollectionResultExpression collectionResult:
                         return base.Visit(collectionResult);
 
-                    default:
-                        throw new UnreachableException();
+                    case var e:
+                        throw new UnreachableException(ExpressionPrinter.Print(e));
                 }
             }
         }

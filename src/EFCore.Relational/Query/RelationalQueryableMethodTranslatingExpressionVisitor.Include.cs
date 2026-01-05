@@ -328,9 +328,9 @@ public partial class RelationalQueryableMethodTranslatingExpressionVisitor
                         if (innerNullable)
                         {
                             // Make the inner select's projection nullable
-                            var emptyProjection = new ProjectionBindingExpression(innerSelect, new ProjectionMember(), typeof(ValueBuffer));
-                            var nullableProjection = SelectExpression.MakeNullable(innerSelect.GetProjection(emptyProjection), nullable: true);
-                            innerSelect.ReplaceProjection(emptyProjection, nullableProjection);
+                            var emptyProjectionBinding = new ProjectionBindingExpression(innerSelect, new ProjectionMember(), typeof(ValueBuffer));
+                            var projection = (StructuralTypeProjectionExpression)innerSelect.GetProjection(emptyProjectionBinding);
+                            innerSelect.ReplaceProjection(emptyProjectionBinding, projection.MakeNullable());
                         }
 
                         // TODO: Careful, can an existing bound inner shaper have a different nullability?

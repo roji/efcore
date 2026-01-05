@@ -108,6 +108,8 @@ public abstract class AssociationsCollectionTestBase<TFixture>(TFixture fixture)
 
     #region Bind on single-cardinality subqueries
 
+    // TODO: *WARNING* The following tests haven't actually run, and they probably fail and need adjustment for the test data.
+
     // TODO: Also add a referencing entity that has a collection of RootEntities, perform the subquery on the RootEntities.
     // TODO: Then add coverage for accessing a nested associate
 

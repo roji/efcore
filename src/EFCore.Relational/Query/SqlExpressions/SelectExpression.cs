@@ -3912,8 +3912,7 @@ public sealed partial class SelectExpression : TableExpressionBase
     private static SqlExpression MakeNullable(SqlExpression expression, bool nullable)
         => nullable && expression is ColumnExpression column ? column.MakeNullable() : expression;
 
-    [EntityFrameworkInternal]
-    public static Expression MakeNullable(Expression expression, bool nullable)
+    private static Expression MakeNullable(Expression expression, bool nullable)
         => nullable
             ? expression switch
             {
