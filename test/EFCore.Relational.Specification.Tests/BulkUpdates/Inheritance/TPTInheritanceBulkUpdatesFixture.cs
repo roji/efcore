@@ -1,6 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Query.Inheritance;
 using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
 
 namespace Microsoft.EntityFrameworkCore.BulkUpdates.Inheritance;
@@ -16,6 +17,8 @@ public abstract class TPTInheritanceBulkUpdatesFixture : InheritanceBulkUpdatesR
     protected override void OnModelCreating(ModelBuilder modelBuilder, DbContext context)
     {
         base.OnModelCreating(modelBuilder, context);
+
+        modelBuilder.Entity<Root>().UseTptMappingStrategy();
 
         modelBuilder.Entity<Flower>().ToTable("Flowers");
         modelBuilder.Entity<Rose>().ToTable("Roses");

@@ -8,46 +8,541 @@ namespace Microsoft.EntityFrameworkCore.Query.Inheritance.TPH;
 public class TPHInheritanceQuerySqlServerTest(TPHInheritanceQuerySqlServerFixture fixture, ITestOutputHelper testOutputHelper)
     : TPHInheritanceQueryTestBase<TPHInheritanceQuerySqlServerFixture>(fixture, testOutputHelper)
 {
-    [ConditionalFact]
-    public virtual void Common_property_shares_column()
+    public override async Task Query_root()
     {
-        using var context = CreateContext();
-        var liltType = context.Model.FindEntityType(typeof(Lilt))!;
-        var cokeType = context.Model.FindEntityType(typeof(Coke))!;
-        var teaType = context.Model.FindEntityType(typeof(Tea))!;
-
-        Assert.Equal("SugarGrams", cokeType.FindProperty("SugarGrams")!.GetColumnName());
-        Assert.Equal("CaffeineGrams", cokeType.FindProperty("CaffeineGrams")!.GetColumnName());
-        Assert.Equal("CokeCO2", cokeType.FindProperty("Carbonation")!.GetColumnName());
-
-        Assert.Equal("SugarGrams", liltType.FindProperty("SugarGrams")!.GetColumnName());
-        Assert.Equal("LiltCO2", liltType.FindProperty("Carbonation")!.GetColumnName());
-
-        Assert.Equal("CaffeineGrams", teaType.FindProperty("CaffeineGrams")!.GetColumnName());
-        Assert.Equal("HasMilk", teaType.FindProperty("HasMilk")!.GetColumnName());
-    }
-
-    public override async Task Can_query_when_shared_column()
-    {
-        await base.Can_query_when_shared_column();
+        await base.Query_root();
 
         AssertSql(
             """
-SELECT TOP(2) [d].[Id], [d].[Discriminator], [d].[SortIndex], [d].[CaffeineGrams], [d].[CokeCO2], [d].[Ints], [d].[SugarGrams], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [d].[ChildComplexType_Int], [d].[ChildComplexType_UniqueInt], [d].[ChildComplexType_Nested_NestedInt], [d].[ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-WHERE [d].[Discriminator] = 1
-""",
-            //
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+""");
+    }
+
+    public override async Task Query_intermediate()
+    {
+        await base.Query_intermediate();
+
+        AssertSql(
             """
-SELECT TOP(2) [d].[Id], [d].[Discriminator], [d].[SortIndex], [d].[LiltCO2], [d].[SugarGrams], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-WHERE [d].[Discriminator] = 2
-""",
-            //
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] IN (N'Intermediate', N'Leaf1', N'Leaf2')
+""");
+    }
+
+    public override async Task Query_leaf1()
+    {
+        await base.Query_leaf1();
+
+        AssertSql(
             """
-SELECT TOP(2) [d].[Id], [d].[Discriminator], [d].[SortIndex], [d].[CaffeineGrams], [d].[HasMilk], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [d].[Tea_ChildComplexType_Int], [d].[Tea_ChildComplexType_UniqueInt], [d].[Tea_ChildComplexType_Nested_NestedInt], [d].[Tea_ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-WHERE [d].[Discriminator] = 3
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task Query_leaf2()
+    {
+        await base.Query_leaf2();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf2'
+""");
+    }
+
+    public override async Task Filter_root()
+    {
+        await base.Filter_root();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[RootInt] = 8
+""");
+    }
+
+    public override async Task Project_scalar_from_leaf()
+    {
+        await base.Project_scalar_from_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[Leaf1Int]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task Project_root_scalar_via_root_with_EF_Property_and_downcast()
+    {
+        await base.Project_root_scalar_via_root_with_EF_Property_and_downcast();
+
+        AssertSql(
+            """
+SELECT [r].[RootInt]
+FROM [Roots] AS [r]
+""");
+    }
+
+    public override async Task Project_scalar_from_root_via_leaf()
+    {
+        await base.Project_scalar_from_root_via_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[RootInt]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task Project_scalar_from_root_via_root()
+    {
+        await base.Project_scalar_from_root_via_root();
+
+        AssertSql(
+            """
+SELECT [r].[RootInt]
+FROM [Roots] AS [r]
+""");
+    }
+
+    public override async Task OfType_root_via_root()
+    {
+        await base.OfType_root_via_root();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+""");
+    }
+
+    public override async Task OfType_root_via_leaf()
+    {
+        await base.OfType_root_via_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task OfType_intermediate()
+    {
+        await base.OfType_intermediate();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] IN (N'Intermediate', N'Leaf1', N'Leaf2')
+""");
+    }
+
+    public override async Task OfType_leaf1()
+    {
+        await base.OfType_leaf1();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task OfType_leaf2()
+    {
+        await base.OfType_leaf2();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf2'
+""");
+    }
+
+    public override async Task OfType_leaf_with_predicate_on_leaf()
+    {
+        await base.OfType_leaf_with_predicate_on_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1' AND [r].[Leaf1Int] = 1000
+""");
+    }
+
+    public override async Task OfType_leaf_with_predicate_on_root()
+    {
+        await base.OfType_leaf_with_predicate_on_root();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1' AND [r].[RootInt] = 8
+""");
+    }
+
+    public override async Task Predicate_on_root_and_OfType_leaf()
+    {
+        await base.Predicate_on_root_and_OfType_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[RootInt] = 8 AND [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task OfType_leaf_and_project_scalar()
+    {
+        await base.OfType_leaf_and_project_scalar();
+
+        AssertSql(
+            """
+SELECT [r].[Leaf1Int]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task OfType_OrderBy_First()
+    {
+        await base.OfType_OrderBy_First();
+
+        AssertSql(
+            """
+SELECT TOP(1) [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+ORDER BY [r].[Leaf1Int]
+""");
+    }
+
+    public override async Task OfType_in_subquery()
+    {
+        await base.OfType_in_subquery();
+
+        AssertSql(
+            """
+@p='5'
+
+SELECT DISTINCT [r0].[Id], [r0].[Discriminator], [r0].[RootInt], [r0].[RootReferencingEntityId], [r0].[UniqueId], [r0].[IntermediateInt], [r0].[Ints], [r0].[Leaf1Int], [r0].[c], [r0].[ParentComplexType_Int], [r0].[ParentComplexType_UniqueId], [r0].[ParentComplexType_Nested_Int], [r0].[ParentComplexType_Nested_UniqueId], [r0].[ChildComplexType_Int], [r0].[ChildComplexType_UniqueId], [r0].[ChildComplexType_Nested_Int], [r0].[ChildComplexType_Nested_UniqueId]
+FROM (
+    SELECT TOP(@p) [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection] AS [c], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+    FROM [Roots] AS [r]
+    WHERE [r].[Discriminator] IN (N'Intermediate', N'Leaf1', N'Leaf2')
+    ORDER BY [r].[Id]
+) AS [r0]
+WHERE [r0].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task Is_root_via_root()
+    {
+        await base.Is_root_via_root();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+""");
+    }
+
+    public override async Task Is_root_via_leaf()
+    {
+        await base.Is_root_via_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task Is_intermediate()
+    {
+        await base.Is_intermediate();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] IN (N'Intermediate', N'Leaf1', N'Leaf2')
+""");
+    }
+
+    public override async Task Is_leaf()
+    {
+        await base.Is_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task Is_leaf_via_leaf()
+    {
+        await base.Is_leaf_via_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task Is_in_projection()
+    {
+        await base.Is_in_projection();
+
+        AssertSql(
+            """
+SELECT CASE
+    WHEN [r].[Discriminator] = N'Leaf1' THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+FROM [Roots] AS [r]
+""");
+    }
+
+    public override async Task Is_with_other_predicate()
+    {
+        await base.Is_with_other_predicate();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1' AND [r].[RootInt] = 8
+""");
+    }
+
+    public override async Task Is_on_subquery_result()
+    {
+        await base.Is_on_subquery_result();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE (
+    SELECT TOP(1) [r0].[Discriminator]
+    FROM [Roots] AS [r0]
+    WHERE [r0].[UniqueId] = [r].[UniqueId]) = N'Leaf1'
+""");
+    }
+
+    public override async Task Include_root()
+    {
+        await base.Include_root();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r0].[Id], [r0].[Discriminator], [r0].[RootInt], [r0].[RootReferencingEntityId], [r0].[UniqueId], [r0].[ConcreteIntermediateInt], [r0].[IntermediateInt], [r0].[Leaf3Int], [r0].[Ints], [r0].[Leaf1Int], [r0].[Leaf2Int], [r0].[ComplexTypeCollection], [r0].[ParentComplexType_Int], [r0].[ParentComplexType_UniqueId], [r0].[ParentComplexType_Nested_Int], [r0].[ParentComplexType_Nested_UniqueId], [r0].[ChildComplexType_Int], [r0].[ChildComplexType_UniqueId], [r0].[ChildComplexType_Nested_Int], [r0].[ChildComplexType_Nested_UniqueId], [r0].[Leaf2_ChildComplexType_Int], [r0].[Leaf2_ChildComplexType_UniqueId], [r0].[Leaf2_ChildComplexType_Nested_Int], [r0].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [RootReferencingEntities] AS [r]
+LEFT JOIN [Roots] AS [r0] ON [r].[Id] = [r0].[RootReferencingEntityId]
+""");
+    }
+
+    public override async Task Filter_on_discriminator()
+    {
+        await base.Filter_on_discriminator();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task Project_discriminator()
+    {
+        await base.Project_discriminator();
+
+        AssertSql(
+            """
+SELECT [r].[Discriminator]
+FROM [Roots] AS [r]
+""");
+    }
+
+    public override async Task GetType_abstract_root()
+    {
+        await base.GetType_abstract_root();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Root'
+""");
+    }
+
+    public override async Task GetType_abstract_intermediate()
+    {
+        await base.GetType_abstract_intermediate();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Intermediate'
+""");
+    }
+
+    public override async Task GetType_leaf1()
+    {
+        await base.GetType_leaf1();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task GetType_leaf2()
+    {
+        await base.GetType_leaf2();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf2'
+""");
+    }
+
+    public override async Task GetType_leaf_reverse_equality()
+    {
+        await base.GetType_leaf_reverse_equality();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task GetType_not_leaf1()
+    {
+        await base.GetType_not_leaf1();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] <> N'Leaf1'
+""");
+    }
+
+    public override async Task OfType_Union_OfType_on_same_type_Where()
+    {
+        await base.OfType_Union_OfType_on_same_type_Where();
+
+        AssertSql();
+    }
+
+    public override async Task OfType_leaf_Union_intermediate_OfType_leaf()
+    {
+        await base.OfType_leaf_Union_intermediate_OfType_leaf();
+
+        AssertSql();
+    }
+
+    public override async Task Union_siblings_with_duplicate_property_in_subquery()
+    {
+        await base.Union_siblings_with_duplicate_property_in_subquery();
+
+        AssertSql();
+    }
+
+    public override async Task Union_entity_equality()
+    {
+        await base.Union_entity_equality();
+
+        AssertSql();
+    }
+
+    public override async Task Conditional_with_is_and_downcast_in_projection()
+    {
+        await base.Conditional_with_is_and_downcast_in_projection();
+
+        AssertSql(
+            """
+SELECT CASE
+    WHEN [r].[Discriminator] = N'Leaf1' AND [r].[Leaf1Int] = 50 AND [r].[Leaf1Int] IS NOT NULL THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END AS [Value]
+FROM [Roots] AS [r]
+""");
+    }
+
+    public override async Task Is_on_multiple_contradictory_types()
+    {
+        await base.Is_on_multiple_contradictory_types();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE 0 = 1
+""");
+    }
+
+    public override async Task OfType_on_multiple_contradictory_types()
+    {
+        await base.OfType_on_multiple_contradictory_types();
+
+        AssertSql();
+    }
+
+    public override async Task Is_and_OfType_with_multiple_contradictory_types()
+    {
+        await base.Is_and_OfType_with_multiple_contradictory_types();
+
+        AssertSql(
+            """
+SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group]
+FROM [Animals] AS [a]
+WHERE 0 = 1
+""");
+    }
+
+    public override async Task Primitive_collection_on_subtype()
+    {
+        await base.Primitive_collection_on_subtype();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE EXISTS (
+    SELECT 1
+    FROM OPENJSON([r].[Ints]) AS [i])
 """);
     }
 
@@ -75,445 +570,6 @@ WHERE [m].[Discriminator] = N'Eagle'
 """);
     }
 
-    public override async Task Can_query_all_types_when_shared_column()
-    {
-        await base.Can_query_all_types_when_shared_column();
-
-        AssertSql(
-            """
-SELECT [d].[Id], [d].[Discriminator], [d].[SortIndex], [d].[CaffeineGrams], [d].[CokeCO2], [d].[Ints], [d].[SugarGrams], [d].[LiltCO2], [d].[HasMilk], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [d].[ChildComplexType_Int], [d].[ChildComplexType_UniqueInt], [d].[ChildComplexType_Nested_NestedInt], [d].[ChildComplexType_Nested_UniqueInt], [d].[Tea_ChildComplexType_Int], [d].[Tea_ChildComplexType_UniqueInt], [d].[Tea_ChildComplexType_Nested_NestedInt], [d].[Tea_ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-""");
-    }
-
-    public override async Task Can_use_of_type_animal()
-    {
-        await base.Can_use_of_type_animal();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-ORDER BY [a].[Species]
-""");
-    }
-
-    public override async Task Can_use_is_kiwi()
-    {
-        await base.Can_use_is_kiwi();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi'
-""");
-    }
-
-    public override async Task Can_use_is_kiwi_with_cast()
-    {
-        await base.Can_use_is_kiwi_with_cast();
-
-        AssertSql(
-            """
-SELECT CASE
-    WHEN [a].[Discriminator] = N'Kiwi' THEN [a].[FoundOn]
-    ELSE CAST(0 AS tinyint)
-END AS [Value]
-FROM [Animals] AS [a]
-""");
-    }
-
-    public override async Task Can_use_is_kiwi_with_other_predicate()
-    {
-        await base.Can_use_is_kiwi_with_other_predicate();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi' AND [a].[CountryId] = 1
-""");
-    }
-
-    public override async Task Can_use_is_kiwi_in_projection()
-    {
-        await base.Can_use_is_kiwi_in_projection();
-
-        AssertSql(
-            """
-SELECT CASE
-    WHEN [a].[Discriminator] = N'Kiwi' THEN CAST(1 AS bit)
-    ELSE CAST(0 AS bit)
-END
-FROM [Animals] AS [a]
-""");
-    }
-
-    public override async Task Can_use_of_type_bird()
-    {
-        await base.Can_use_of_type_bird();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-ORDER BY [a].[Species]
-""");
-    }
-
-    public override async Task Can_use_of_type_bird_predicate()
-    {
-        await base.Can_use_of_type_bird_predicate();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[CountryId] = 1
-ORDER BY [a].[Species]
-""");
-    }
-
-    public override async Task Can_use_of_type_bird_with_projection()
-    {
-        await base.Can_use_of_type_bird_with_projection();
-
-        AssertSql(
-            """
-SELECT [a].[EagleId]
-FROM [Animals] AS [a]
-""");
-    }
-
-    public override async Task Can_use_of_type_bird_first()
-    {
-        await base.Can_use_of_type_bird_first();
-
-        AssertSql(
-            """
-SELECT TOP(1) [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-ORDER BY [a].[Species]
-""");
-    }
-
-    public override async Task Can_use_of_type_kiwi()
-    {
-        await base.Can_use_of_type_kiwi();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi'
-""");
-    }
-
-    public override async Task Can_use_of_type_rose()
-    {
-        await base.Can_use_of_type_rose();
-
-        AssertSql(
-            """
-SELECT [p].[Species], [p].[CountryId], [p].[Genus], [p].[Name], [p].[HasThorns]
-FROM [Plants] AS [p]
-WHERE [p].[Genus] = 0
-""");
-    }
-
-    public override Task Can_insert_update_delete()
-        => base.Can_insert_update_delete();
-
-    public override async Task Can_query_all_animals()
-    {
-        await base.Can_query_all_animals();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-ORDER BY [a].[Species]
-""");
-    }
-
-    public override async Task Can_query_all_animal_views()
-    {
-        await base.Can_query_all_animal_views();
-
-        AssertSql(
-            """
-SELECT [m].[CountryId], [m].[Discriminator], [m].[Name], [m].[EagleId], [m].[IsFlightless], [m].[Group], [m].[FoundOn]
-FROM (
-    SELECT * FROM Animals
-) AS [m]
-ORDER BY [m].[CountryId]
-""");
-    }
-
-    public override async Task Can_query_all_plants()
-    {
-        await base.Can_query_all_plants();
-
-        AssertSql(
-            """
-SELECT [p].[Species], [p].[CountryId], [p].[Genus], [p].[Name], [p].[HasThorns]
-FROM [Plants] AS [p]
-ORDER BY [p].[Species]
-""");
-    }
-
-    public override async Task Can_filter_all_animals()
-    {
-        await base.Can_filter_all_animals();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Name] = N'Great spotted kiwi'
-ORDER BY [a].[Species]
-""");
-    }
-
-    public override async Task Can_query_all_birds()
-    {
-        await base.Can_query_all_birds();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-ORDER BY [a].[Species]
-""");
-    }
-
-    public override async Task Can_query_just_kiwis()
-    {
-        await base.Can_query_just_kiwis();
-
-        AssertSql(
-            """
-SELECT TOP(2) [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi'
-""");
-    }
-
-    public override async Task Can_query_just_roses()
-    {
-        await base.Can_query_just_roses();
-
-        AssertSql(
-            """
-SELECT TOP(2) [p].[Species], [p].[CountryId], [p].[Genus], [p].[Name], [p].[HasThorns]
-FROM [Plants] AS [p]
-WHERE [p].[Genus] = 0
-""");
-    }
-
-    public override async Task Can_include_prey()
-    {
-        await base.Can_include_prey();
-
-        AssertSql(
-            """
-SELECT [a1].[Id], [a1].[CountryId], [a1].[Discriminator], [a1].[Name], [a1].[Species], [a1].[EagleId], [a1].[IsFlightless], [a1].[Group], [a0].[Id], [a0].[CountryId], [a0].[Discriminator], [a0].[Name], [a0].[Species], [a0].[EagleId], [a0].[IsFlightless], [a0].[Group], [a0].[FoundOn]
-FROM (
-    SELECT TOP(2) [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group]
-    FROM [Animals] AS [a]
-    WHERE [a].[Discriminator] = N'Eagle'
-) AS [a1]
-LEFT JOIN [Animals] AS [a0] ON [a1].[Id] = [a0].[EagleId]
-ORDER BY [a1].[Id]
-""");
-    }
-
-    public override async Task Can_include_animals()
-    {
-        await base.Can_include_animals();
-
-        AssertSql(
-            """
-SELECT [c].[Id], [c].[Name], [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Countries] AS [c]
-LEFT JOIN [Animals] AS [a] ON [c].[Id] = [a].[CountryId]
-ORDER BY [c].[Name], [c].[Id]
-""");
-    }
-
-    public override async Task Can_use_of_type_kiwi_where_north_on_derived_property()
-    {
-        await base.Can_use_of_type_kiwi_where_north_on_derived_property();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi' AND [a].[FoundOn] = CAST(0 AS tinyint)
-""");
-    }
-
-    public override async Task Can_use_of_type_kiwi_where_south_on_derived_property()
-    {
-        await base.Can_use_of_type_kiwi_where_south_on_derived_property();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi' AND [a].[FoundOn] = CAST(1 AS tinyint)
-""");
-    }
-
-    public override async Task Discriminator_used_when_projection_over_derived_type()
-    {
-        await base.Discriminator_used_when_projection_over_derived_type();
-
-        AssertSql(
-            """
-SELECT [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi'
-""");
-    }
-
-    public override async Task Discriminator_used_when_projection_over_derived_type2()
-    {
-        await base.Discriminator_used_when_projection_over_derived_type2();
-
-        AssertSql(
-            """
-SELECT [a].[IsFlightless], [a].[Discriminator]
-FROM [Animals] AS [a]
-""");
-    }
-
-    public override async Task Discriminator_used_when_projection_over_of_type()
-    {
-        await base.Discriminator_used_when_projection_over_of_type();
-
-        AssertSql(
-            """
-SELECT [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi'
-""");
-    }
-
-    public override async Task Byte_enum_value_constant_used_in_projection()
-    {
-        await base.Byte_enum_value_constant_used_in_projection();
-
-        AssertSql(
-            """
-SELECT CASE
-    WHEN [a].[IsFlightless] = CAST(1 AS bit) THEN CAST(0 AS tinyint)
-    ELSE CAST(1 AS tinyint)
-END
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi'
-""");
-    }
-
-    public override async Task Union_siblings_with_duplicate_property_in_subquery()
-    {
-        await base.Union_siblings_with_duplicate_property_in_subquery();
-
-        AssertSql(
-            """
-SELECT [t].[Id], [t].[Discriminator], [t].[CaffeineGrams], [t].[CokeCO2], [t].[SugarGrams], [t].[Carbonation], [t].[SugarGrams0], [t].[CaffeineGrams0], [t].[HasMilk]
-FROM (
-    SELECT [d].[Id], [d].[Discriminator], [d].[CaffeineGrams], [d].[CokeCO2], [d].[SugarGrams], NULL AS [CaffeineGrams0], NULL AS [HasMilk], NULL AS [Carbonation], NULL AS [SugarGrams0]
-    FROM [Drinks] AS [d]
-    WHERE [d].[Discriminator] = N'Coke'
-    UNION
-    SELECT [d0].[Id], [d0].[Discriminator], NULL AS [CaffeineGrams], NULL AS [CokeCO2], NULL AS [SugarGrams], [d0].[CaffeineGrams] AS [CaffeineGrams0], [d0].[HasMilk], NULL AS [Carbonation], NULL AS [SugarGrams0]
-    FROM [Drinks] AS [d0]
-    WHERE [d0].[Discriminator] = N'Tea'
-) AS [t]
-WHERE [t].[Id] > 0
-""");
-    }
-
-    public override async Task OfType_Union_subquery()
-    {
-        await base.OfType_Union_subquery();
-
-        AssertSql(
-            """
-SELECT [t].[Species], [t].[CountryId], [t].[Discriminator], [t].[Name], [t].[EagleId], [t].[IsFlightless], [t].[FoundOn]
-FROM (
-    SELECT [a].[Species], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn]
-    FROM [Animals] AS [a]
-    WHERE [a].[Discriminator] IN (N'Eagle', N'Kiwi') AND ([a].[Discriminator] = N'Kiwi')
-    UNION
-    SELECT [a0].[Species], [a0].[CountryId], [a0].[Discriminator], [a0].[Name], [a0].[EagleId], [a0].[IsFlightless], [a0].[FoundOn]
-    FROM [Animals] AS [a0]
-    WHERE [a0].[Discriminator] IN (N'Eagle', N'Kiwi') AND ([a0].[Discriminator] = N'Kiwi')
-) AS [t]
-WHERE ([t].[FoundOn] = CAST(0 AS tinyint)) AND [t].[FoundOn] IS NOT NULL
-""");
-    }
-
-    public override async Task OfType_Union_OfType()
-    {
-        await base.OfType_Union_OfType();
-
-        AssertSql(" ");
-    }
-
-    public override async Task Subquery_OfType()
-    {
-        await base.Subquery_OfType();
-
-        AssertSql(
-            """
-@p='5'
-
-SELECT DISTINCT [a0].[Id], [a0].[CountryId], [a0].[Discriminator], [a0].[Name], [a0].[Species], [a0].[EagleId], [a0].[IsFlightless], [a0].[FoundOn]
-FROM (
-    SELECT TOP(@p) [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn]
-    FROM [Animals] AS [a]
-    ORDER BY [a].[Species]
-) AS [a0]
-WHERE [a0].[Discriminator] = N'Kiwi'
-""");
-    }
-
-    public override async Task Union_entity_equality()
-    {
-        await base.Union_entity_equality();
-
-        AssertSql(
-            """
-SELECT [t].[Species], [t].[CountryId], [t].[Discriminator], [t].[Name], [t].[EagleId], [t].[IsFlightless], [t].[Group], [t].[FoundOn]
-FROM (
-    SELECT [a].[Species], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn], NULL AS [Group]
-    FROM [Animals] AS [a]
-    WHERE [a].[Discriminator] = N'Kiwi'
-    UNION
-    SELECT [a0].[Species], [a0].[CountryId], [a0].[Discriminator], [a0].[Name], [a0].[EagleId], [a0].[IsFlightless], NULL AS [FoundOn], [a0].[Group]
-    FROM [Animals] AS [a0]
-    WHERE [a0].[Discriminator] = N'Eagle'
-) AS [t]
-WHERE 0 = 1
-""");
-    }
-
-    public override async Task Member_access_on_intermediate_type_works()
-    {
-        await base.Member_access_on_intermediate_type_works();
-
-        AssertSql(
-            """
-SELECT [a].[Name]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi'
-ORDER BY [a].[Name]
-""");
-    }
-
     public override void Casting_to_base_type_joining_with_query_type_works()
     {
         base.Casting_to_base_type_joining_with_query_type_works();
@@ -529,223 +585,23 @@ WHERE [a].[Discriminator] = N'Eagle'
 """);
     }
 
-    public override async Task Is_operator_on_result_of_FirstOrDefault()
+    [ConditionalFact]
+    public virtual void Common_property_shares_column()
     {
-        await base.Is_operator_on_result_of_FirstOrDefault();
+        using var context = CreateContext();
+        var liltType = context.Model.FindEntityType(typeof(Lilt))!;
+        var cokeType = context.Model.FindEntityType(typeof(Coke))!;
+        var teaType = context.Model.FindEntityType(typeof(Tea))!;
 
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE (
-    SELECT TOP(1) [a0].[Discriminator]
-    FROM [Animals] AS [a0]
-    WHERE [a0].[Name] = N'Great spotted kiwi') = N'Kiwi'
-ORDER BY [a].[Species]
-""");
-    }
+        Assert.Equal("SugarGrams", cokeType.FindProperty("SugarGrams")!.GetColumnName());
+        Assert.Equal("CaffeineGrams", cokeType.FindProperty("CaffeineGrams")!.GetColumnName());
+        Assert.Equal("CokeCO2", cokeType.FindProperty("Carbonation")!.GetColumnName());
 
-    public override async Task Selecting_only_base_properties_on_base_type()
-    {
-        await base.Selecting_only_base_properties_on_base_type();
+        Assert.Equal("SugarGrams", liltType.FindProperty("SugarGrams")!.GetColumnName());
+        Assert.Equal("LiltCO2", liltType.FindProperty("Carbonation")!.GetColumnName());
 
-        AssertSql(
-            """
-SELECT [a].[Name]
-FROM [Animals] AS [a]
-""");
-    }
-
-    public override async Task Selecting_only_base_properties_on_derived_type()
-    {
-        await base.Selecting_only_base_properties_on_derived_type();
-
-        AssertSql(
-            """
-SELECT [a].[Name]
-FROM [Animals] AS [a]
-""");
-    }
-
-    public override async Task Can_use_backwards_of_type_animal()
-    {
-        await base.Can_use_backwards_of_type_animal();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi'
-""");
-    }
-
-    public override async Task Can_use_backwards_is_animal()
-    {
-        await base.Can_use_backwards_is_animal();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi'
-""");
-    }
-
-    public override async Task Discriminator_with_cast_in_shadow_property()
-    {
-        await base.Discriminator_with_cast_in_shadow_property();
-
-        AssertSql(
-            """
-SELECT [a].[Name] AS [Predator]
-FROM [Animals] AS [a]
-WHERE N'Kiwi' = [a].[Discriminator]
-""");
-    }
-
-    public override async Task Setting_foreign_key_to_a_different_type_throws()
-    {
-        await base.Setting_foreign_key_to_a_different_type_throws();
-
-        AssertSql(
-            """
-SELECT TOP(2) [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi'
-""",
-            //
-            """
-@p0='0'
-@p1='Eagle' (Nullable = false) (Size = 8)
-@p2='2' (Nullable = true)
-@p3='1' (Nullable = true)
-@p4='False' (Nullable = true)
-@p5='Bald eagle' (Size = 4000)
-@p6='Haliaeetus leucocephalus' (Size = 100)
-
-SET IMPLICIT_TRANSACTIONS OFF;
-SET NOCOUNT ON;
-INSERT INTO [Animals] ([CountryId], [Discriminator], [EagleId], [Group], [IsFlightless], [Name], [Species])
-OUTPUT INSERTED.[Id]
-VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6);
-""");
-    }
-
-    public override async Task Using_is_operator_on_multiple_type_with_no_result()
-    {
-        await base.Using_is_operator_on_multiple_type_with_no_result();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE 0 = 1
-""");
-    }
-
-    public override async Task Using_is_operator_with_of_type_on_multiple_type_with_no_result()
-    {
-        await base.Using_is_operator_with_of_type_on_multiple_type_with_no_result();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group]
-FROM [Animals] AS [a]
-WHERE 0 = 1
-""");
-    }
-
-    public override async Task Using_OfType_on_multiple_type_with_no_result()
-    {
-        await base.Using_OfType_on_multiple_type_with_no_result();
-
-        AssertSql();
-    }
-
-    public override async Task GetType_in_hierarchy_in_abstract_base_type()
-    {
-        await base.GetType_in_hierarchy_in_abstract_base_type();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE 0 = 1
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_intermediate_type()
-    {
-        await base.GetType_in_hierarchy_in_intermediate_type();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE 0 = 1
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling()
-    {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Eagle'
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2()
-    {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi'
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2_reverse()
-    {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2_reverse();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] = N'Kiwi'
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2_not_equal()
-    {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2_not_equal();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] AS [a]
-WHERE [a].[Discriminator] <> N'Kiwi'
-""");
-    }
-
-    public override async Task Primitive_collection_on_subtype()
-    {
-        await base.Primitive_collection_on_subtype();
-
-        AssertSql(
-            """
-SELECT [d].[Id], [d].[Discriminator], [d].[SortIndex], [d].[CaffeineGrams], [d].[CokeCO2], [d].[Ints], [d].[SugarGrams], [d].[LiltCO2], [d].[HasMilk], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [d].[ChildComplexType_Int], [d].[ChildComplexType_UniqueInt], [d].[ChildComplexType_Nested_NestedInt], [d].[ChildComplexType_Nested_UniqueInt], [d].[Tea_ChildComplexType_Int], [d].[Tea_ChildComplexType_UniqueInt], [d].[Tea_ChildComplexType_Nested_NestedInt], [d].[Tea_ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-WHERE EXISTS (
-    SELECT 1
-    FROM OPENJSON([d].[Ints]) AS [i])
-""");
+        Assert.Equal("CaffeineGrams", teaType.FindProperty("CaffeineGrams")!.GetColumnName());
+        Assert.Equal("HasMilk", teaType.FindProperty("HasMilk")!.GetColumnName());
     }
 
     private void AssertSql(params string[] expected)

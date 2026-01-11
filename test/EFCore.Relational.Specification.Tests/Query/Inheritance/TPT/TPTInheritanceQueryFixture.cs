@@ -17,6 +17,9 @@ public abstract class TPTInheritanceQueryFixture : InheritanceQueryRelationalFix
     {
         base.OnModelCreating(modelBuilder, context);
 
+        modelBuilder.Entity<Root>().UseTptMappingStrategy();
+
+
         modelBuilder.Entity<Flower>().ToTable("Flowers");
         modelBuilder.Entity<Rose>().ToTable("Roses");
         modelBuilder.Entity<Daisy>().ToTable("Daisies");

@@ -51,10 +51,9 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
         var expectedData = new InheritanceData(UseGeneratedKeys);
         if (EnableFilters)
         {
-            var animals = expectedData.Animals.Where(a => a.CountryId == 1).ToList();
-            var animalQueries = expectedData.AnimalQueries.Where(a => a.CountryId == 1).ToList();
+            var roots = expectedData.Roots.Where(a => a.RootInt != 8).ToList();
             expectedData = new InheritanceData(
-                animals, animalQueries, expectedData.Countries, expectedData.Drinks, expectedData.Plants);
+                roots, expectedData.RootReferencingEntities, expectedData.Animals, expectedData.AnimalQueries, expectedData.Countries, expectedData.Drinks, expectedData.Plants);
         }
 
         _expectedDataCache[EnableFilters] = expectedData;
@@ -64,6 +63,15 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
 
     public IReadOnlyDictionary<Type, object> EntitySorters { get; } = new Dictionary<Type, object>
     {
+        { typeof(Root), object? (Root e) => e?.UniqueId },
+        { typeof(Intermediate), object? (Intermediate e) => e?.UniqueId },
+        { typeof(Leaf1), object? (Leaf1 e) => e?.UniqueId },
+        { typeof(Leaf2), object? (Leaf2 e) => e?.UniqueId },
+        { typeof(ConcreteIntermediate), object? (ConcreteIntermediate e) => e?.UniqueId },
+        { typeof(Leaf3), object? (Leaf3 e) => e?.UniqueId },
+        { typeof(RootReferencingEntity), object? (RootReferencingEntity e) => e?.Id },
+
+        // TODO: Remove
         { typeof(Animal), object? (Animal e) => e?.Species },
         { typeof(Bird), object? (Bird e) => e?.Species },
         { typeof(Kiwi), object? (Kiwi e) => e?.Species },
@@ -81,339 +89,92 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
         { typeof(Coke), object? (Coke e) => e?.SortIndex },
         { typeof(Lilt), object? (Lilt e) => e?.SortIndex },
         { typeof(Tea), object? (Tea e) => e?.SortIndex },
-        { typeof(ComplexType), object? (ComplexType e) => e?.UniqueInt },
-        { typeof(NestedComplexType), object? (NestedComplexType e) => e?.UniqueInt },
+        { typeof(ComplexType), object? (ComplexType e) => e?.UniqueId },
+        { typeof(NestedComplexType), object? (NestedComplexType e) => e?.UniqueId },
     }.ToDictionary(e => e.Key, e => e.Value);
 
     public IReadOnlyDictionary<Type, object> EntityAsserters { get; }
 
     public InheritanceQueryFixtureBase()
-        => EntityAsserters = new Dictionary<Type, Action<object, object>>
+        => EntityAsserters = new Dictionary<Type, object>
         {
-            {
-                typeof(Animal), (e, a) =>
+            [typeof(Root)] = (Root e, Root a)
+                => NullSafeAssert<Root>(e, a, AssertRoot),
+            [typeof(Intermediate)] = (Intermediate e, Intermediate a)
+                => NullSafeAssert<Intermediate>(e, a, AssertIntermediate),
+            [typeof(ConcreteIntermediate)] = (ConcreteIntermediate e, ConcreteIntermediate a)
+                => NullSafeAssert<ConcreteIntermediate>(e, a, AssertConcreteIntermediate),
+
+            [typeof(Leaf1)] = (Leaf1 e, Leaf1 a)
+                => NullSafeAssert<Leaf1>(e, a, (e, a) =>
                 {
-                    Assert.Equal(e is null, a is null);
+                    AssertIntermediate(e, a);
+                    Assert.Equal(e.Leaf1Int, a.Leaf1Int);
+                    AssertComplexType(e.ChildComplexType, a.ChildComplexType);
+                }),
 
-                    if (a is not null)
-                    {
-                        var ee = (Animal)e!;
-                        var aa = (Animal)a!;
-
-                        Assert.Equal(ee.Species, aa.Species);
-                        Assert.Equal(ee.Name, aa.Name);
-                        Assert.Equal(ee.CountryId, aa.CountryId);
-                    }
-                }
-            },
-            {
-                typeof(Bird), (e, a) =>
+            [typeof(Leaf2)] = (Leaf2 e, Leaf2 a)
+                => NullSafeAssert<Leaf2>(e, a, (e, a) =>
                 {
-                    Assert.Equal(e is null, a is null);
+                    AssertIntermediate(e, a);
+                    Assert.Equal(e.Leaf2Int, a.Leaf2Int);
+                    AssertComplexType(e.ChildComplexType, a.ChildComplexType);
+                }),
 
-                    if (a is not null)
-                    {
-                        var ee = (Bird)e!;
-                        var aa = (Bird)a!;
-
-                        Assert.Equal(ee.Species, aa.Species);
-                        Assert.Equal(ee.Name, aa.Name);
-                        Assert.Equal(ee.CountryId, aa.CountryId);
-                        Assert.Equal(ee.IsFlightless, aa.IsFlightless);
-                    }
-                }
-            },
-            {
-                typeof(Eagle), (e, a) =>
+            [typeof(Leaf3)] = (Leaf3 e, Leaf3 a)
+                => NullSafeAssert<Leaf3>(e, a, (e, a) =>
                 {
-                    Assert.Equal(e is null, a is null);
+                    AssertConcreteIntermediate(e, a);
+                    Assert.Equal(e.Leaf3Int, a.Leaf3Int);
+                }),
 
-                    if (a is not null)
-                    {
-                        var ee = (Eagle)e!;
-                        var aa = (Eagle)a!;
-
-                        Assert.Equal(ee.Species, aa.Species);
-                        Assert.Equal(ee.Name, aa.Name);
-                        Assert.Equal(ee.CountryId, aa.CountryId);
-                        Assert.Equal(ee.IsFlightless, aa.IsFlightless);
-                        Assert.Equal(ee.Group, aa.Group);
-                    }
-                }
-            },
-            {
-                typeof(Kiwi), (e, a) =>
+            [typeof(RootReferencingEntity)] = (RootReferencingEntity e, RootReferencingEntity a)
+                => NullSafeAssert<RootReferencingEntity>(e, a, (e, a) =>
                 {
-                    Assert.Equal(e is null, a is null);
+                    Assert.Equal(e.Id, a.Id);
+                    NullSafeAssert<Root>(e.Root, a.Root, AssertRoot);
+                }),
 
-                    if (a is not null)
-                    {
-                        var ee = (Kiwi)e!;
-                        var aa = (Kiwi)a!;
+            [typeof(ComplexType)] = (ComplexType e, ComplexType a)
+                => NullSafeAssert<ComplexType>(e, a, AssertComplexType),
 
-                        Assert.Equal(ee.Species, aa.Species);
-                        Assert.Equal(ee.Name, aa.Name);
-                        Assert.Equal(ee.CountryId, aa.CountryId);
-                        Assert.Equal(ee.IsFlightless, aa.IsFlightless);
-                        Assert.Equal(ee.FoundOn, aa.FoundOn);
-                    }
-                }
-            },
-            {
-                typeof(AnimalQuery), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
+            [typeof(NestedComplexType)] = (NestedComplexType e, NestedComplexType a)
+                => NullSafeAssert<NestedComplexType>(e, a, AssertNestedComplexType)
+        }.ToDictionary(e => e.Key, e => e.Value);
 
-                    if (a is not null)
-                    {
-                        var ee = (AnimalQuery)e!;
-                        var aa = (AnimalQuery)a!;
+    private void NullSafeAssert<T>(object? e, object? a, Action<T, T> assertAction)
+    {
+        if (e is T ee && a is T aa)
+        {
+            assertAction(ee, aa);
+            return;
+        }
 
-                        Assert.Equal(ee.Name, aa.Name);
-                        Assert.Equal(ee.CountryId, aa.CountryId);
-                    }
-                }
-            },
-            {
-                typeof(BirdQuery), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
+        Assert.Equal(e, a);
+    }
 
-                    if (a is not null)
-                    {
-                        var ee = (BirdQuery)e!;
-                        var aa = (BirdQuery)a!;
+    protected virtual void AssertRoot(Root e, Root a)
+    {
+        Assert.Equal(e.UniqueId, a.UniqueId);
+        Assert.Equal(e.RootInt, a.RootInt);
 
-                        Assert.Equal(ee.Name, aa.Name);
-                        Assert.Equal(ee.CountryId, aa.CountryId);
-                        Assert.Equal(ee.IsFlightless, aa.IsFlightless);
-                        Assert.Equal(ee.EagleId, aa.EagleId);
-                    }
-                }
-            },
-            {
-                typeof(EagleQuery), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
+        AssertComplexType(e.ParentComplexType, a.ParentComplexType);
+        AssertComplexTypes(e.ComplexTypeCollection, a.ComplexTypeCollection);
+    }
 
-                    if (a is not null)
-                    {
-                        var ee = (EagleQuery)e!;
-                        var aa = (EagleQuery)a!;
+    protected virtual void AssertIntermediate(Intermediate e, Intermediate a)
+    {
+        AssertRoot(e, a);
 
-                        Assert.Equal(ee.Name, aa.Name);
-                        Assert.Equal(ee.CountryId, aa.CountryId);
-                        Assert.Equal(ee.IsFlightless, aa.IsFlightless);
-                        Assert.Equal(ee.EagleId, aa.EagleId);
-                        Assert.Equal(ee.Group, aa.Group);
-                    }
-                }
-            },
-            {
-                typeof(KiwiQuery), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
+        Assert.Equal(e.IntermediateInt, a.IntermediateInt);
+    }
 
-                    if (a is not null)
-                    {
-                        var ee = (KiwiQuery)e!;
-                        var aa = (KiwiQuery)a!;
+    protected virtual void AssertConcreteIntermediate(ConcreteIntermediate e, ConcreteIntermediate a)
+    {
+        AssertRoot(e, a);
 
-                        Assert.Equal(ee.Name, aa.Name);
-                        Assert.Equal(ee.CountryId, aa.CountryId);
-                        Assert.Equal(ee.IsFlightless, aa.IsFlightless);
-                        Assert.Equal(ee.EagleId, aa.EagleId);
-                        Assert.Equal(ee.FoundOn, aa.FoundOn);
-                    }
-                }
-            },
-            {
-                typeof(Plant), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
-
-                    if (a is not null)
-                    {
-                        var ee = (Plant)e!;
-                        var aa = (Plant)a!;
-
-                        Assert.Equal(ee.Species, aa.Species);
-                        Assert.Equal(ee.Name, aa.Name);
-                        Assert.Equal(ee.Genus, aa.Genus);
-                    }
-                }
-            },
-            {
-                typeof(Flower), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
-
-                    if (a is not null)
-                    {
-                        var ee = (Flower)e!;
-                        var aa = (Flower)a!;
-
-                        Assert.Equal(ee.Species, aa.Species);
-                        Assert.Equal(ee.Name, aa.Name);
-                        Assert.Equal(ee.Genus, aa.Genus);
-                    }
-                }
-            },
-            {
-                typeof(Daisy), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
-
-                    if (a is not null)
-                    {
-                        var ee = (Daisy)e!;
-                        var aa = (Daisy)a!;
-
-                        Assert.Equal(ee.Species, aa.Species);
-                        Assert.Equal(ee.Name, aa.Name);
-                        Assert.Equal(ee.Genus, aa.Genus);
-                    }
-                }
-            },
-            {
-                typeof(Rose), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
-
-                    if (a is not null)
-                    {
-                        var ee = (Rose)e!;
-                        var aa = (Rose)a!;
-
-                        Assert.Equal(ee.Species, aa.Species);
-                        Assert.Equal(ee.Name, aa.Name);
-                        Assert.Equal(ee.Genus, aa.Genus);
-                        Assert.Equal(ee.HasThorns, aa.HasThorns);
-                    }
-                }
-            },
-            {
-                typeof(Country), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
-
-                    if (a is not null)
-                    {
-                        var ee = (Country)e!;
-                        var aa = (Country)a!;
-
-                        Assert.Equal(ee.Id, aa.Id);
-                        Assert.Equal(ee.Name, aa.Name);
-                    }
-                }
-            },
-            {
-                typeof(Drink), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
-
-                    if (a is not null)
-                    {
-                        var ee = (Drink)e!;
-                        var aa = (Drink)a!;
-
-                        Assert.Equal(ee.SortIndex, aa.SortIndex);
-
-                        AssertComplexType(ee.ParentComplexType, aa.ParentComplexType);
-                        AssertComplexTypes(ee.ComplexTypeCollection, aa.ComplexTypeCollection);
-                    }
-                }
-            },
-            {
-                typeof(Coke), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
-
-                    if (a is not null)
-                    {
-                        var ee = (Coke)e!;
-                        var aa = (Coke)a!;
-
-                        Assert.Equal(ee.SortIndex, aa.SortIndex);
-                        Assert.Equal(ee.SugarGrams, aa.SugarGrams);
-                        Assert.Equal(ee.CaffeineGrams, aa.CaffeineGrams);
-                        Assert.Equal(ee.Carbonation, aa.Carbonation);
-                        Assert.Equal(ee.Ints, aa.Ints);
-
-                        AssertComplexType(ee.ParentComplexType, aa.ParentComplexType);
-                        AssertComplexType(ee.ChildComplexType, aa.ChildComplexType);
-                        AssertComplexTypes(ee.ComplexTypeCollection, aa.ComplexTypeCollection);
-                    }
-                }
-            },
-            {
-                typeof(Lilt), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
-
-                    if (a is not null)
-                    {
-                        var ee = (Lilt)e!;
-                        var aa = (Lilt)a!;
-
-                        Assert.Equal(ee.SortIndex, aa.SortIndex);
-                        Assert.Equal(ee.SugarGrams, aa.SugarGrams);
-                        Assert.Equal(ee.Carbonation, aa.Carbonation);
-
-                        AssertComplexType(ee.ParentComplexType, aa.ParentComplexType);
-                        AssertComplexTypes(ee.ComplexTypeCollection, aa.ComplexTypeCollection);
-                    }
-                }
-            },
-            {
-                typeof(Tea), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
-
-                    if (a is not null)
-                    {
-                        var ee = (Tea)e!;
-                        var aa = (Tea)a!;
-
-                        Assert.Equal(ee.SortIndex, aa.SortIndex);
-                        Assert.Equal(ee.HasMilk, aa.HasMilk);
-                        Assert.Equal(ee.CaffeineGrams, aa.CaffeineGrams);
-
-                        AssertComplexType(ee.ParentComplexType, aa.ParentComplexType);
-                        AssertComplexType(ee.ChildComplexType, aa.ChildComplexType);
-                        AssertComplexTypes(ee.ComplexTypeCollection, aa.ComplexTypeCollection);
-                    }
-                }
-            },
-            {
-                typeof(ComplexType), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
-
-                    if (a is not null)
-                    {
-                        var ee = (ComplexType)e!;
-                        var aa = (ComplexType)a!;
-
-                        AssertComplexType(ee, aa);
-                    }
-                }
-            },
-            {
-                typeof(NestedComplexType), (e, a) =>
-                {
-                    Assert.Equal(e is null, a is null);
-
-                    if (a is not null)
-                    {
-                        var ee = (NestedComplexType)e!;
-                        var aa = (NestedComplexType)a!;
-
-                        AssertNestedComplexType(ee, aa);
-                    }
-                }
-            },
-        }.ToDictionary(e => e.Key, e => (object)e.Value);
+        Assert.Equal(e.ConcreteIntermediateInt, a.ConcreteIntermediateInt);
+    }
 
     private void AssertComplexType(ComplexType? e, ComplexType? a)
     {
@@ -426,7 +187,7 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
 
         if (e is not null)
         {
-            Assert.Equal(e.UniqueInt, a!.UniqueInt);
+            Assert.Equal(e.UniqueId, a!.UniqueId);
             Assert.Equal(e.Int, a.Int);
 
             Assert.Equal(e.Nested is null, a.Nested is null);
@@ -448,8 +209,8 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
 
         if (e is not null)
         {
-            Assert.Equal(e.UniqueInt, a!.UniqueInt);
-            Assert.Equal(e.NestedInt, a.NestedInt);
+            Assert.Equal(e.UniqueId, a!.UniqueId);
+            Assert.Equal(e.Int, a.Int);
         }
     }
 
@@ -472,6 +233,72 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
 
     protected override void OnModelCreating(ModelBuilder modelBuilder, DbContext context)
     {
+        modelBuilder.Entity<Root>();
+        modelBuilder.Entity<Intermediate>();
+        modelBuilder.Entity<ConcreteIntermediate>();
+        modelBuilder.Entity<Leaf1>();
+        modelBuilder.Entity<Leaf2>();
+        modelBuilder.Entity<Leaf3>();
+
+        // Note that the foreign key is on Root (Root is the dependent); this is to allow the foreign key to exist
+        // with TPC, where the opposite direction isn't possible (multiple tables).
+        // We configure the navigation to cascade deletes to allow exercising deletion.
+        modelBuilder.Entity<RootReferencingEntity>().Property(e => e.Id).ValueGeneratedNever();
+        modelBuilder.Entity<Root>()
+            .HasOne(e => e.RootReferencingEntity)
+            .WithOne(r => r.Root)
+            .HasForeignKey<Root>(e => e.RootReferencingEntityId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        if (HasDiscriminator)
+        {
+            modelBuilder.Entity<Root>().HasDiscriminator<string>("Discriminator").IsComplete(IsDiscriminatorMappingComplete);
+
+            // modelBuilder.Entity<Drink>()
+            //     .HasDiscriminator(e => e.Discriminator)
+            //     .HasValue<Drink>(DrinkType.Drink)
+            //     .HasValue<Coke>(DrinkType.Coke)
+            //     .HasValue<Lilt>(DrinkType.Lilt)
+            //     .HasValue<Tea>(DrinkType.Tea)
+            //     .IsComplete(IsDiscriminatorMappingComplete);
+        }
+        else
+        {
+            // modelBuilder.Entity<Root>().Ignore(e => e.Discriminator);
+        }
+
+        if (EnableFilters)
+        {
+            modelBuilder.Entity<Root>().HasQueryFilter(a => a.RootInt != 8);
+        }
+
+        if (EnableComplexTypes)
+        {
+            modelBuilder.Entity<Root>(b =>
+            {
+                b.ComplexProperty(d => d.ParentComplexType);
+                b.ComplexCollection(d => d.ComplexTypeCollection);
+            });
+
+            modelBuilder.Entity<Leaf1>().ComplexProperty(c => c.ChildComplexType);
+            modelBuilder.Entity<Leaf2>().ComplexProperty(t => t.ChildComplexType);
+        }
+        else
+        {
+            modelBuilder.Entity<Root>(b =>
+            {
+                b.Ignore(d => d.ParentComplexType);
+                b.Ignore(d => d.ComplexTypeCollection);
+            });
+
+            modelBuilder.Entity<Leaf1>().Ignore(c => c.ChildComplexType);
+            modelBuilder.Entity<Leaf2>().Ignore(t => t.ChildComplexType);
+        }
+
+
+
+
+        // TODO: REMOVE
         modelBuilder.Entity<Kiwi>();
         modelBuilder.Entity<Eagle>();
         modelBuilder.Entity<Bird>();

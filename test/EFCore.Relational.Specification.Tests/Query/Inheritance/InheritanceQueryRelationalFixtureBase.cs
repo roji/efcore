@@ -15,6 +15,8 @@ public abstract class InheritanceQueryRelationalFixtureBase : InheritanceQueryFi
         base.OnModelCreating(modelBuilder, context);
 
         // In relational, complex collections are only supported as JSON and must be explicitly configured as such
+        modelBuilder.Entity<Root>().ComplexCollection(n => n.ComplexTypeCollection, n => n.ToJson());
+
         modelBuilder.Entity<Drink>().ComplexCollection(n => n.ComplexTypeCollection, n => n.ToJson());
     }
 }

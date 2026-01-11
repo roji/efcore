@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 namespace Microsoft.EntityFrameworkCore.Query.Inheritance.TPT;
@@ -6,688 +6,737 @@ namespace Microsoft.EntityFrameworkCore.Query.Inheritance.TPT;
 public class TPTInheritanceQuerySqlServerTest(TPTInheritanceQuerySqlServerFixture fixture, ITestOutputHelper testOutputHelper)
     : TPTInheritanceQueryTestBase<TPTInheritanceQuerySqlServerFixture>(fixture, testOutputHelper)
 {
-    public override async Task Byte_enum_value_constant_used_in_projection()
+    public override async Task Query_root()
     {
-        await base.Byte_enum_value_constant_used_in_projection();
+        await base.Query_root();
 
         AssertSql(
             """
-SELECT CASE
-    WHEN [b].[IsFlightless] = CAST(1 AS bit) THEN CAST(0 AS tinyint)
-    ELSE CAST(1 AS tinyint)
-END
-FROM [Animals] AS [a]
-INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-""");
-    }
-
-    public override async Task Can_filter_all_animals()
-    {
-        await base.Can_filter_all_animals();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
 END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [a].[Name] = N'Great spotted kiwi'
-ORDER BY [a].[Species]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
 """);
     }
 
-    public override async Task Can_include_animals()
+    public override async Task Query_intermediate()
     {
-        await base.Can_include_animals();
+        await base.Query_intermediate();
 
         AssertSql(
             """
-SELECT [c].[Id], [c].[Name], [s].[Id], [s].[CountryId], [s].[Name], [s].[Species], [s].[EagleId], [s].[IsFlightless], [s].[Group], [s].[FoundOn], [s].[Discriminator]
-FROM [Countries] AS [c]
-LEFT JOIN (
-    SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-        WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-        WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
-    END AS [Discriminator]
-    FROM [Animals] AS [a]
-    LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-    LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-    LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-) AS [s] ON [c].[Id] = [s].[CountryId]
-ORDER BY [c].[Name], [c].[Id]
-""");
-    }
-
-    public override async Task Can_include_prey()
-    {
-        await base.Can_include_prey();
-
-        AssertSql(
-            """
-SELECT [s].[Id], [s].[CountryId], [s].[Name], [s].[Species], [s].[EagleId], [s].[IsFlightless], [s].[Group], [s0].[Id], [s0].[CountryId], [s0].[Name], [s0].[Species], [s0].[EagleId], [s0].[IsFlightless], [s0].[Group], [s0].[FoundOn], [s0].[Discriminator]
-FROM (
-    SELECT TOP(2) [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group]
-    FROM [Animals] AS [a]
-    INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-    INNER JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-) AS [s]
-LEFT JOIN (
-    SELECT [a0].[Id], [a0].[CountryId], [a0].[Name], [a0].[Species], [b0].[EagleId], [b0].[IsFlightless], [e0].[Group], [k].[FoundOn], CASE
-        WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-        WHEN [e0].[Id] IS NOT NULL THEN N'Eagle'
-    END AS [Discriminator]
-    FROM [Animals] AS [a0]
-    INNER JOIN [Birds] AS [b0] ON [a0].[Id] = [b0].[Id]
-    LEFT JOIN [Eagle] AS [e0] ON [a0].[Id] = [e0].[Id]
-    LEFT JOIN [Kiwi] AS [k] ON [a0].[Id] = [k].[Id]
-) AS [s0] ON [s].[Id] = [s0].[EagleId]
-ORDER BY [s].[Id]
-""");
-    }
-
-    public override Task Can_insert_update_delete()
-        => base.Can_insert_update_delete();
-
-    public override async Task Can_query_all_animals()
-    {
-        await base.Can_query_all_animals();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [l0].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf1'
 END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-ORDER BY [a].[Species]
+FROM [Roots] AS [r]
+INNER JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf2] AS [l0] ON [r].[Id] = [l0].[Id]
 """);
     }
 
-    public override async Task Can_query_all_birds()
+    public override async Task Query_leaf1()
     {
-        await base.Can_query_all_birds();
+        await base.Query_leaf1();
 
         AssertSql(
             """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+INNER JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+INNER JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+""");
+    }
+
+    public override async Task Query_leaf2()
+    {
+        await base.Query_leaf2();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+INNER JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+INNER JOIN [Leaf2] AS [l] ON [r].[Id] = [l].[Id]
+""");
+    }
+
+    public override async Task Filter_root()
+    {
+        await base.Filter_root();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
 END AS [Discriminator]
-FROM [Animals] AS [a]
-INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-ORDER BY [a].[Species]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE [r].[RootInt] = 8
 """);
     }
 
-    public override async Task Can_query_all_plants()
+    public override async Task Project_scalar_from_leaf()
     {
-        await base.Can_query_all_plants();
+        await base.Project_scalar_from_leaf();
+
+        AssertSql();
+    }
+
+    public override async Task Project_root_scalar_via_root_with_EF_Property_and_downcast()
+    {
+        await base.Project_root_scalar_via_root_with_EF_Property_and_downcast();
+
+        AssertSql();
+    }
+
+    public override async Task Project_scalar_from_root_via_leaf()
+    {
+        await base.Project_scalar_from_root_via_leaf();
 
         AssertSql(
             """
-SELECT [p].[Species], [p].[CountryId], [p].[Genus], [p].[Name], [r].[HasThorns], CASE
-    WHEN [r].[Species] IS NOT NULL THEN N'Rose'
-    WHEN [d].[Species] IS NOT NULL THEN N'Daisy'
+SELECT [r].[RootInt]
+FROM [Roots] AS [r]
+INNER JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+INNER JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+""");
+    }
+
+    public override async Task Project_scalar_from_root_via_root()
+    {
+        await base.Project_scalar_from_root_via_root();
+
+        AssertSql(
+            """
+SELECT [r].[RootInt]
+FROM [Roots] AS [r]
+""");
+    }
+
+    public override async Task OfType_root_via_root()
+    {
+        await base.OfType_root_via_root();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
 END AS [Discriminator]
-FROM [Plants] AS [p]
-LEFT JOIN [Daisies] AS [d] ON [p].[Species] = [d].[Species]
-LEFT JOIN [Roses] AS [r] ON [p].[Species] = [r].[Species]
-ORDER BY [p].[Species]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
 """);
     }
 
-    public override async Task Can_query_all_types_when_shared_column()
+    public override async Task OfType_root_via_leaf()
     {
-        await base.Can_query_all_types_when_shared_column();
+        await base.OfType_root_via_leaf();
 
         AssertSql(
             """
-SELECT [d].[Id], [d].[SortIndex], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [l].[LiltCO2], [l].[SugarGrams], [t].[CaffeineGrams], [t].[HasMilk], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [c].[ChildComplexType_Int], [c].[ChildComplexType_UniqueInt], [c].[ChildComplexType_Nested_NestedInt], [c].[ChildComplexType_Nested_UniqueInt], [t].[ChildComplexType_Int], [t].[ChildComplexType_UniqueInt], [t].[ChildComplexType_Nested_NestedInt], [t].[ChildComplexType_Nested_UniqueInt], CASE
-    WHEN [t].[Id] IS NOT NULL THEN N'Tea'
-    WHEN [l].[Id] IS NOT NULL THEN N'Lilt'
-    WHEN [c].[Id] IS NOT NULL THEN N'Coke'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+INNER JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+INNER JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+""");
+    }
+
+    public override async Task OfType_intermediate()
+    {
+        await base.OfType_intermediate();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [l0].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
 END AS [Discriminator]
-FROM [Drinks] AS [d]
-LEFT JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
-LEFT JOIN [Lilt] AS [l] ON [d].[Id] = [l].[Id]
-LEFT JOIN [Tea] AS [t] ON [d].[Id] = [t].[Id]
+FROM [Roots] AS [r]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf2] AS [l0] ON [r].[Id] = [l0].[Id]
+WHERE [l0].[Id] IS NOT NULL OR [l].[Id] IS NOT NULL OR [i].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task Can_query_just_kiwis()
+    public override async Task OfType_leaf1()
     {
-        await base.Can_query_just_kiwis();
+        await base.OfType_leaf1();
 
         AssertSql(
             """
-SELECT TOP(2) [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [k].[FoundOn]
-FROM [Animals] AS [a]
-INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-""");
-    }
-
-    public override async Task Can_query_just_roses()
-    {
-        await base.Can_query_just_roses();
-
-        AssertSql(
-            """
-SELECT TOP(2) [p].[Species], [p].[CountryId], [p].[Genus], [p].[Name], [r].[HasThorns]
-FROM [Plants] AS [p]
-INNER JOIN [Flowers] AS [f] ON [p].[Species] = [f].[Species]
-INNER JOIN [Roses] AS [r] ON [p].[Species] = [r].[Species]
-""");
-    }
-
-    public override async Task Can_query_when_shared_column()
-    {
-        await base.Can_query_when_shared_column();
-
-        AssertSql(
-            """
-SELECT TOP(2) [d].[Id], [d].[SortIndex], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [c].[ChildComplexType_Int], [c].[ChildComplexType_UniqueInt], [c].[ChildComplexType_Nested_NestedInt], [c].[ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-INNER JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
-""",
-            //
-            """
-SELECT TOP(2) [d].[Id], [d].[SortIndex], [l].[LiltCO2], [l].[SugarGrams], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-INNER JOIN [Lilt] AS [l] ON [d].[Id] = [l].[Id]
-""",
-            //
-            """
-SELECT TOP(2) [d].[Id], [d].[SortIndex], [t].[CaffeineGrams], [t].[HasMilk], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [t].[ChildComplexType_Int], [t].[ChildComplexType_UniqueInt], [t].[ChildComplexType_Nested_NestedInt], [t].[ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-INNER JOIN [Tea] AS [t] ON [d].[Id] = [t].[Id]
-""");
-    }
-
-    public override async Task Can_use_backwards_is_animal()
-    {
-        await base.Can_use_backwards_is_animal();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [k].[FoundOn]
-FROM [Animals] AS [a]
-INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-""");
-    }
-
-    public override async Task Can_use_backwards_of_type_animal()
-    {
-        await base.Can_use_backwards_of_type_animal();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [k].[FoundOn]
-FROM [Animals] AS [a]
-INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-""");
-    }
-
-    public override async Task Can_use_is_kiwi()
-    {
-        await base.Can_use_is_kiwi();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf1'
 END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [k].[Id] IS NOT NULL
+FROM [Roots] AS [r]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+WHERE [l].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task Can_use_is_kiwi_with_cast()
+    public override async Task OfType_leaf2()
     {
-        await base.Can_use_is_kiwi_with_cast();
+        await base.OfType_leaf2();
 
         AssertSql(
             """
-SELECT CASE
-    WHEN [k].[Id] IS NOT NULL THEN [k].[FoundOn]
-    ELSE CAST(0 AS tinyint)
-END AS [Value]
-FROM [Animals] AS [a]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-""");
-    }
-
-    public override async Task Can_use_is_kiwi_in_projection()
-    {
-        await base.Can_use_is_kiwi_in_projection();
-
-        AssertSql(
-            """
-SELECT CASE
-    WHEN [k].[Id] IS NOT NULL THEN CAST(1 AS bit)
-    ELSE CAST(0 AS bit)
-END
-FROM [Animals] AS [a]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-""");
-    }
-
-    public override async Task Can_use_is_kiwi_with_other_predicate()
-    {
-        await base.Can_use_is_kiwi_with_other_predicate();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf2'
 END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [k].[Id] IS NOT NULL AND [a].[CountryId] = 1
+FROM [Roots] AS [r]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf2] AS [l] ON [r].[Id] = [l].[Id]
+WHERE [l].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task Can_use_of_type_animal()
+    public override async Task OfType_leaf_with_predicate_on_leaf()
     {
-        await base.Can_use_of_type_animal();
+        await base.OfType_leaf_with_predicate_on_leaf();
 
         AssertSql(
             """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf1'
 END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-ORDER BY [a].[Species]
+FROM [Roots] AS [r]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+WHERE [l].[Id] IS NOT NULL AND [l].[Leaf1Int] = 1000
 """);
     }
 
-    public override async Task Can_use_of_type_bird()
+    public override async Task OfType_leaf_with_predicate_on_root()
     {
-        await base.Can_use_of_type_bird();
+        await base.OfType_leaf_with_predicate_on_root();
 
         AssertSql(
             """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf1'
 END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [k].[Id] IS NOT NULL OR [e].[Id] IS NOT NULL
-ORDER BY [a].[Species]
+FROM [Roots] AS [r]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+WHERE [l].[Id] IS NOT NULL AND [r].[RootInt] = 8
 """);
     }
 
-    public override async Task Can_use_of_type_bird_first()
+    public override async Task Predicate_on_root_and_OfType_leaf()
     {
-        await base.Can_use_of_type_bird_first();
+        await base.OfType_leaf_with_predicate_on_root();
 
         AssertSql(
             """
-SELECT TOP(1) [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf1'
 END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [k].[Id] IS NOT NULL OR [e].[Id] IS NOT NULL
-ORDER BY [a].[Species]
+FROM [Roots] AS [r]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+WHERE [l].[Id] IS NOT NULL AND [r].[RootInt] = 8
 """);
     }
 
-    public override async Task Can_use_of_type_bird_predicate()
+    public override async Task OfType_leaf_and_project_scalar()
     {
-        await base.Can_use_of_type_bird_predicate();
+        await base.OfType_leaf_and_project_scalar();
 
         AssertSql(
             """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
+SELECT [l].[Leaf1Int]
+FROM [Roots] AS [r]
+LEFT JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+WHERE [l].[Id] IS NOT NULL
+""");
+    }
+
+    public override async Task OfType_OrderBy_First()
+    {
+        await base.OfType_OrderBy_First();
+
+        AssertSql(
+            """
+SELECT TOP(1) [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf1'
 END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [a].[CountryId] = 1 AND ([k].[Id] IS NOT NULL OR [e].[Id] IS NOT NULL)
-ORDER BY [a].[Species]
+FROM [Roots] AS [r]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+WHERE [l].[Id] IS NOT NULL
+ORDER BY [l].[Leaf1Int]
 """);
     }
 
-    public override async Task Can_use_of_type_bird_with_projection()
+    public override async Task OfType_in_subquery()
     {
-        await base.Can_use_of_type_bird_with_projection();
-
-        AssertSql(
-            """
-SELECT [b].[EagleId]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [k].[Id] IS NOT NULL OR [e].[Id] IS NOT NULL
-""");
-    }
-
-    public override async Task Can_use_of_type_kiwi()
-    {
-        await base.Can_use_of_type_kiwi();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [k].[Id] IS NOT NULL
-""");
-    }
-
-    public override async Task Can_use_of_type_kiwi_where_north_on_derived_property()
-    {
-        await base.Can_use_of_type_kiwi_where_north_on_derived_property();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [k].[Id] IS NOT NULL AND [k].[FoundOn] = CAST(0 AS tinyint)
-""");
-    }
-
-    public override async Task Can_use_of_type_kiwi_where_south_on_derived_property()
-    {
-        await base.Can_use_of_type_kiwi_where_south_on_derived_property();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [k].[Id] IS NOT NULL AND [k].[FoundOn] = CAST(1 AS tinyint)
-""");
-    }
-
-    public override async Task Can_use_of_type_rose()
-    {
-        await base.Can_use_of_type_rose();
-
-        AssertSql(
-            """
-SELECT [p].[Species], [p].[CountryId], [p].[Genus], [p].[Name], [r].[HasThorns], CASE
-    WHEN [r].[Species] IS NOT NULL THEN N'Rose'
-END AS [Discriminator]
-FROM [Plants] AS [p]
-LEFT JOIN [Roses] AS [r] ON [p].[Species] = [r].[Species]
-WHERE [r].[Species] IS NOT NULL
-""");
-    }
-
-    public override async Task Member_access_on_intermediate_type_works()
-    {
-        await base.Member_access_on_intermediate_type_works();
-
-        AssertSql(
-            """
-SELECT [a].[Name]
-FROM [Animals] AS [a]
-INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-ORDER BY [a].[Name]
-""");
-    }
-
-    public override async Task OfType_Union_OfType()
-    {
-        await base.OfType_Union_OfType();
-
-        AssertSql(" ");
-    }
-
-    public override async Task OfType_Union_subquery()
-    {
-        await base.OfType_Union_subquery();
-
-        AssertSql(" ");
-    }
-
-    public override async Task Setting_foreign_key_to_a_different_type_throws()
-    {
-        await base.Setting_foreign_key_to_a_different_type_throws();
-
-        AssertSql(
-            """
-SELECT TOP(2) [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [k].[FoundOn]
-FROM [Animals] AS [a]
-INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-""",
-            //
-            """
-@p0='0'
-@p1='Bald eagle' (Size = 4000)
-@p2='Haliaeetus leucocephalus' (Size = 100)
-
-SET IMPLICIT_TRANSACTIONS OFF;
-SET NOCOUNT ON;
-INSERT INTO [Animals] ([CountryId], [Name], [Species])
-OUTPUT INSERTED.[Id]
-VALUES (@p0, @p1, @p2);
-""");
-    }
-
-    public override async Task Subquery_OfType()
-    {
-        await base.Subquery_OfType();
+        await base.OfType_in_subquery();
 
         AssertSql(
             """
 @p='5'
 
-SELECT DISTINCT [s].[Id], [s].[CountryId], [s].[Name], [s].[Species], [s].[EagleId], [s].[IsFlightless], [s].[FoundOn], [s].[Discriminator]
+SELECT DISTINCT [s].[Id], [s].[RootInt], [s].[RootReferencingEntityId], [s].[UniqueId], [s].[IntermediateInt], [s].[Ints], [s].[Leaf1Int], [s].[c], [s].[ParentComplexType_Int], [s].[ParentComplexType_UniqueId], [s].[ParentComplexType_Nested_Int], [s].[ParentComplexType_Nested_UniqueId], [s].[ChildComplexType_Int], [s].[ChildComplexType_UniqueId], [s].[ChildComplexType_Nested_Int], [s].[ChildComplexType_Nested_UniqueId], [s].[Discriminator]
 FROM (
-    SELECT TOP(@p) [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [k].[FoundOn], CASE
-        WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-        WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
+    SELECT TOP(@p) [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [r].[ComplexTypeCollection] AS [c], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId], CASE
+        WHEN [l0].[Id] IS NOT NULL THEN N'Leaf2'
+        WHEN [l].[Id] IS NOT NULL THEN N'Leaf1'
     END AS [Discriminator]
-    FROM [Animals] AS [a]
-    INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-    LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-    LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-    ORDER BY [a].[Species]
+    FROM [Roots] AS [r]
+    INNER JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+    LEFT JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+    LEFT JOIN [Leaf2] AS [l0] ON [r].[Id] = [l0].[Id]
+    ORDER BY [r].[Id]
 ) AS [s]
-WHERE [s].[Discriminator] = N'Kiwi'
+WHERE [s].[Discriminator] = N'Leaf1'
 """);
     }
 
-    public override async Task Union_entity_equality()
+    public override async Task Is_root_via_root()
     {
-        await base.Union_entity_equality();
+        await base.Is_root_via_root();
 
-        AssertSql(" ");
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
+END AS [Discriminator]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+""");
+    }
+
+    public override async Task Is_root_via_leaf()
+    {
+        await base.Is_root_via_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+INNER JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+INNER JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+""");
+    }
+
+    public override async Task Is_intermediate()
+    {
+        await base.Is_intermediate();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
+END AS [Discriminator]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE [l1].[Id] IS NOT NULL OR [l0].[Id] IS NOT NULL OR [i].[Id] IS NOT NULL
+""");
+    }
+
+    public override async Task Is_leaf()
+    {
+        await base.Is_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
+END AS [Discriminator]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE [l0].[Id] IS NOT NULL
+""");
+    }
+
+    public override async Task Is_leaf_via_leaf()
+    {
+        await base.Is_leaf_via_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l].[ChildComplexType_Int], [l].[ChildComplexType_UniqueId], [l].[ChildComplexType_Nested_Int], [l].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+INNER JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+INNER JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+""");
+    }
+
+    public override async Task Is_in_projection()
+    {
+        await base.Is_in_projection();
+
+        AssertSql(
+            """
+SELECT CASE
+    WHEN [l].[Id] IS NOT NULL THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END
+FROM [Roots] AS [r]
+LEFT JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+""");
+    }
+
+    public override async Task Is_with_other_predicate()
+    {
+        await base.Is_with_other_predicate();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
+END AS [Discriminator]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE [l0].[Id] IS NOT NULL AND [r].[RootInt] = 8
+""");
+    }
+
+    public override async Task Is_on_subquery_result()
+    {
+        await base.Is_on_subquery_result();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
+END AS [Discriminator]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE EXISTS (
+    SELECT 1
+    FROM (
+        SELECT TOP(1) [l2].[Id] AS [Id0]
+        FROM [Roots] AS [r0]
+        LEFT JOIN [Leaf1] AS [l2] ON [r0].[Id] = [l2].[Id]
+        WHERE [r0].[UniqueId] = [r].[UniqueId]
+    ) AS [s]
+    WHERE [s].[Id0] IS NOT NULL)
+""");
+    }
+
+    public override async Task Include_root()
+    {
+        await base.Include_root();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [s].[Id], [s].[RootInt], [s].[RootReferencingEntityId], [s].[UniqueId], [s].[ConcreteIntermediateInt], [s].[IntermediateInt], [s].[Leaf3Int], [s].[Ints], [s].[Leaf1Int], [s].[Leaf2Int], [s].[c], [s].[ParentComplexType_Int], [s].[ParentComplexType_UniqueId], [s].[ParentComplexType_Nested_Int], [s].[ParentComplexType_Nested_UniqueId], [s].[ChildComplexType_Int], [s].[ChildComplexType_UniqueId], [s].[ChildComplexType_Nested_Int], [s].[ChildComplexType_Nested_UniqueId], [s].[ChildComplexType_Int0], [s].[ChildComplexType_UniqueId0], [s].[ChildComplexType_Nested_Int0], [s].[ChildComplexType_Nested_UniqueId0], [s].[Discriminator]
+FROM [RootReferencingEntities] AS [r]
+LEFT JOIN (
+    SELECT [r0].[Id], [r0].[RootInt], [r0].[RootReferencingEntityId], [r0].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r0].[ComplexTypeCollection] AS [c], [r0].[ParentComplexType_Int], [r0].[ParentComplexType_UniqueId], [r0].[ParentComplexType_Nested_Int], [r0].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int] AS [ChildComplexType_Int0], [l1].[ChildComplexType_UniqueId] AS [ChildComplexType_UniqueId0], [l1].[ChildComplexType_Nested_Int] AS [ChildComplexType_Nested_Int0], [l1].[ChildComplexType_Nested_UniqueId] AS [ChildComplexType_Nested_UniqueId0], CASE
+        WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+        WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+        WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+        WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+        WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
+    END AS [Discriminator]
+    FROM [Roots] AS [r0]
+    LEFT JOIN [ConcreteIntermediate] AS [c] ON [r0].[Id] = [c].[Id]
+    LEFT JOIN [Intermediate] AS [i] ON [r0].[Id] = [i].[Id]
+    LEFT JOIN [Leaf3] AS [l] ON [r0].[Id] = [l].[Id]
+    LEFT JOIN [Leaf1] AS [l0] ON [r0].[Id] = [l0].[Id]
+    LEFT JOIN [Leaf2] AS [l1] ON [r0].[Id] = [l1].[Id]
+) AS [s] ON [r].[Id] = [s].[RootReferencingEntityId]
+""");
+    }
+
+    public override async Task Filter_on_discriminator()
+    {
+        await base.Filter_on_discriminator();
+
+        AssertSql();
+    }
+
+    public override async Task Project_discriminator()
+    {
+        await base.Project_discriminator();
+
+        AssertSql();
+    }
+
+    public override async Task GetType_abstract_root()
+    {
+        await base.GetType_abstract_root();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
+END AS [Discriminator]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE [l1].[Id] IS NULL AND [l0].[Id] IS NULL AND [l].[Id] IS NULL AND [i].[Id] IS NULL AND [c].[Id] IS NULL
+""");
+    }
+
+    public override async Task GetType_abstract_intermediate()
+    {
+        await base.GetType_abstract_intermediate();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
+END AS [Discriminator]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE [l1].[Id] IS NULL AND [l0].[Id] IS NULL AND [i].[Id] IS NOT NULL
+""");
+    }
+
+    public override async Task GetType_leaf1()
+    {
+        await base.GetType_leaf1();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
+END AS [Discriminator]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE [l0].[Id] IS NOT NULL
+""");
+    }
+
+    public override async Task GetType_leaf2()
+    {
+        await base.GetType_leaf2();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
+END AS [Discriminator]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE [l1].[Id] IS NOT NULL
+""");
+    }
+
+    public override async Task GetType_leaf_reverse_equality()
+    {
+        await base.GetType_leaf_reverse_equality();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
+END AS [Discriminator]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE [l0].[Id] IS NOT NULL
+""");
+    }
+
+    public override async Task GetType_not_leaf1()
+    {
+        await base.GetType_not_leaf1();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
+END AS [Discriminator]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE [l0].[Id] IS NULL
+""");
+    }
+
+    public override async Task OfType_Union_OfType_on_same_type_Where()
+    {
+        await base.OfType_Union_OfType_on_same_type_Where();
+
+        AssertSql();
+    }
+
+    public override async Task OfType_leaf_Union_intermediate_OfType_leaf()
+    {
+        await base.OfType_leaf_Union_intermediate_OfType_leaf();
+
+        AssertSql();
     }
 
     public override async Task Union_siblings_with_duplicate_property_in_subquery()
     {
         await base.Union_siblings_with_duplicate_property_in_subquery();
 
+        AssertSql();
+    }
+
+    public override async Task Union_entity_equality()
+    {
+        await base.Union_entity_equality();
+
+        AssertSql();
+    }
+
+    public override async Task Conditional_with_is_and_downcast_in_projection()
+    {
+        await base.Conditional_with_is_and_downcast_in_projection();
+
         AssertSql(
             """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
+SELECT CASE
+    WHEN [l].[Id] IS NOT NULL AND [l].[Leaf1Int] = 50 AND [l].[Leaf1Int] IS NOT NULL THEN CAST(1 AS bit)
+    ELSE CAST(0 AS bit)
+END AS [Value]
+FROM [Roots] AS [r]
+LEFT JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+""");
+    }
+
+    public override async Task Is_on_multiple_contradictory_types()
+    {
+        await base.Is_on_multiple_contradictory_types();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
 END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE EXISTS (
-    SELECT 1
-    FROM (
-        SELECT TOP(1) [a0].[Id], [a0].[CountryId], [a0].[Name], [a0].[Species], [b0].[EagleId], [b0].[IsFlightless], [e0].[Group], [k0].[FoundOn], CASE
-            WHEN [k0].[Id] IS NOT NULL THEN N'Kiwi'
-            WHEN [e0].[Id] IS NOT NULL THEN N'Eagle'
-        END AS [Discriminator], [k0].[Id] AS [Id0]
-        FROM [Animals] AS [a0]
-        LEFT JOIN [Birds] AS [b0] ON [a0].[Id] = [b0].[Id]
-        LEFT JOIN [Eagle] AS [e0] ON [a0].[Id] = [e0].[Id]
-        LEFT JOIN [Kiwi] AS [k0] ON [a0].[Id] = [k0].[Id]
-        WHERE [a0].[Name] = N'Great spotted kiwi'
-    ) AS [t]
-    WHERE [t].[Id0] IS NOT NULL)
-ORDER BY [a].[Species]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE [l0].[Id] IS NOT NULL AND [l1].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task Is_operator_on_result_of_FirstOrDefault()
+    public override async Task OfType_on_multiple_contradictory_types()
     {
-        await base.Is_operator_on_result_of_FirstOrDefault();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
-END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE EXISTS (
-    SELECT 1
-    FROM (
-        SELECT TOP(1) [k0].[Id] AS [Id0]
-        FROM [Animals] AS [a0]
-        LEFT JOIN [Kiwi] AS [k0] ON [a0].[Id] = [k0].[Id]
-        WHERE [a0].[Name] = N'Great spotted kiwi'
-    ) AS [s]
-    WHERE [s].[Id0] IS NOT NULL)
-ORDER BY [a].[Species]
-""");
-    }
-
-    public override async Task Selecting_only_base_properties_on_base_type()
-    {
-        await base.Selecting_only_base_properties_on_base_type();
-
-        AssertSql(
-            """
-SELECT [a].[Name]
-FROM [Animals] AS [a]
-""");
-    }
-
-    public override async Task Selecting_only_base_properties_on_derived_type()
-    {
-        await base.Selecting_only_base_properties_on_derived_type();
-
-        AssertSql(
-            """
-SELECT [a].[Name]
-FROM [Animals] AS [a]
-INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-""");
-    }
-
-    public override async Task Can_query_all_animal_views()
-    {
-        await base.Can_query_all_animal_views();
+        await base.OfType_on_multiple_contradictory_types();
 
         AssertSql();
     }
 
-    public override async Task Discriminator_used_when_projection_over_derived_type()
+    public override async Task Is_and_OfType_with_multiple_contradictory_types()
     {
-        await base.Discriminator_used_when_projection_over_derived_type();
-
-        AssertSql();
-    }
-
-    public override async Task Discriminator_used_when_projection_over_derived_type2()
-    {
-        await base.Discriminator_used_when_projection_over_derived_type2();
-
-        AssertSql();
-    }
-
-    public override async Task Discriminator_used_when_projection_over_of_type()
-    {
-        await base.Discriminator_used_when_projection_over_of_type();
-
-        AssertSql();
-    }
-
-    public override async Task Discriminator_with_cast_in_shadow_property()
-    {
-        await base.Discriminator_with_cast_in_shadow_property();
-
-        AssertSql();
-    }
-
-    public override void Using_from_sql_throws()
-    {
-        base.Using_from_sql_throws();
-
-        AssertSql();
-    }
-
-    public override async Task Using_is_operator_on_multiple_type_with_no_result()
-    {
-        await base.Using_is_operator_on_multiple_type_with_no_result();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
-END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [k].[Id] IS NOT NULL AND [e].[Id] IS NOT NULL
-""");
-    }
-
-    public override async Task Using_is_operator_with_of_type_on_multiple_type_with_no_result()
-    {
-        await base.Using_is_operator_with_of_type_on_multiple_type_with_no_result();
+        await base.Is_and_OfType_with_multiple_contradictory_types();
 
         AssertSql(
             """
@@ -702,140 +751,36 @@ WHERE [k].[Id] IS NOT NULL AND [e].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task Using_OfType_on_multiple_type_with_no_result()
-    {
-        await base.Using_OfType_on_multiple_type_with_no_result();
-
-        AssertSql();
-    }
-
-    public override async Task GetType_in_hierarchy_in_abstract_base_type()
-    {
-        await base.GetType_in_hierarchy_in_abstract_base_type();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
-END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE 0 = 1
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_intermediate_type()
-    {
-        await base.GetType_in_hierarchy_in_intermediate_type();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
-END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE 0 = 1
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling()
-    {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
-END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [e].[Id] IS NOT NULL
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2()
-    {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
-END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [k].[Id] IS NOT NULL
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2_reverse()
-    {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2_reverse();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
-END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [k].[Id] IS NOT NULL
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2_not_equal()
-    {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2_not_equal();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Name], [a].[Species], [b].[EagleId], [b].[IsFlightless], [e].[Group], [k].[FoundOn], CASE
-    WHEN [k].[Id] IS NOT NULL THEN N'Kiwi'
-    WHEN [e].[Id] IS NOT NULL THEN N'Eagle'
-END AS [Discriminator]
-FROM [Animals] AS [a]
-LEFT JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-LEFT JOIN [Eagle] AS [e] ON [a].[Id] = [e].[Id]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [k].[Id] IS NULL
-""");
-    }
-
     public override async Task Primitive_collection_on_subtype()
     {
         await base.Primitive_collection_on_subtype();
 
         AssertSql(
             """
-SELECT [d].[Id], [d].[SortIndex], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [l].[LiltCO2], [l].[SugarGrams], [t].[CaffeineGrams], [t].[HasMilk], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [c].[ChildComplexType_Int], [c].[ChildComplexType_UniqueInt], [c].[ChildComplexType_Nested_NestedInt], [c].[ChildComplexType_Nested_UniqueInt], [t].[ChildComplexType_Int], [t].[ChildComplexType_UniqueInt], [t].[ChildComplexType_Nested_NestedInt], [t].[ChildComplexType_Nested_UniqueInt], CASE
-    WHEN [t].[Id] IS NOT NULL THEN N'Tea'
-    WHEN [l].[Id] IS NOT NULL THEN N'Lilt'
-    WHEN [c].[Id] IS NOT NULL THEN N'Coke'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [l0].[ChildComplexType_Int], [l0].[ChildComplexType_UniqueId], [l0].[ChildComplexType_Nested_Int], [l0].[ChildComplexType_Nested_UniqueId], [l1].[ChildComplexType_Int], [l1].[ChildComplexType_UniqueId], [l1].[ChildComplexType_Nested_Int], [l1].[ChildComplexType_Nested_UniqueId], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
 END AS [Discriminator]
-FROM [Drinks] AS [d]
-LEFT JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
-LEFT JOIN [Lilt] AS [l] ON [d].[Id] = [l].[Id]
-LEFT JOIN [Tea] AS [t] ON [d].[Id] = [t].[Id]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
 WHERE EXISTS (
     SELECT 1
-    FROM OPENJSON([c].[Ints]) AS [i])
+    FROM OPENJSON([l0].[Ints]) AS [i0])
 """);
+    }
+
+    public override void Using_from_sql_throws()
+    {
+        base.Using_from_sql_throws();
+
+        AssertSql();
     }
 
     private void AssertSql(params string[] expected)

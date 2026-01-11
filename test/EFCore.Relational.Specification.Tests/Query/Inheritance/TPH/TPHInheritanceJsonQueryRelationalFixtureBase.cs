@@ -14,6 +14,10 @@ public abstract class TPHInheritanceJsonQueryRelationalFixtureBase : TPHInherita
     {
         base.OnModelCreating(modelBuilder, context);
 
+        modelBuilder.Entity<Root>().ComplexProperty(d => d.ParentComplexType, d => d.ToJson().IsRequired(false));
+        modelBuilder.Entity<Leaf1>().ComplexProperty(c => c.ChildComplexType, c => c.ToJson().IsRequired(false));
+        modelBuilder.Entity<Leaf2>().ComplexProperty(t => t.ChildComplexType, t => t.ToJson().IsRequired(false));
+
         modelBuilder.Entity<Drink>().ComplexProperty(d => d.ParentComplexType, d => d.ToJson().IsRequired(false));
         modelBuilder.Entity<Coke>().ComplexProperty(c => c.ChildComplexType, c => c.ToJson().IsRequired(false));
         modelBuilder.Entity<Tea>().ComplexProperty(t => t.ChildComplexType, t => t.ToJson().IsRequired(false));

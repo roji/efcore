@@ -1,8 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
-
 namespace Microsoft.EntityFrameworkCore.Query.Inheritance;
 
 /// <summary>
@@ -17,40 +15,40 @@ public abstract class InheritanceComplexTypesQueryTestBase<TFixture>(TFixture fi
     where TFixture : InheritanceQueryFixtureBase, new()
 {
     [ConditionalFact]
-    public virtual Task Filter_on_complex_type_property_on_derived_type()
-        => AssertQuery(ss => ss.Set<Coke>().Where(d => d.ChildComplexType!.Int == 10));
+    public virtual Task Filter_on_complex_type_property_on_leaf()
+        => AssertQuery(ss => ss.Set<Leaf1>().Where(d => d.ChildComplexType!.Int == 9));
 
     [ConditionalFact]
-    public virtual Task Filter_on_complex_type_property_on_base_type()
-        => AssertQuery(ss => ss.Set<Drink>().Where(d => d.ParentComplexType!.Int == 8));
+    public virtual Task Filter_on_complex_type_property_on_root()
+        => AssertQuery(ss => ss.Set<Root>().Where(d => d.ParentComplexType!.Int == 8));
 
     [ConditionalFact]
-    public virtual Task Filter_on_nested_complex_type_property_on_derived_type()
-        => AssertQuery(ss => ss.Set<Coke>().Where(d => d.ChildComplexType!.Nested!.NestedInt == 58));
+    public virtual Task Filter_on_nested_complex_type_property_on_leaf()
+        => AssertQuery(ss => ss.Set<Leaf1>().Where(d => d.ChildComplexType!.Nested!.Int == 51));
 
     [ConditionalFact]
-    public virtual Task Filter_on_nested_complex_type_property_on_base_type()
-        => AssertQuery(ss => ss.Set<Drink>().Where(d => d.ParentComplexType!.Nested!.NestedInt == 50));
+    public virtual Task Filter_on_nested_complex_type_property_on_root()
+        => AssertQuery(ss => ss.Set<Root>().Where(d => d.ParentComplexType!.Nested!.Int == 50));
 
     [ConditionalFact]
-    public virtual Task Project_complex_type_on_derived_type()
-        => AssertQuery(ss => ss.Set<Coke>().Select(d => d.ChildComplexType));
+    public virtual Task Project_complex_type_on_leaf()
+        => AssertQuery(ss => ss.Set<Leaf1>().Select(d => d.ChildComplexType));
 
     [ConditionalFact]
-    public virtual Task Project_complex_type_on_base_type()
-        => AssertQuery(ss => ss.Set<Drink>().Select(d => d.ParentComplexType));
+    public virtual Task Project_complex_type_on_root()
+        => AssertQuery(ss => ss.Set<Root>().Select(d => d.ParentComplexType));
 
     [ConditionalFact]
-    public virtual Task Project_nested_complex_type_on_derived_type()
-        => AssertQuery(ss => ss.Set<Coke>().Select(d => d.ChildComplexType!.Nested));
+    public virtual Task Project_nested_complex_type_on_leaf()
+        => AssertQuery(ss => ss.Set<Leaf1>().Select(d => d.ChildComplexType!.Nested));
 
     [ConditionalFact]
-    public virtual Task Project_nested_complex_type_on_base_type()
-        => AssertQuery(ss => ss.Set<Drink>().Select(d => d.ParentComplexType!.Nested));
+    public virtual Task Project_nested_complex_type_on_root()
+        => AssertQuery(ss => ss.Set<Root>().Select(d => d.ParentComplexType!.Nested));
 
     [ConditionalFact]
     public virtual Task Subquery_over_complex_collection()
         => AssertQuery(
-            ss => ss.Set<Drink>().Where(d => d.ComplexTypeCollection.Count(c => c.Int > 59) == 2),
-            ss => ss.Set<Drink>().Where(d => d.ComplexTypeCollection != null && d.ComplexTypeCollection.Count(c => c.Int > 59) == 2));
+            ss => ss.Set<Root>().Where(d => d.ComplexTypeCollection.Count(c => c.Int > 59) == 2),
+            ss => ss.Set<Root>().Where(d => d.ComplexTypeCollection != null && d.ComplexTypeCollection.Count(c => c.Int > 59) == 2));
 }

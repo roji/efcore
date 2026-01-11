@@ -17,38 +17,34 @@ public abstract class TPTInheritanceBulkUpdatesTestBase<TFixture> : InheritanceB
     public override Task Delete_where_keyless_entity_mapped_to_sql_query()
         => Task.CompletedTask;
 
-    public override Task Delete_where_hierarchy()
+    public override Task Delete_on_root()
         => AssertTranslationFailed(
-            RelationalStrings.ExecuteOperationOnTPT("ExecuteDelete", "Animal"),
-            base.Delete_where_hierarchy);
+            RelationalStrings.ExecuteOperationOnTPT("ExecuteDelete", "Root"),
+            base.Delete_on_root);
 
-    public override Task Delete_where_hierarchy_subquery()
+    public override Task Delete_on_root_with_subquery()
         => AssertTranslationFailed(
-            RelationalStrings.ExecuteOperationOnTPT("ExecuteDelete", "Animal"),
-            base.Delete_where_hierarchy_subquery);
+            RelationalStrings.ExecuteOperationOnTPT("ExecuteDelete", "Root"),
+            base.Delete_on_root_with_subquery);
 
-    public override Task Delete_where_hierarchy_derived()
+    public override Task Delete_on_leaf()
         => AssertTranslationFailed(
-            RelationalStrings.ExecuteOperationOnTPT("ExecuteDelete", "Kiwi"),
-            base.Delete_where_hierarchy_derived);
+            RelationalStrings.ExecuteOperationOnTPT("ExecuteDelete", "Leaf1"),
+            base.Delete_on_leaf);
 
     public override Task Delete_GroupBy_Where_Select_First_3()
         => AssertTranslationFailed(
-            RelationalStrings.ExecuteOperationOnTPT("ExecuteDelete", "Animal"),
+            RelationalStrings.ExecuteOperationOnTPT("ExecuteDelete", "Root"),
             base.Delete_GroupBy_Where_Select_First_3);
 
     [ConditionalFact(Skip = "FK constraint issue")]
-    public override Task Delete_where_using_hierarchy()
-        => base.Delete_where_using_hierarchy();
+    public override Task Delete_entity_type_referencing_hierarchy()
+        => base.Delete_entity_type_referencing_hierarchy();
 
-    [ConditionalFact(Skip = "FK constraint issue")]
-    public override Task Delete_where_using_hierarchy_derived()
-        => base.Delete_where_using_hierarchy_derived();
-
-    public override Task Update_base_and_derived_types()
+    public override Task Update_both_root_and_leaf_properties()
         => AssertTranslationFailed(
-            RelationalStrings.MultipleTablesInExecuteUpdate("k => k.FoundOn", "k => k.Name"),
-            base.Update_base_and_derived_types);
+            RelationalStrings.MultipleTablesInExecuteUpdate("l => l.Leaf1Int", "l => l.RootInt"),
+            base.Update_both_root_and_leaf_properties);
 
     // Keyless entities are mapped as TPH only
     public override Task Update_where_keyless_entity_mapped_to_sql_query()

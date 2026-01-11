@@ -35,134 +35,102 @@ public class TPHTemporalFiltersInheritanceQuerySqlServerTest : FiltersInheritanc
         return rewriter.Visit(serverQueryExpression);
     }
 
-    [ConditionalFact]
-    public virtual void Check_all_tests_overridden()
-        => TestHelpers.AssertAllMethodsOverridden(GetType());
-
-    public override async Task Can_use_of_type_animal()
+    public override async Task Query_leaf1()
     {
-        await base.Can_use_of_type_animal();
+        await base.Query_leaf1();
 
         AssertSql(
             """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[PeriodEnd], [a].[PeriodStart], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] FOR SYSTEM_TIME AS OF '2010-01-01T00:00:00.0000000' AS [a]
-WHERE [a].[CountryId] = 1
-ORDER BY [a].[Species]
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1' AND [r].[RootInt] <> 8
 """);
     }
 
-    public override async Task Can_use_is_kiwi()
+    public override async Task OfType_root_via_root()
     {
-        await base.Can_use_is_kiwi();
+        await base.OfType_root_via_root();
 
         AssertSql(
             """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[PeriodEnd], [a].[PeriodStart], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] FOR SYSTEM_TIME AS OF '2010-01-01T00:00:00.0000000' AS [a]
-WHERE [a].[CountryId] = 1 AND [a].[Discriminator] = N'Kiwi'
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[RootInt] <> 8
 """);
     }
 
-    public override async Task Can_use_is_kiwi_with_other_predicate()
+    public override async Task OfType_leaf1()
     {
-        await base.Can_use_is_kiwi_with_other_predicate();
+        await base.OfType_leaf1();
 
         AssertSql(
             """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[PeriodEnd], [a].[PeriodStart], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] FOR SYSTEM_TIME AS OF '2010-01-01T00:00:00.0000000' AS [a]
-WHERE [a].[CountryId] = 1 AND [a].[Discriminator] = N'Kiwi' AND [a].[CountryId] = 1
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[RootInt] <> 8 AND [r].[Discriminator] = N'Leaf1'
 """);
     }
 
-    public override async Task Can_use_is_kiwi_in_projection()
+    public override async Task OfType_leaf_and_project_scalar()
     {
-        await base.Can_use_is_kiwi_in_projection();
+        await base.OfType_leaf_and_project_scalar();
+
+        AssertSql(
+            """
+SELECT [r].[Leaf1Int]
+FROM [Roots] AS [r]
+WHERE [r].[RootInt] <> 8 AND [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task Predicate_on_root_and_OfType_leaf()
+    {
+        await base.Predicate_on_root_and_OfType_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[RootInt] <> 8 AND [r].[RootInt] = 8 AND [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task Is_leaf()
+    {
+        await base.Is_leaf();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[RootInt] <> 8 AND [r].[Discriminator] = N'Leaf1'
+""");
+    }
+
+    public override async Task Is_with_other_predicate()
+    {
+        await base.Is_with_other_predicate();
+
+        AssertSql(
+            """
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[RootInt] <> 8 AND [r].[Discriminator] = N'Leaf1' AND [r].[RootInt] = 8
+""");
+    }
+
+    public override async Task Is_in_projection()
+    {
+        await base.Is_in_projection();
 
         AssertSql(
             """
 SELECT CASE
-    WHEN [a].[Discriminator] = N'Kiwi' THEN CAST(1 AS bit)
+    WHEN [r].[Discriminator] = N'Leaf1' THEN CAST(1 AS bit)
     ELSE CAST(0 AS bit)
 END
-FROM [Animals] FOR SYSTEM_TIME AS OF '2010-01-01T00:00:00.0000000' AS [a]
-WHERE [a].[CountryId] = 1
-""");
-    }
-
-    public override async Task Can_use_of_type_bird()
-    {
-        await base.Can_use_of_type_bird();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[PeriodEnd], [a].[PeriodStart], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] FOR SYSTEM_TIME AS OF '2010-01-01T00:00:00.0000000' AS [a]
-WHERE [a].[CountryId] = 1
-ORDER BY [a].[Species]
-""");
-    }
-
-    public override async Task Can_use_of_type_bird_predicate()
-    {
-        await base.Can_use_of_type_bird_predicate();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[PeriodEnd], [a].[PeriodStart], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] FOR SYSTEM_TIME AS OF '2010-01-01T00:00:00.0000000' AS [a]
-WHERE [a].[CountryId] = 1
-ORDER BY [a].[Species]
-""");
-    }
-
-    public override async Task Can_use_of_type_bird_with_projection()
-    {
-        await base.Can_use_of_type_bird_with_projection();
-
-        AssertSql(
-            """
-SELECT [a].[Name]
-FROM [Animals] FOR SYSTEM_TIME AS OF '2010-01-01T00:00:00.0000000' AS [a]
-WHERE [a].[CountryId] = 1
-""");
-    }
-
-    public override async Task Can_use_of_type_bird_first()
-    {
-        await base.Can_use_of_type_bird_first();
-
-        AssertSql(
-            """
-SELECT TOP(1) [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[PeriodEnd], [a].[PeriodStart], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [a].[FoundOn]
-FROM [Animals] FOR SYSTEM_TIME AS OF '2010-01-01T00:00:00.0000000' AS [a]
-WHERE [a].[CountryId] = 1
-ORDER BY [a].[Species]
-""");
-    }
-
-    public override async Task Can_use_of_type_kiwi()
-    {
-        await base.Can_use_of_type_kiwi();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[PeriodEnd], [a].[PeriodStart], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[FoundOn]
-FROM [Animals] FOR SYSTEM_TIME AS OF '2010-01-01T00:00:00.0000000' AS [a]
-WHERE [a].[CountryId] = 1 AND [a].[Discriminator] = N'Kiwi'
-""");
-    }
-
-    public override async Task Can_use_derived_set()
-    {
-        await base.Can_use_derived_set();
-
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[PeriodEnd], [a].[PeriodStart], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group]
-FROM [Animals] FOR SYSTEM_TIME AS OF '2010-01-01T00:00:00.0000000' AS [a]
-WHERE [a].[Discriminator] = N'Eagle' AND [a].[CountryId] = 1
+FROM [Roots] AS [r]
+WHERE [r].[RootInt] <> 8
 """);
     }
 
@@ -171,4 +139,8 @@ WHERE [a].[Discriminator] = N'Eagle' AND [a].[CountryId] = 1
 
     private void AssertSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
+
+    [ConditionalFact]
+    public virtual void Check_all_tests_overridden()
+        => TestHelpers.AssertAllMethodsOverridden(GetType());
 }

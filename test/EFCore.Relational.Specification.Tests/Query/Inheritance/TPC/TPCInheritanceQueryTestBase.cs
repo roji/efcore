@@ -15,24 +15,20 @@ public abstract class TPCInheritanceQueryTestBase<TFixture> : InheritanceQueryTe
         Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
-    // Keyless entities does not have TPC
-    public override Task Can_query_all_animal_views()
+    // TPC does not have discriminator
+    public override Task Project_scalar_from_leaf()
         => Task.CompletedTask;
 
     // TPC does not have discriminator
-    public override Task Discriminator_used_when_projection_over_derived_type()
+    public override Task Filter_on_discriminator()
         => Task.CompletedTask;
 
     // TPC does not have discriminator
-    public override Task Discriminator_used_when_projection_over_derived_type2()
+    public override Task Project_discriminator()
         => Task.CompletedTask;
 
     // TPC does not have discriminator
-    public override Task Discriminator_used_when_projection_over_of_type()
-        => Task.CompletedTask;
-
-    // TPC does not have discriminator
-    public override Task Discriminator_with_cast_in_shadow_property()
+    public override Task Project_root_scalar_via_root_with_EF_Property_and_downcast()
         => Task.CompletedTask;
 
     [ConditionalFact]

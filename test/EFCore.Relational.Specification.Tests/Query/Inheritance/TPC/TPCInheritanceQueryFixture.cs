@@ -20,7 +20,9 @@ public abstract class TPCInheritanceQueryFixture : InheritanceQueryRelationalFix
     {
         base.OnModelCreating(modelBuilder, context);
 
-        // Configure TPC for hierarchies
+        modelBuilder.Entity<Root>().UseTpcMappingStrategy();
+
+
         modelBuilder.Entity<Plant>().UseTpcMappingStrategy();
         modelBuilder.Entity<Animal>().UseTpcMappingStrategy();
         modelBuilder.Entity<Drink>().UseTpcMappingStrategy();

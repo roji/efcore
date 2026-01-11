@@ -14,23 +14,23 @@ public class TPTInheritanceBulkUpdatesSqliteTest(
     public virtual void Check_all_tests_overridden()
         => TestHelpers.AssertAllMethodsOverridden(GetType());
 
-    public override async Task Delete_where_hierarchy()
+    public override async Task Delete_on_root()
     {
-        await base.Delete_where_hierarchy();
+        await base.Delete_on_root();
 
         AssertSql();
     }
 
-    public override async Task Delete_where_hierarchy_derived()
+    public override async Task Delete_on_leaf()
     {
-        await base.Delete_where_hierarchy_derived();
+        await base.Delete_on_leaf();
 
         AssertSql();
     }
 
-    public override async Task Delete_where_using_hierarchy()
+    public override async Task Delete_entity_type_referencing_hierarchy()
     {
-        await base.Delete_where_using_hierarchy();
+        await base.Delete_entity_type_referencing_hierarchy();
 
         AssertSql();
     }
@@ -70,16 +70,16 @@ public class TPTInheritanceBulkUpdatesSqliteTest(
         AssertSql();
     }
 
-    public override async Task Delete_where_hierarchy_subquery()
+    public override async Task Delete_on_root_with_subquery()
     {
-        await base.Delete_where_hierarchy_subquery();
+        await base.Delete_on_root_with_subquery();
 
         AssertSql();
     }
 
-    public override async Task Update_base_type()
+    public override async Task Update_root()
     {
-        await base.Update_base_type();
+        await base.Update_root();
 
         AssertExecuteUpdateSql(
             """
@@ -97,23 +97,23 @@ WHERE "a0"."Id" = "s"."Id"
     }
 
     // #31402
-    public override Task Update_base_type_with_OfType()
-        => Assert.ThrowsAsync<SqliteException>(() => base.Update_base_property_on_derived_type());
+    public override Task Update_with_OfType_leaf()
+        => Assert.ThrowsAsync<SqliteException>(() => base.Update_root_property_on_leaf());
 
-    public override async Task Update_where_hierarchy_subquery()
+    public override async Task Update_root_with_subquery()
     {
-        await base.Update_where_hierarchy_subquery();
+        await base.Update_root_with_subquery();
 
         AssertExecuteUpdateSql();
     }
 
     // #31402
-    public override Task Update_base_property_on_derived_type()
-        => Assert.ThrowsAsync<SqliteException>(() => base.Update_base_property_on_derived_type());
+    public override Task Update_root_property_on_leaf()
+        => Assert.ThrowsAsync<SqliteException>(() => base.Update_root_property_on_leaf());
 
-    public override async Task Update_derived_property_on_derived_type()
+    public override async Task Update_leaf_property()
     {
-        await base.Update_derived_property_on_derived_type();
+        await base.Update_leaf_property();
 
         AssertExecuteUpdateSql(
             """
@@ -127,9 +127,9 @@ WHERE "a"."Id" = "k"."Id"
 """);
     }
 
-    public override async Task Update_where_using_hierarchy()
+    public override async Task Update_entity_type_referencing_hierarchy()
     {
-        await base.Update_where_using_hierarchy();
+        await base.Update_entity_type_referencing_hierarchy();
 
         AssertExecuteUpdateSql(
             """
@@ -144,9 +144,9 @@ WHERE (
 """);
     }
 
-    public override async Task Update_base_and_derived_types()
+    public override async Task Update_both_root_and_leaf_properties()
     {
-        await base.Update_base_and_derived_types();
+        await base.Update_both_root_and_leaf_properties();
 
         AssertExecuteUpdateSql();
     }

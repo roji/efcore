@@ -6,142 +6,166 @@ namespace Microsoft.EntityFrameworkCore.Query.Inheritance.TPC;
 public class TPCInheritanceJsonQuerySqlServerTest(TPCInheritanceJsonQuerySqlServerFixture fixture, ITestOutputHelper testOutputHelper)
     : TPCInheritanceJsonQueryRelationalTestBase<TPCInheritanceJsonQuerySqlServerFixture>(fixture, testOutputHelper)
 {
-    public override async Task Filter_on_complex_type_property_on_derived_type()
+    public override async Task Filter_on_complex_type_property_on_leaf()
     {
-        await base.Filter_on_complex_type_property_on_derived_type();
+        await base.Filter_on_complex_type_property_on_leaf();
 
         AssertSql(
             """
-SELECT [c].[Id], [c].[SortIndex], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [c].[ComplexTypeCollection], [c].[ParentComplexType], [c].[ChildComplexType]
-FROM [Coke] AS [c]
-WHERE CAST(JSON_VALUE([c].[ChildComplexType], '$.Int') AS int) = 10
+SELECT [l].[Id], [l].[RootInt], [l].[RootReferencingEntityId], [l].[UniqueId], [l].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [l].[ComplexTypeCollection], [l].[ParentComplexType], [l].[ChildComplexType]
+FROM [Leaf1] AS [l]
+WHERE CAST(JSON_VALUE([l].[ChildComplexType], '$.Int') AS int) = 9
 """);
     }
 
-    public override async Task Filter_on_complex_type_property_on_base_type()
+    public override async Task Filter_on_complex_type_property_on_root()
     {
-        await base.Filter_on_complex_type_property_on_base_type();
+        await base.Filter_on_complex_type_property_on_root();
 
         AssertSql(
             """
-SELECT [u].[Id], [u].[SortIndex], [u].[CaffeineGrams], [u].[CokeCO2], [u].[Ints], [u].[SugarGrams], [u].[LiltCO2], [u].[SugarGrams1], [u].[CaffeineGrams1], [u].[HasMilk], [u].[ComplexTypeCollection], [u].[ParentComplexType], [u].[ChildComplexType], [u].[ChildComplexType1], [u].[Discriminator]
+SELECT [u].[Id], [u].[RootInt], [u].[RootReferencingEntityId], [u].[UniqueId], [u].[ConcreteIntermediateInt], [u].[IntermediateInt], [u].[Leaf3Int], [u].[Ints], [u].[Leaf1Int], [u].[Leaf2Int], [u].[ComplexTypeCollection], [u].[ParentComplexType], [u].[ChildComplexType], [u].[ChildComplexType1], [u].[Discriminator]
 FROM (
-    SELECT [d].[Id], [d].[SortIndex], [d].[ComplexTypeCollection], [d].[ParentComplexType], NULL AS [CaffeineGrams], NULL AS [CokeCO2], NULL AS [Ints], NULL AS [SugarGrams], NULL AS [ChildComplexType], NULL AS [LiltCO2], NULL AS [SugarGrams1], NULL AS [CaffeineGrams1], NULL AS [HasMilk], NULL AS [ChildComplexType1], N'Drink' AS [Discriminator]
-    FROM [Drinks] AS [d]
+    SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ComplexTypeCollection], [r].[ParentComplexType], NULL AS [ConcreteIntermediateInt], NULL AS [IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'Root' AS [Discriminator]
+    FROM [Roots] AS [r]
     UNION ALL
-    SELECT [c].[Id], [c].[SortIndex], [c].[ComplexTypeCollection], [c].[ParentComplexType], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [c].[ChildComplexType], NULL AS [LiltCO2], NULL AS [SugarGrams1], NULL AS [CaffeineGrams1], NULL AS [HasMilk], NULL AS [ChildComplexType1], N'Coke' AS [Discriminator]
-    FROM [Coke] AS [c]
+    SELECT [c].[Id], [c].[RootInt], [c].[RootReferencingEntityId], [c].[UniqueId], [c].[ComplexTypeCollection], [c].[ParentComplexType], [c].[ConcreteIntermediateInt], NULL AS [IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'ConcreteIntermediate' AS [Discriminator]
+    FROM [ConcreteIntermediate] AS [c]
     UNION ALL
-    SELECT [l].[Id], [l].[SortIndex], [l].[ComplexTypeCollection], [l].[ParentComplexType], NULL AS [CaffeineGrams], NULL AS [CokeCO2], NULL AS [Ints], NULL AS [SugarGrams], NULL AS [ChildComplexType], [l].[LiltCO2], [l].[SugarGrams] AS [SugarGrams1], NULL AS [CaffeineGrams1], NULL AS [HasMilk], NULL AS [ChildComplexType1], N'Lilt' AS [Discriminator]
-    FROM [Lilt] AS [l]
+    SELECT [i].[Id], [i].[RootInt], [i].[RootReferencingEntityId], [i].[UniqueId], [i].[ComplexTypeCollection], [i].[ParentComplexType], NULL AS [ConcreteIntermediateInt], [i].[IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'Intermediate' AS [Discriminator]
+    FROM [Intermediate] AS [i]
     UNION ALL
-    SELECT [t].[Id], [t].[SortIndex], [t].[ComplexTypeCollection], [t].[ParentComplexType], NULL AS [CaffeineGrams], NULL AS [CokeCO2], NULL AS [Ints], NULL AS [SugarGrams], NULL AS [ChildComplexType], NULL AS [LiltCO2], NULL AS [SugarGrams1], [t].[CaffeineGrams] AS [CaffeineGrams1], [t].[HasMilk], [t].[ChildComplexType] AS [ChildComplexType1], N'Tea' AS [Discriminator]
-    FROM [Tea] AS [t]
+    SELECT [l].[Id], [l].[RootInt], [l].[RootReferencingEntityId], [l].[UniqueId], [l].[ComplexTypeCollection], [l].[ParentComplexType], [l].[ConcreteIntermediateInt], NULL AS [IntermediateInt], [l].[Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'Leaf3' AS [Discriminator]
+    FROM [Leaf3] AS [l]
+    UNION ALL
+    SELECT [l0].[Id], [l0].[RootInt], [l0].[RootReferencingEntityId], [l0].[UniqueId], [l0].[ComplexTypeCollection], [l0].[ParentComplexType], NULL AS [ConcreteIntermediateInt], [l0].[IntermediateInt], NULL AS [Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l0].[ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'Leaf1' AS [Discriminator]
+    FROM [Leaf1] AS [l0]
+    UNION ALL
+    SELECT [l1].[Id], [l1].[RootInt], [l1].[RootReferencingEntityId], [l1].[UniqueId], [l1].[ComplexTypeCollection], [l1].[ParentComplexType], NULL AS [ConcreteIntermediateInt], [l1].[IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], [l1].[Leaf2Int], [l1].[ChildComplexType] AS [ChildComplexType1], N'Leaf2' AS [Discriminator]
+    FROM [Leaf2] AS [l1]
 ) AS [u]
 WHERE CAST(JSON_VALUE([u].[ParentComplexType], '$.Int') AS int) = 8
 """);
     }
 
-    public override async Task Filter_on_nested_complex_type_property_on_derived_type()
+    public override async Task Filter_on_nested_complex_type_property_on_leaf()
     {
-        await base.Filter_on_nested_complex_type_property_on_derived_type();
+        await base.Filter_on_nested_complex_type_property_on_leaf();
 
         AssertSql(
             """
-SELECT [c].[Id], [c].[SortIndex], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [c].[ComplexTypeCollection], [c].[ParentComplexType], [c].[ChildComplexType]
-FROM [Coke] AS [c]
-WHERE CAST(JSON_VALUE([c].[ChildComplexType], '$.Nested.NestedInt') AS int) = 58
+SELECT [l].[Id], [l].[RootInt], [l].[RootReferencingEntityId], [l].[UniqueId], [l].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [l].[ComplexTypeCollection], [l].[ParentComplexType], [l].[ChildComplexType]
+FROM [Leaf1] AS [l]
+WHERE CAST(JSON_VALUE([l].[ChildComplexType], '$.Nested.Int') AS int) = 51
 """);
     }
 
-    public override async Task Filter_on_nested_complex_type_property_on_base_type()
+    public override async Task Filter_on_nested_complex_type_property_on_root()
     {
-        await base.Filter_on_nested_complex_type_property_on_base_type();
+        await base.Filter_on_nested_complex_type_property_on_root();
 
         AssertSql(
             """
-SELECT [u].[Id], [u].[SortIndex], [u].[CaffeineGrams], [u].[CokeCO2], [u].[Ints], [u].[SugarGrams], [u].[LiltCO2], [u].[SugarGrams1], [u].[CaffeineGrams1], [u].[HasMilk], [u].[ComplexTypeCollection], [u].[ParentComplexType], [u].[ChildComplexType], [u].[ChildComplexType1], [u].[Discriminator]
+SELECT [u].[Id], [u].[RootInt], [u].[RootReferencingEntityId], [u].[UniqueId], [u].[ConcreteIntermediateInt], [u].[IntermediateInt], [u].[Leaf3Int], [u].[Ints], [u].[Leaf1Int], [u].[Leaf2Int], [u].[ComplexTypeCollection], [u].[ParentComplexType], [u].[ChildComplexType], [u].[ChildComplexType1], [u].[Discriminator]
 FROM (
-    SELECT [d].[Id], [d].[SortIndex], [d].[ComplexTypeCollection], [d].[ParentComplexType], NULL AS [CaffeineGrams], NULL AS [CokeCO2], NULL AS [Ints], NULL AS [SugarGrams], NULL AS [ChildComplexType], NULL AS [LiltCO2], NULL AS [SugarGrams1], NULL AS [CaffeineGrams1], NULL AS [HasMilk], NULL AS [ChildComplexType1], N'Drink' AS [Discriminator]
-    FROM [Drinks] AS [d]
+    SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ComplexTypeCollection], [r].[ParentComplexType], NULL AS [ConcreteIntermediateInt], NULL AS [IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'Root' AS [Discriminator]
+    FROM [Roots] AS [r]
     UNION ALL
-    SELECT [c].[Id], [c].[SortIndex], [c].[ComplexTypeCollection], [c].[ParentComplexType], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [c].[ChildComplexType], NULL AS [LiltCO2], NULL AS [SugarGrams1], NULL AS [CaffeineGrams1], NULL AS [HasMilk], NULL AS [ChildComplexType1], N'Coke' AS [Discriminator]
-    FROM [Coke] AS [c]
+    SELECT [c].[Id], [c].[RootInt], [c].[RootReferencingEntityId], [c].[UniqueId], [c].[ComplexTypeCollection], [c].[ParentComplexType], [c].[ConcreteIntermediateInt], NULL AS [IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'ConcreteIntermediate' AS [Discriminator]
+    FROM [ConcreteIntermediate] AS [c]
     UNION ALL
-    SELECT [l].[Id], [l].[SortIndex], [l].[ComplexTypeCollection], [l].[ParentComplexType], NULL AS [CaffeineGrams], NULL AS [CokeCO2], NULL AS [Ints], NULL AS [SugarGrams], NULL AS [ChildComplexType], [l].[LiltCO2], [l].[SugarGrams] AS [SugarGrams1], NULL AS [CaffeineGrams1], NULL AS [HasMilk], NULL AS [ChildComplexType1], N'Lilt' AS [Discriminator]
-    FROM [Lilt] AS [l]
+    SELECT [i].[Id], [i].[RootInt], [i].[RootReferencingEntityId], [i].[UniqueId], [i].[ComplexTypeCollection], [i].[ParentComplexType], NULL AS [ConcreteIntermediateInt], [i].[IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'Intermediate' AS [Discriminator]
+    FROM [Intermediate] AS [i]
     UNION ALL
-    SELECT [t].[Id], [t].[SortIndex], [t].[ComplexTypeCollection], [t].[ParentComplexType], NULL AS [CaffeineGrams], NULL AS [CokeCO2], NULL AS [Ints], NULL AS [SugarGrams], NULL AS [ChildComplexType], NULL AS [LiltCO2], NULL AS [SugarGrams1], [t].[CaffeineGrams] AS [CaffeineGrams1], [t].[HasMilk], [t].[ChildComplexType] AS [ChildComplexType1], N'Tea' AS [Discriminator]
-    FROM [Tea] AS [t]
+    SELECT [l].[Id], [l].[RootInt], [l].[RootReferencingEntityId], [l].[UniqueId], [l].[ComplexTypeCollection], [l].[ParentComplexType], [l].[ConcreteIntermediateInt], NULL AS [IntermediateInt], [l].[Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'Leaf3' AS [Discriminator]
+    FROM [Leaf3] AS [l]
+    UNION ALL
+    SELECT [l0].[Id], [l0].[RootInt], [l0].[RootReferencingEntityId], [l0].[UniqueId], [l0].[ComplexTypeCollection], [l0].[ParentComplexType], NULL AS [ConcreteIntermediateInt], [l0].[IntermediateInt], NULL AS [Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l0].[ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'Leaf1' AS [Discriminator]
+    FROM [Leaf1] AS [l0]
+    UNION ALL
+    SELECT [l1].[Id], [l1].[RootInt], [l1].[RootReferencingEntityId], [l1].[UniqueId], [l1].[ComplexTypeCollection], [l1].[ParentComplexType], NULL AS [ConcreteIntermediateInt], [l1].[IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], [l1].[Leaf2Int], [l1].[ChildComplexType] AS [ChildComplexType1], N'Leaf2' AS [Discriminator]
+    FROM [Leaf2] AS [l1]
 ) AS [u]
-WHERE CAST(JSON_VALUE([u].[ParentComplexType], '$.Nested.NestedInt') AS int) = 50
+WHERE CAST(JSON_VALUE([u].[ParentComplexType], '$.Nested.Int') AS int) = 50
 """);
     }
 
-    public override async Task Project_complex_type_on_derived_type()
+    public override async Task Project_complex_type_on_leaf()
     {
-        await base.Project_complex_type_on_derived_type();
+        await base.Project_complex_type_on_leaf();
 
         AssertSql(
             """
-SELECT [c].[ChildComplexType]
-FROM [Coke] AS [c]
+SELECT [l].[ChildComplexType]
+FROM [Leaf1] AS [l]
 """);
     }
 
-    public override async Task Project_complex_type_on_base_type()
+    public override async Task Project_complex_type_on_root()
     {
-        await base.Project_complex_type_on_base_type();
+        await base.Project_complex_type_on_root();
 
         AssertSql(
             """
 SELECT [u].[ParentComplexType]
 FROM (
-    SELECT [d].[ParentComplexType]
-    FROM [Drinks] AS [d]
+    SELECT [r].[ParentComplexType]
+    FROM [Roots] AS [r]
     UNION ALL
     SELECT [c].[ParentComplexType]
-    FROM [Coke] AS [c]
+    FROM [ConcreteIntermediate] AS [c]
+    UNION ALL
+    SELECT [i].[ParentComplexType]
+    FROM [Intermediate] AS [i]
     UNION ALL
     SELECT [l].[ParentComplexType]
-    FROM [Lilt] AS [l]
+    FROM [Leaf3] AS [l]
     UNION ALL
-    SELECT [t].[ParentComplexType]
-    FROM [Tea] AS [t]
+    SELECT [l0].[ParentComplexType]
+    FROM [Leaf1] AS [l0]
+    UNION ALL
+    SELECT [l1].[ParentComplexType]
+    FROM [Leaf2] AS [l1]
 ) AS [u]
 """);
     }
 
-    public override async Task Project_nested_complex_type_on_derived_type()
+    public override async Task Project_nested_complex_type_on_leaf()
     {
-        await base.Project_nested_complex_type_on_derived_type();
+        await base.Project_nested_complex_type_on_leaf();
 
         AssertSql(
             """
-SELECT JSON_QUERY([c].[ChildComplexType], '$.Nested')
-FROM [Coke] AS [c]
+SELECT JSON_QUERY([l].[ChildComplexType], '$.Nested')
+FROM [Leaf1] AS [l]
 """);
     }
 
-    public override async Task Project_nested_complex_type_on_base_type()
+    public override async Task Project_nested_complex_type_on_root()
     {
-        await base.Project_nested_complex_type_on_base_type();
+        await base.Project_nested_complex_type_on_root();
 
         AssertSql(
             """
 SELECT JSON_QUERY([u].[ParentComplexType], '$.Nested')
 FROM (
-    SELECT [d].[ParentComplexType]
-    FROM [Drinks] AS [d]
+    SELECT [r].[ParentComplexType]
+    FROM [Roots] AS [r]
     UNION ALL
     SELECT [c].[ParentComplexType]
-    FROM [Coke] AS [c]
+    FROM [ConcreteIntermediate] AS [c]
+    UNION ALL
+    SELECT [i].[ParentComplexType]
+    FROM [Intermediate] AS [i]
     UNION ALL
     SELECT [l].[ParentComplexType]
-    FROM [Lilt] AS [l]
+    FROM [Leaf3] AS [l]
     UNION ALL
-    SELECT [t].[ParentComplexType]
-    FROM [Tea] AS [t]
+    SELECT [l0].[ParentComplexType]
+    FROM [Leaf1] AS [l0]
+    UNION ALL
+    SELECT [l1].[ParentComplexType]
+    FROM [Leaf2] AS [l1]
 ) AS [u]
 """);
     }
@@ -152,19 +176,25 @@ FROM (
 
         AssertSql(
             """
-SELECT [u].[Id], [u].[SortIndex], [u].[CaffeineGrams], [u].[CokeCO2], [u].[Ints], [u].[SugarGrams], [u].[LiltCO2], [u].[SugarGrams1], [u].[CaffeineGrams1], [u].[HasMilk], [u].[ComplexTypeCollection], [u].[ParentComplexType], [u].[ChildComplexType], [u].[ChildComplexType1], [u].[Discriminator]
+SELECT [u].[Id], [u].[RootInt], [u].[RootReferencingEntityId], [u].[UniqueId], [u].[ConcreteIntermediateInt], [u].[IntermediateInt], [u].[Leaf3Int], [u].[Ints], [u].[Leaf1Int], [u].[Leaf2Int], [u].[ComplexTypeCollection], [u].[ParentComplexType], [u].[ChildComplexType], [u].[ChildComplexType1], [u].[Discriminator]
 FROM (
-    SELECT [d].[Id], [d].[SortIndex], [d].[ComplexTypeCollection], [d].[ParentComplexType], NULL AS [CaffeineGrams], NULL AS [CokeCO2], NULL AS [Ints], NULL AS [SugarGrams], NULL AS [ChildComplexType], NULL AS [LiltCO2], NULL AS [SugarGrams1], NULL AS [CaffeineGrams1], NULL AS [HasMilk], NULL AS [ChildComplexType1], N'Drink' AS [Discriminator]
-    FROM [Drinks] AS [d]
+    SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ComplexTypeCollection], [r].[ParentComplexType], NULL AS [ConcreteIntermediateInt], NULL AS [IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'Root' AS [Discriminator]
+    FROM [Roots] AS [r]
     UNION ALL
-    SELECT [c].[Id], [c].[SortIndex], [c].[ComplexTypeCollection], [c].[ParentComplexType], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [c].[ChildComplexType], NULL AS [LiltCO2], NULL AS [SugarGrams1], NULL AS [CaffeineGrams1], NULL AS [HasMilk], NULL AS [ChildComplexType1], N'Coke' AS [Discriminator]
-    FROM [Coke] AS [c]
+    SELECT [c].[Id], [c].[RootInt], [c].[RootReferencingEntityId], [c].[UniqueId], [c].[ComplexTypeCollection], [c].[ParentComplexType], [c].[ConcreteIntermediateInt], NULL AS [IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'ConcreteIntermediate' AS [Discriminator]
+    FROM [ConcreteIntermediate] AS [c]
     UNION ALL
-    SELECT [l].[Id], [l].[SortIndex], [l].[ComplexTypeCollection], [l].[ParentComplexType], NULL AS [CaffeineGrams], NULL AS [CokeCO2], NULL AS [Ints], NULL AS [SugarGrams], NULL AS [ChildComplexType], [l].[LiltCO2], [l].[SugarGrams] AS [SugarGrams1], NULL AS [CaffeineGrams1], NULL AS [HasMilk], NULL AS [ChildComplexType1], N'Lilt' AS [Discriminator]
-    FROM [Lilt] AS [l]
+    SELECT [i].[Id], [i].[RootInt], [i].[RootReferencingEntityId], [i].[UniqueId], [i].[ComplexTypeCollection], [i].[ParentComplexType], NULL AS [ConcreteIntermediateInt], [i].[IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'Intermediate' AS [Discriminator]
+    FROM [Intermediate] AS [i]
     UNION ALL
-    SELECT [t].[Id], [t].[SortIndex], [t].[ComplexTypeCollection], [t].[ParentComplexType], NULL AS [CaffeineGrams], NULL AS [CokeCO2], NULL AS [Ints], NULL AS [SugarGrams], NULL AS [ChildComplexType], NULL AS [LiltCO2], NULL AS [SugarGrams1], [t].[CaffeineGrams] AS [CaffeineGrams1], [t].[HasMilk], [t].[ChildComplexType] AS [ChildComplexType1], N'Tea' AS [Discriminator]
-    FROM [Tea] AS [t]
+    SELECT [l].[Id], [l].[RootInt], [l].[RootReferencingEntityId], [l].[UniqueId], [l].[ComplexTypeCollection], [l].[ParentComplexType], [l].[ConcreteIntermediateInt], NULL AS [IntermediateInt], [l].[Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'Leaf3' AS [Discriminator]
+    FROM [Leaf3] AS [l]
+    UNION ALL
+    SELECT [l0].[Id], [l0].[RootInt], [l0].[RootReferencingEntityId], [l0].[UniqueId], [l0].[ComplexTypeCollection], [l0].[ParentComplexType], NULL AS [ConcreteIntermediateInt], [l0].[IntermediateInt], NULL AS [Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l0].[ChildComplexType], NULL AS [Leaf2Int], NULL AS [ChildComplexType1], N'Leaf1' AS [Discriminator]
+    FROM [Leaf1] AS [l0]
+    UNION ALL
+    SELECT [l1].[Id], [l1].[RootInt], [l1].[RootReferencingEntityId], [l1].[UniqueId], [l1].[ComplexTypeCollection], [l1].[ParentComplexType], NULL AS [ConcreteIntermediateInt], [l1].[IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType], [l1].[Leaf2Int], [l1].[ChildComplexType] AS [ChildComplexType1], N'Leaf2' AS [Discriminator]
+    FROM [Leaf2] AS [l1]
 ) AS [u]
 WHERE (
     SELECT COUNT(*)

@@ -7,6 +7,9 @@ namespace Microsoft.EntityFrameworkCore.Query.Inheritance.TPH;
 
 public abstract class TPHInheritanceQueryFixture : InheritanceQueryRelationalFixtureBase
 {
+    protected override string StoreName
+        => "TPHInheritanceTest";
+
     protected override void OnModelCreating(ModelBuilder modelBuilder, DbContext context)
     {
         base.OnModelCreating(modelBuilder, context);

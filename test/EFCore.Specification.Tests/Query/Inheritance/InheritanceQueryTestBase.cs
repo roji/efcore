@@ -10,229 +10,363 @@ namespace Microsoft.EntityFrameworkCore.Query.Inheritance;
 public abstract class InheritanceQueryTestBase<TFixture>(TFixture fixture) : QueryTestBase<TFixture>(fixture)
     where TFixture : InheritanceQueryFixtureBase, new()
 {
-    [ConditionalFact]
-    public virtual async Task Can_query_when_shared_column()
-    {
-        await AssertSingle(ss => ss.Set<Coke>());
-        await AssertSingle(ss => ss.Set<Lilt>());
-        await AssertSingle(ss => ss.Set<Tea>());
-    }
+    #region General querying
 
     [ConditionalFact]
-    public virtual Task Can_query_all_types_when_shared_column()
-        => AssertQuery(ss => ss.Set<Drink>());
+    public virtual Task Query_root() // TODO: Abstract root?
+        => AssertQuery(ss => ss.Set<Root>());
 
     [ConditionalFact]
-    public virtual Task Can_use_of_type_animal()
+    public virtual Task Query_intermediate() // TODO: Abstract intermediate?
+        => AssertQuery(ss => ss.Set<Intermediate>());
+
+    [ConditionalFact]
+    public virtual Task Query_leaf1()
+        => AssertQuery(ss => ss.Set<Leaf1>());
+
+    [ConditionalFact]
+    public virtual Task Query_leaf2()
+        => AssertQuery(ss => ss.Set<Leaf2>());
+
+    [ConditionalFact]
+    public virtual Task Filter_root()
+        => AssertQuery(ss => ss.Set<Root>().Where(r => r.RootInt == 8));
+
+    [ConditionalFact]
+    public virtual Task Project_scalar_from_leaf()
+        => AssertQueryScalar(ss => ss.Set<Leaf1>().Select(k => k.Leaf1Int));
+
+    [ConditionalFact]
+    public virtual Task Project_root_scalar_via_root_with_EF_Property_and_downcast()
         => AssertQuery(
-            ss => ss.Set<Animal>().OfType<Animal>().OrderBy(a => a.Species),
-            assertOrder: true);
+            ss => ss.Set<Root>().Select(r => EF.Property<int>((Leaf1)r, nameof(Root.RootInt))),
+            ss => ss.Set<Root>().Select(r => r.RootInt));
 
     [ConditionalFact]
-    public virtual Task Can_use_is_kiwi()
-        => AssertQuery(ss => ss.Set<Animal>().Where(a => a is Kiwi));
-
-    [ConditionalFact]
-    public virtual Task Can_use_is_kiwi_with_cast()
+    public virtual Task Project_scalar_from_root_via_leaf()
         => AssertQuery(
-            ss => ss.Set<Animal>().Select(a => new { Value = a is Kiwi ? ((Kiwi)a).FoundOn : default }));
+            ss => ss.Set<Leaf1>().Select(l => l.RootInt));
 
     [ConditionalFact]
-    public virtual Task Can_use_backwards_is_animal()
+    public virtual Task Project_scalar_from_root_via_root()
+        => AssertQuery(
+            ss => ss.Set<Root>().Select(r => r.RootInt));
+
+    #endregion General querying
+
+    #region OfType
+
+    [ConditionalFact]
+    public virtual Task OfType_root_via_root()
+        => AssertQuery(ss => ss.Set<Root>().OfType<Root>());
+
+    [ConditionalFact]
+    public virtual Task OfType_root_via_leaf()
+        => AssertQuery(ss => ss.Set<Leaf1>().OfType<Root>());
+
+    // TODO: Exercise OrderBy discriminator?
+    // [ConditionalFact]
+    // public virtual Task Can_use_of_type_animal()
+    //     => AssertQuery(
+    //         ss => ss.Set<Animal>().OfType<Animal>().OrderBy(a => a.Species),
+    //         assertOrder: true);
+
+    [ConditionalFact]
+    public virtual Task OfType_intermediate()
+        => AssertQuery(ss => ss.Set<Root>().OfType<Intermediate>());
+
+    [ConditionalFact]
+    public virtual Task OfType_leaf1()
+        => AssertQuery(ss => ss.Set<Root>().OfType<Leaf1>());
+
+    [ConditionalFact]
+    public virtual Task OfType_leaf2()
+        => AssertQuery(ss => ss.Set<Root>().OfType<Leaf2>());
+
+    [ConditionalFact]
+    public virtual Task OfType_leaf_with_predicate_on_leaf()
+        => AssertQuery(
+            ss => ss.Set<Root>().OfType<Leaf1>().Where(x => x.Leaf1Int == 1000));
+
+    [ConditionalFact]
+    public virtual Task OfType_leaf_with_predicate_on_root()
+        => AssertQuery(
+            ss => ss.Set<Root>().OfType<Leaf1>().Where(r => r.RootInt == 8));
+
+    [ConditionalFact]
+    public virtual Task Predicate_on_root_and_OfType_leaf()
+        => AssertQuery(
+            ss => ss.Set<Root>().Where(r => r.RootInt == 8).OfType<Leaf1>());
+
+    [ConditionalFact]
+    public virtual Task OfType_leaf_and_project_scalar()
+        => AssertQuery(
+            ss => ss.Set<Root>().OfType<Leaf1>().Select(l => l.Leaf1Int));
+
+    [ConditionalFact]
+    public virtual Task OfType_OrderBy_First()
+        => AssertFirst(
+            ss => ss.Set<Root>().OfType<Leaf1>().OrderBy(a => a.Leaf1Int));
+
+    [ConditionalFact]
+    public virtual Task OfType_in_subquery()
+        => AssertQuery(
+            ss => ss.Set<Intermediate>()
+                .OrderBy(b => b.Id)
+                .Take(5)
+                .Distinct()
+                .OfType<Leaf1>());
+
+    #endregion OfType
+
+    #region Is operator
+
+    [ConditionalFact]
+    public virtual Task Is_root_via_root()
+        => AssertQuery(ss => ss.Set<Root>().Where(a => a is Root));
+
+    [ConditionalFact]
+    public virtual Task Is_root_via_leaf()
         => AssertQuery(
             // ReSharper disable once IsExpressionAlwaysTrue
             // ReSharper disable once ConvertTypeCheckToNullCheck
-            ss => ss.Set<Kiwi>().Where(a => a is Animal));
+            ss => ss.Set<Leaf1>().Where(a => a is Root));
 
     [ConditionalFact]
-    public virtual Task Can_use_is_kiwi_with_other_predicate()
-        => AssertQuery(
-            ss => ss.Set<Animal>().Where(a => a is Kiwi && a.CountryId == 1));
+    public virtual Task Is_intermediate()
+        => AssertQuery(ss => ss.Set<Root>().Where(a => a is Intermediate));
 
     [ConditionalFact]
-    public virtual Task Can_use_is_kiwi_in_projection()
+    public virtual Task Is_leaf()
+        => AssertQuery(ss => ss.Set<Root>().Where(a => a is Leaf1));
+
+    [ConditionalFact]
+    public virtual Task Is_leaf_via_leaf()
+        => AssertQuery(ss => ss.Set<Leaf1>().Where(a => a is Leaf1));
+
+    [ConditionalFact]
+    public virtual Task Is_in_projection()
         => AssertQueryScalar(
-            ss => ss.Set<Animal>().Select(a => a is Kiwi));
+            ss => ss.Set<Root>().Select(a => a is Leaf1));
 
     [ConditionalFact]
-    public virtual Task Can_use_of_type_bird()
+    public virtual Task Is_with_other_predicate()
         => AssertQuery(
-            ss => ss.Set<Animal>().OfType<Bird>().OrderBy(a => a.Species),
-            assertOrder: true);
+            ss => ss.Set<Root>().Where(a => a is Leaf1 && a.RootInt == 8));
 
     [ConditionalFact]
-    public virtual Task Can_use_of_type_bird_predicate()
+    public virtual Task Is_on_subquery_result()
         => AssertQuery(
-            ss => ss.Set<Animal>()
-                .Where(a => a.CountryId == 1)
-                .OfType<Bird>()
-                .OrderBy(a => a.Species),
-            assertOrder: true);
+            ss => ss.Set<Root>().Where(r1 =>
+                ss.Set<Root>().FirstOrDefault(r2 => r2.UniqueId == r1.UniqueId) is Leaf1));
+
+    #endregion Is operator
+
+    // [ConditionalFact]
+    // public virtual Task Can_query_all_animals()
+    //     => AssertQuery(
+    //         ss => ss.Set<Animal>().OrderBy(a => a.Species),
+    //         assertOrder: true);
+
+    // [ConditionalFact]
+    // public virtual Task Can_query_all_plants()
+    //     => AssertQuery(
+    //         ss => ss.Set<Plant>().OrderBy(a => a.Species),
+    //         assertOrder: true);
+
+    // [ConditionalFact]
+    // public virtual Task Can_query_all_birds()
+    //     => AssertQuery(
+    //         ss => ss.Set<Bird>().OrderBy(a => a.Species),
+    //         assertOrder: true);
+
+    // [ConditionalFact]
+    // public virtual Task Can_query_just_kiwis()
+    //     => AssertSingle(
+    //         ss => ss.Set<Kiwi>());
+
+    // [ConditionalFact]
+    // public virtual Task Can_query_just_roses()
+    //     => AssertSingle(
+    //         ss => ss.Set<Rose>());
+
+    #region Include
 
     [ConditionalFact]
-    public virtual Task Can_use_of_type_bird_with_projection()
+    public virtual Task Include_root()
         => AssertQuery(
-            ss => ss.Set<Animal>().OfType<Bird>().Select(b => new { b.EagleId }));
+            ss => ss.Set<RootReferencingEntity>().Include(c => c.Root),
+            elementAsserter: (e, a) => AssertInclude(e, a, new ExpectedInclude<RootReferencingEntity>(x => x.Root)));
+
+    // [ConditionalFact]
+    // public virtual Task Can_include_prey()
+    //     => AssertSingle(
+    //         ss => ss.Set<Eagle>().Include(e => e.Prey),
+    //         asserter: (e, a) => AssertInclude(e, a, new ExpectedInclude<Eagle>(x => x.Prey)));
+
+    #endregion Include
+
+    #region Discriminator
 
     [ConditionalFact]
-    public virtual Task Can_use_of_type_bird_first()
-        => AssertFirst(
-            ss => ss.Set<Animal>().OfType<Bird>().OrderBy(a => a.Species));
-
-    [ConditionalFact]
-    public virtual Task Can_use_of_type_kiwi()
+    public virtual Task Filter_on_discriminator()
         => AssertQuery(
-            ss => ss.Set<Animal>().OfType<Kiwi>());
+            ss => ss.Set<Root>().Where(b => EF.Property<string>(b, "Discriminator") == nameof(Leaf1)),
+            ss => ss.Set<Root>().Where(b => b is Leaf1));
 
     [ConditionalFact]
-    public virtual Task Can_use_backwards_of_type_animal()
+    public virtual Task Project_discriminator()
         => AssertQuery(
-            ss => ss.Set<Kiwi>().OfType<Animal>());
+            ss => ss.Set<Root>().Select(b => EF.Property<string>(b, "Discriminator")),
+            ss => ss.Set<Root>().Select(b => b.GetType().Name));
+
+    #endregion Discriminator
+
+    // [ConditionalFact]
+    // public virtual Task Can_insert_update_delete()
+    // {
+    //     int? eagleId = null;
+    //     return TestHelpers.ExecuteWithStrategyInTransactionAsync(
+    //         CreateContext,
+    //         UseTransaction, async context =>
+    //         {
+    //             eagleId = (await context.Set<Bird>().AsNoTracking().SingleAsync(e => e.Species == "Aquila chrysaetos canadensis")).Id;
+
+    //             var kiwi = new Kiwi
+    //             {
+    //                 Species = "Apteryx owenii",
+    //                 Name = "Little spotted kiwi",
+    //                 IsFlightless = true,
+    //                 FoundOn = Island.North
+    //             };
+
+    //             var nz = await context.Set<Country>().SingleAsync(c => c.Id == 1);
+
+    //             nz.Animals.Add(kiwi);
+
+    //             await context.SaveChangesAsync();
+    //         }, async context =>
+    //         {
+    //             var kiwi = await context.Set<Kiwi>().SingleAsync(k => k.Species.EndsWith("owenii"));
+
+    //             kiwi.EagleId = eagleId;
+
+    //             await context.SaveChangesAsync();
+    //         }, async context =>
+    //         {
+    //             var kiwi = await context.Set<Kiwi>().SingleAsync(k => k.Species.EndsWith("owenii"));
+
+    //             context.Set<Bird>().Remove(kiwi);
+
+    //             await context.SaveChangesAsync();
+    //         }, async context =>
+    //         {
+    //             var count = await context.Set<Kiwi>().CountAsync(k => k.Species.EndsWith("owenii"));
+
+    //             Assert.Equal(0, count);
+    //         });
+    // }
+
+    // [ConditionalFact]
+    // public virtual async Task Setting_foreign_key_to_a_different_type_throws()
+    // {
+    //     using var context = CreateContext();
+    //     var kiwi = await context.Set<Kiwi>().SingleAsync();
+
+    //     var eagle = new Eagle
+    //     {
+    //         Species = "Haliaeetus leucocephalus",
+    //         Name = "Bald eagle",
+    //         Group = EagleGroup.Booted,
+    //         EagleId = kiwi.Id
+    //     };
+
+    //     await context.AddAsync(eagle);
+
+    //     // No fixup, because no principal with this key of the correct type is loaded.
+    //     Assert.Empty(eagle.Prey);
+
+    //     if (EnforcesFkConstraints)
+    //     {
+    //         // Relational database throws due to constraint violation
+    //         await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
+    //     }
+    // }
+
+    // [ConditionalFact]
+    // public virtual async Task Member_access_on_intermediate_type_works()
+    // {
+    //     using var context = CreateContext();
+    //     var query = context.Set<Kiwi>().Select(k => new Kiwi { Name = k.Name, Species = k.Species });
+
+    //     var parameter = Expression.Parameter(query.ElementType, "p");
+    //     var property = Expression.Property(parameter, "Name");
+    //     var getProperty = Expression.Lambda(property, parameter);
+
+    //     var expression = Expression.Call(
+    //         typeof(Queryable), nameof(Queryable.OrderBy),
+    //         [query.ElementType, typeof(string)], query.Expression, Expression.Quote(getProperty));
+
+    //     query = query.Provider.CreateQuery<Kiwi>(expression);
+
+    //     var result = await query.ToListAsync();
+
+    //     var kiwi = Assert.Single(result);
+    //     Assert.Equal("Great spotted kiwi", kiwi.Name);
+    // }
+
+    #region GetType
 
     [ConditionalFact]
-    public virtual Task Can_use_of_type_rose()
+    public virtual Task GetType_abstract_root()
         => AssertQuery(
-            ss => ss.Set<Plant>().OfType<Rose>());
-
-    [ConditionalFact]
-    public virtual Task Can_query_all_animals()
-        => AssertQuery(
-            ss => ss.Set<Animal>().OrderBy(a => a.Species),
-            assertOrder: true);
-
-    [ConditionalFact]
-    public virtual Task Can_query_all_animal_views()
-        => AssertQuery(
-            ss => ss.Set<AnimalQuery>().OrderBy(av => av.CountryId),
-            assertOrder: true);
-
-    [ConditionalFact]
-    public virtual Task Can_query_all_plants()
-        => AssertQuery(
-            ss => ss.Set<Plant>().OrderBy(a => a.Species),
-            assertOrder: true);
-
-    [ConditionalFact]
-    public virtual Task Can_filter_all_animals()
-        => AssertQuery(
-            ss => ss.Set<Animal>().OrderBy(a => a.Species).Where(a => a.Name == "Great spotted kiwi"));
-
-    [ConditionalFact]
-    public virtual Task Can_query_all_birds()
-        => AssertQuery(
-            ss => ss.Set<Bird>().OrderBy(a => a.Species),
-            assertOrder: true);
-
-    [ConditionalFact]
-    public virtual Task Can_query_just_kiwis()
-        => AssertSingle(
-            ss => ss.Set<Kiwi>());
-
-    [ConditionalFact]
-    public virtual Task Can_query_just_roses()
-        => AssertSingle(
-            ss => ss.Set<Rose>());
-
-    [ConditionalFact]
-    public virtual Task Can_include_animals()
-        => AssertQuery(
-            ss => ss.Set<Country>().OrderBy(c => c.Name).Include(c => c.Animals),
-            elementAsserter: (e, a) =>
-            {
-                AssertInclude(e, a, new ExpectedInclude<Country>(x => x.Animals));
-            });
-
-    [ConditionalFact]
-    public virtual Task Can_include_prey()
-        => AssertSingle(
-            ss => ss.Set<Eagle>().Include(e => e.Prey),
-            asserter: (e, a) => AssertInclude(e, a, new ExpectedInclude<Eagle>(x => x.Prey)));
-
-    [ConditionalFact]
-    public virtual Task Can_use_of_type_kiwi_where_south_on_derived_property()
-        => AssertQuery(
-            ss => ss.Set<Animal>().OfType<Kiwi>().Where(x => x.FoundOn == Island.South));
-
-    [ConditionalFact]
-    public virtual Task Can_use_of_type_kiwi_where_north_on_derived_property()
-        => AssertQuery(
-            ss => ss.Set<Animal>().OfType<Kiwi>().Where(x => x.FoundOn == Island.North),
+            ss => ss.Set<Root>().Where(e => e.GetType() == typeof(Root)),
             assertEmpty: true);
 
     [ConditionalFact]
-    public virtual Task Discriminator_used_when_projection_over_derived_type()
-        => AssertQueryScalar(
-            ss => ss.Set<Kiwi>().Select(k => k.FoundOn));
-
-    [ConditionalFact]
-    public virtual Task Discriminator_used_when_projection_over_derived_type2()
+    public virtual Task GetType_abstract_intermediate()
         => AssertQuery(
-            ss => ss.Set<Bird>()
-                .Select(b => new { b.IsFlightless, Discriminator = EF.Property<string>(b, "Discriminator") }),
-            ss => ss.Set<Bird>()
-                .Select(b => new { b.IsFlightless, Discriminator = b.GetType().Name }),
-            elementSorter: e => (e.IsFlightless, e.Discriminator));
+            ss => ss.Set<Root>().Where(e => e.GetType() == typeof(Intermediate)),
+            assertEmpty: true);
 
     [ConditionalFact]
-    public virtual Task Discriminator_with_cast_in_shadow_property()
+    public virtual Task GetType_leaf1()
         => AssertQuery(
-            ss => ss.Set<Animal>()
-                .Where(b => "Kiwi" == EF.Property<string>(b, "Discriminator"))
-                .Select(k => new { Predator = EF.Property<string>((Bird)k, "Name") }),
-            ss => ss.Set<Animal>()
-                .Where(b => b is Kiwi)
-                .Select(k => new { Predator = ((Bird)k).Name }),
-            elementSorter: e => e.Predator);
+            ss => ss.Set<Root>().Where(e => e.GetType() == typeof(Leaf1)));
 
     [ConditionalFact]
-    public virtual Task Discriminator_used_when_projection_over_of_type()
-        => AssertQueryScalar(
-            ss => ss.Set<Animal>().OfType<Kiwi>().Select(k => k.FoundOn));
+    public virtual Task GetType_leaf2()
+        => AssertQuery(
+            ss => ss.Set<Root>().Where(e => e.GetType() == typeof(Leaf2)));
 
     [ConditionalFact]
-    public virtual Task Can_insert_update_delete()
-    {
-        int? eagleId = null;
-        return TestHelpers.ExecuteWithStrategyInTransactionAsync(
-            CreateContext,
-            UseTransaction, async context =>
-            {
-                eagleId = (await context.Set<Bird>().AsNoTracking().SingleAsync(e => e.Species == "Aquila chrysaetos canadensis")).Id;
+    public virtual Task GetType_leaf_reverse_equality()
+        => AssertQuery(
+            ss => ss.Set<Root>().Where(e => typeof(Leaf1) == e.GetType()));
 
-                var kiwi = new Kiwi
-                {
-                    Species = "Apteryx owenii",
-                    Name = "Little spotted kiwi",
-                    IsFlightless = true,
-                    FoundOn = Island.North
-                };
+    [ConditionalFact]
+    public virtual Task GetType_not_leaf1()
+        => AssertQuery(
+            ss => ss.Set<Root>().Where(e => typeof(Leaf1) != e.GetType()));
 
-                var nz = await context.Set<Country>().SingleAsync(c => c.Id == 1);
+    #endregion GetType
 
-                nz.Animals.Add(kiwi);
+    #region Union scenarios
 
-                await context.SaveChangesAsync();
-            }, async context =>
-            {
-                var kiwi = await context.Set<Kiwi>().SingleAsync(k => k.Species.EndsWith("owenii"));
+    [ConditionalFact(Skip = "Issue#16298")] // TODO: Assert failure
+    public virtual Task OfType_Union_OfType_on_same_type_Where()
+        => AssertQuery(
+            ss => ss.Set<Root>().OfType<Leaf1>()
+                .Union(ss.Set<Root>().OfType<Leaf1>())
+                .Where(o => o.Leaf1Int == 50));
 
-                kiwi.EagleId = eagleId;
-
-                await context.SaveChangesAsync();
-            }, async context =>
-            {
-                var kiwi = await context.Set<Kiwi>().SingleAsync(k => k.Species.EndsWith("owenii"));
-
-                context.Set<Bird>().Remove(kiwi);
-
-                await context.SaveChangesAsync();
-            }, async context =>
-            {
-                var count = await context.Set<Kiwi>().CountAsync(k => k.Species.EndsWith("owenii"));
-
-                Assert.Equal(0, count);
-            });
-    }
+    [ConditionalFact(Skip = "Issue#16298")] // TODO: Assert failure
+    public virtual Task OfType_leaf_Union_intermediate_OfType_leaf()
+        => AssertQuery(
+            ss => ss.Set<Root>()
+                .OfType<Leaf1>()
+                .Union(ss.Set<Intermediate>())
+                .OfType<Leaf1>());
 
     [ConditionalFact(Skip = "Issue#16298")]
     public virtual Task Union_siblings_with_duplicate_property_in_subquery()
@@ -244,165 +378,46 @@ public abstract class InheritanceQueryTestBase<TFixture>(TFixture fixture) : Que
                 .Where(d => d.SortIndex > 0));
 
     [ConditionalFact(Skip = "Issue#16298")]
-    public virtual Task OfType_Union_subquery()
-        => AssertQuery(
-            ss => ss.Set<Animal>()
-                .OfType<Kiwi>()
-                .Union(ss.Set<Animal>().OfType<Kiwi>())
-                .Where(o => o.FoundOn == Island.North));
-
-    [ConditionalFact(Skip = "Issue#16298")]
-    public virtual Task OfType_Union_OfType()
-        => AssertQuery(
-            ss => ss.Set<Bird>()
-                .OfType<Kiwi>()
-                .Union(ss.Set<Bird>())
-                .OfType<Kiwi>());
-
-    [ConditionalFact]
-    public virtual Task Subquery_OfType()
-        => AssertQuery(
-            ss => ss.Set<Bird>()
-                .OrderBy(b => b.Species)
-                .Take(5)
-                .Distinct()
-                .OfType<Kiwi>());
-
-    [ConditionalFact(Skip = "Issue#16298")]
     public virtual Task Union_entity_equality()
         => AssertQuery(
-            ss => ss.Set<Kiwi>()
-                .Union(ss.Set<Eagle>().Cast<Bird>())
+            ss => ss.Set<Leaf1>()
+                .Union(ss.Set<Leaf2>().Cast<Intermediate>())
                 .Where(b => b == null));
 
-    [ConditionalFact]
-    public virtual async Task Setting_foreign_key_to_a_different_type_throws()
-    {
-        using var context = CreateContext();
-        var kiwi = await context.Set<Kiwi>().SingleAsync();
-
-        var eagle = new Eagle
-        {
-            Species = "Haliaeetus leucocephalus",
-            Name = "Bald eagle",
-            Group = EagleGroup.Booted,
-            EagleId = kiwi.Id
-        };
-
-        await context.AddAsync(eagle);
-
-        // No fixup, because no principal with this key of the correct type is loaded.
-        Assert.Empty(eagle.Prey);
-
-        if (EnforcesFkConstraints)
-        {
-            // Relational database throws due to constraint violation
-            await Assert.ThrowsAsync<DbUpdateException>(async () => await context.SaveChangesAsync());
-        }
-    }
+    #endregion Union scenarios
 
     [ConditionalFact]
-    public virtual Task Byte_enum_value_constant_used_in_projection()
-        => AssertQueryScalar(
-            ss => ss.Set<Kiwi>().Select(k => k.IsFlightless ? Island.North : Island.South));
-
-    [ConditionalFact]
-    public virtual async Task Member_access_on_intermediate_type_works()
-    {
-        using var context = CreateContext();
-        var query = context.Set<Kiwi>().Select(k => new Kiwi { Name = k.Name, Species = k.Species });
-
-        var parameter = Expression.Parameter(query.ElementType, "p");
-        var property = Expression.Property(parameter, "Name");
-        var getProperty = Expression.Lambda(property, parameter);
-
-        var expression = Expression.Call(
-            typeof(Queryable), nameof(Queryable.OrderBy),
-            [query.ElementType, typeof(string)], query.Expression, Expression.Quote(getProperty));
-
-        query = query.Provider.CreateQuery<Kiwi>(expression);
-
-        var result = await query.ToListAsync();
-
-        var kiwi = Assert.Single(result);
-        Assert.Equal("Great spotted kiwi", kiwi.Name);
-    }
-
-    [ConditionalFact]
-    public virtual Task Is_operator_on_result_of_FirstOrDefault()
+    public virtual Task Conditional_with_is_and_downcast_in_projection()
         => AssertQuery(
-            ss => ss.Set<Animal>()
-                .Where(a => ss.Set<Animal>().FirstOrDefault(a1 => a1.Name == "Great spotted kiwi") is Kiwi)
-                .OrderBy(a => a.Species),
-            assertOrder: true);
+            ss => ss.Set<Root>().Select(a => new { Value = a is Leaf1 ? ((Leaf1)a).Leaf1Int == 50 : default }));
+
+    #region Filter on multiple types
 
     [ConditionalFact]
-    public virtual Task Selecting_only_base_properties_on_base_type()
+    public virtual Task Is_on_multiple_contradictory_types()
         => AssertQuery(
-            ss => ss.Set<Animal>().Select(a => new { a.Name }),
-            elementSorter: e => e.Name);
-
-    [ConditionalFact]
-    public virtual Task Selecting_only_base_properties_on_derived_type()
-        => AssertQuery(
-            ss => ss.Set<Bird>().Select(a => new { a.Name }),
-            elementSorter: e => e.Name);
-
-    [ConditionalFact]
-    public virtual Task Using_is_operator_on_multiple_type_with_no_result()
-        => AssertQuery(
-            ss => ss.Set<Animal>().Where(e => e is Kiwi).Where(e => e is Eagle),
+            ss => ss.Set<Root>().Where(e => e is Leaf1 && e is Leaf2),
             assertEmpty: true);
 
     [ConditionalFact]
-    public virtual Task Using_is_operator_with_of_type_on_multiple_type_with_no_result()
-        => AssertQuery(
-            ss => ss.Set<Animal>().Where(e => e is Kiwi).OfType<Eagle>(),
-            assertEmpty: true);
-
-    [ConditionalFact]
-    public virtual Task Using_OfType_on_multiple_type_with_no_result()
+    public virtual Task OfType_on_multiple_contradictory_types()
         => AssertTranslationFailed(() => AssertQuery(
             ss => ss.Set<Animal>().OfType<Eagle>().OfType<Kiwi>(),
             elementSorter: e => e.Name));
 
     [ConditionalFact]
-    public virtual Task GetType_in_hierarchy_in_abstract_base_type()
+    public virtual Task Is_and_OfType_with_multiple_contradictory_types()
         => AssertQuery(
-            ss => ss.Set<Animal>().Where(e => e.GetType() == typeof(Animal)),
+            ss => ss.Set<Animal>().Where(e => e is Kiwi).OfType<Eagle>(),
             assertEmpty: true);
 
-    [ConditionalFact]
-    public virtual Task GetType_in_hierarchy_in_intermediate_type()
-        => AssertQuery(
-            ss => ss.Set<Animal>().Where(e => e.GetType() == typeof(Bird)),
-            assertEmpty: true);
-
-    [ConditionalFact]
-    public virtual Task GetType_in_hierarchy_in_leaf_type_with_sibling()
-        => AssertQuery(
-            ss => ss.Set<Animal>().Where(e => e.GetType() == typeof(Eagle)));
-
-    [ConditionalFact]
-    public virtual Task GetType_in_hierarchy_in_leaf_type_with_sibling2()
-        => AssertQuery(
-            ss => ss.Set<Animal>().Where(e => e.GetType() == typeof(Kiwi)));
-
-    [ConditionalFact]
-    public virtual Task GetType_in_hierarchy_in_leaf_type_with_sibling2_reverse()
-        => AssertQuery(
-            ss => ss.Set<Animal>().Where(e => typeof(Kiwi) == e.GetType()));
-
-    [ConditionalFact]
-    public virtual Task GetType_in_hierarchy_in_leaf_type_with_sibling2_not_equal()
-        => AssertQuery(
-            ss => ss.Set<Animal>().Where(e => typeof(Kiwi) != e.GetType()));
+    #endregion Filter on multiple types
 
     [ConditionalFact]
     public virtual Task Primitive_collection_on_subtype()
         => AssertQuery(
-            ss => ss.Set<Drink>().Where(d => ((Coke)d).Ints.Any()),
-            ss => ss.Set<Drink>().Where(d => d is Coke && ((Coke)d).Ints.Any()));
+            ss => ss.Set<Root>().Where(d => ((Leaf1)d).Ints!.Any()),
+            ss => ss.Set<Root>().Where(d => d is Leaf1 && ((Leaf1)d).Ints != null && ((Leaf1)d).Ints!.Any()));
 
     protected InheritanceContext CreateContext()
         => Fixture.CreateContext();
