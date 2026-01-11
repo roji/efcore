@@ -14,10 +14,6 @@ public class TPCGearsOfWarQuerySqlServerTest : TPCGearsOfWarQueryRelationalTestB
         Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
-    [ConditionalFact]
-    public virtual void Check_all_tests_overridden()
-        => TestHelpers.AssertAllMethodsOverridden(GetType());
-
     public override async Task Non_string_concat_uses_appropriate_type_mapping(bool async)
     {
         await base.Non_string_concat_uses_appropriate_type_mapping(async);
@@ -12614,4 +12610,8 @@ END IN (@keys1, @keys2)
 
     private void AssertSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
+
+    [ConditionalFact]
+    public virtual void Check_all_tests_overridden()
+        => TestHelpers.AssertAllMethodsOverridden(GetType());
 }

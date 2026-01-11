@@ -15,10 +15,6 @@ public class TPCRelationshipsQuerySqlServerTest
         fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
-    [ConditionalFact]
-    public virtual void Check_all_tests_overridden()
-        => TestHelpers.AssertAllMethodsOverridden(GetType());
-
     public override void Changes_in_derived_related_entities_are_detected()
     {
         base.Changes_in_derived_related_entities_are_detected();
@@ -2720,4 +2716,8 @@ ORDER BY [u].[Id], [o0].[BaseInheritanceRelationshipEntityId], [d1].[Id]
         protected override ITestStoreFactory TestStoreFactory
             => SqlServerTestStoreFactory.Instance;
     }
+
+    [ConditionalFact]
+    public virtual void Check_all_tests_overridden()
+        => TestHelpers.AssertAllMethodsOverridden(GetType());
 }

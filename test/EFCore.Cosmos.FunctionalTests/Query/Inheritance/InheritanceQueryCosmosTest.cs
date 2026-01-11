@@ -14,10 +14,6 @@ public class InheritanceQueryCosmosTest : InheritanceQueryTestBase<InheritanceQu
         Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
-    [ConditionalFact]
-    public virtual void Check_all_tests_overridden()
-        => TestHelpers.AssertAllMethodsOverridden(GetType());
-
     public override async Task Using_OfType_on_multiple_type_with_no_result()
     {
         await base.Using_OfType_on_multiple_type_with_no_result();
@@ -626,4 +622,8 @@ WHERE (c["Discriminator"] IN (0, 1, 2, 3) AND (ARRAY_LENGTH(c["Ints"]) > 0))
 
     protected override void ClearLog()
         => Fixture.TestSqlLoggerFactory.Clear();
+
+    [ConditionalFact]
+    public virtual void Check_all_tests_overridden()
+        => TestHelpers.AssertAllMethodsOverridden(GetType());
 }

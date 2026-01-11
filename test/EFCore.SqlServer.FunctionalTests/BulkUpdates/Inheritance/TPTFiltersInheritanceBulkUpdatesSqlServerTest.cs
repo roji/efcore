@@ -8,10 +8,6 @@ public class TPTFiltersInheritanceBulkUpdatesSqlServerTest(
     ITestOutputHelper testOutputHelper)
     : TPTFiltersInheritanceBulkUpdatesTestBase<TPTFiltersInheritanceBulkUpdatesSqlServerFixture>(fixture, testOutputHelper)
 {
-    [ConditionalFact]
-    public virtual void Check_all_tests_overridden()
-        => TestHelpers.AssertAllMethodsOverridden(GetType());
-
     public override async Task Delete_where_hierarchy()
     {
         await base.Delete_where_hierarchy();
@@ -223,4 +219,8 @@ WHERE (
 
     private void AssertExecuteUpdateSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected, forUpdate: true);
+
+    [ConditionalFact]
+    public virtual void Check_all_tests_overridden()
+        => TestHelpers.AssertAllMethodsOverridden(GetType());
 }

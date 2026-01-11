@@ -23,23 +23,28 @@ public class InheritanceData : ISetSource
 
         WireUp(Animals, Countries);
 
-        AnimalQueries = Animals.Select(a => a is Eagle
-            ? (AnimalQuery)new EagleQuery
+        AnimalQueries = Animals.Select(a => a switch
+        {
+            Eagle eagle => (AnimalQuery)new EagleQuery
             {
                 Name = a.Name,
                 CountryId = a.CountryId,
                 EagleId = ((Bird)a).EagleId,
                 IsFlightless = ((Bird)a).IsFlightless,
-                Group = ((Eagle)a).Group,
-            }
-            : new KiwiQuery
+                Group = eagle.Group,
+            },
+
+            Kiwi kiwi => new KiwiQuery
             {
                 Name = a.Name,
                 CountryId = a.CountryId,
                 EagleId = ((Bird)a).EagleId,
                 IsFlightless = ((Bird)a).IsFlightless,
                 FoundOn = ((Kiwi)a).FoundOn,
-            }).ToList();
+            },
+
+            _ => throw new UnreachableException()
+        }).ToList();
     }
 
     public InheritanceData(
@@ -147,116 +152,112 @@ public class InheritanceData : ISetSource
         throw new InvalidOperationException("Invalid entity type: " + typeof(TEntity));
     }
 
-    public static IReadOnlyList<Animal> CreateAnimals(bool useGeneratedKeys)
-        => new List<Animal>
+    public static IReadOnlyList<Animal> CreateAnimals(bool useGeneratedKeys) =>
+    [
+        new Kiwi
         {
-            new Kiwi
-            {
-                Id = useGeneratedKeys ? 0 : 1,
-                Species = "Apteryx haastii",
-                Name = "Great spotted kiwi",
-                IsFlightless = true,
-                FoundOn = Island.South
-            },
-            new Eagle
-            {
-                Id = useGeneratedKeys ? 0 : 2,
-                Species = "Aquila chrysaetos canadensis",
-                Name = "American golden eagle",
-                Group = EagleGroup.Booted
-            },
-        };
+            Id = useGeneratedKeys ? 0 : 1,
+            Species = "Apteryx haastii",
+            Name = "Great spotted kiwi",
+            IsFlightless = true,
+            FoundOn = Island.South
+        },
+        new Eagle
+        {
+            Id = useGeneratedKeys ? 0 : 2,
+            Species = "Aquila chrysaetos canadensis",
+            Name = "American golden eagle",
+            Group = EagleGroup.Booted
+        },
+    ];
 
-    public static IReadOnlyList<Country> CreateCountries()
-        => new List<Country>
-        {
-            new() { Id = 1, Name = "New Zealand" }, new() { Id = 2, Name = "USA" },
-        };
+    public static IReadOnlyList<Country> CreateCountries() =>
+    [
+        new() { Id = 1, Name = "New Zealand" }, new() { Id = 2, Name = "USA" },
+    ];
 
-    public static IReadOnlyList<Drink> CreateDrinks(bool useGeneratedKeys)
-        => new List<Drink>
+    public static IReadOnlyList<Drink> CreateDrinks(bool useGeneratedKeys) =>
+    [
+        new Tea
         {
-            new Tea
+            Id = useGeneratedKeys ? 0 : 1,
+            SortIndex = 1,
+            HasMilk = true,
+            CaffeineGrams = 1,
+            ParentComplexType = new ComplexType
             {
-                Id = useGeneratedKeys ? 0 : 1,
-                SortIndex = 1,
-                HasMilk = true,
-                CaffeineGrams = 1,
-                ParentComplexType = new ComplexType
+                UniqueInt = 1,
+                Int = 8,
+                Nested = new NestedComplexType
                 {
-                    UniqueInt = 1,
-                    Int = 8,
-                    Nested = new NestedComplexType
-                    {
-                        UniqueInt = 2,
-                        NestedInt = 50
-                    }
-                },
-                ChildComplexType = new ComplexType
-                {
-                    UniqueInt = 3,
-                    Int = 9,
-                    Nested = new NestedComplexType { UniqueInt = 4, NestedInt = 51 }
-                },
-                ComplexTypeCollection =
-                [
-                    new ComplexType { UniqueInt = 5, Int = 52 },
-                    new ComplexType { UniqueInt = 6, Int = 53 }
-                ]
+                    UniqueInt = 2,
+                    NestedInt = 50
+                }
             },
-            new Lilt
+            ChildComplexType = new ComplexType
             {
-                Id = useGeneratedKeys ? 0 : 2,
-                SortIndex = 2,
-                SugarGrams = 4,
-                Carbonation = 7
+                UniqueInt = 3,
+                Int = 9,
+                Nested = new NestedComplexType { UniqueInt = 4, NestedInt = 51 }
             },
-            new Coke
+            ComplexTypeCollection =
+            [
+                new ComplexType { UniqueInt = 5, Int = 52 },
+                new ComplexType { UniqueInt = 6, Int = 53 }
+            ]
+        },
+        new Lilt
+        {
+            Id = useGeneratedKeys ? 0 : 2,
+            SortIndex = 2,
+            SugarGrams = 4,
+            Carbonation = 7
+        },
+        new Coke
+        {
+            Id = useGeneratedKeys ? 0 : 3,
+            SortIndex = 3,
+            SugarGrams = 6,
+            CaffeineGrams = 4,
+            Carbonation = 5,
+            Ints = [8, 9],
+            ChildComplexType = new ComplexType
             {
-                Id = useGeneratedKeys ? 0 : 3,
-                SortIndex = 3,
-                SugarGrams = 6,
-                CaffeineGrams = 4,
-                Carbonation = 5,
-                Ints = [8, 9],
-                ChildComplexType = new ComplexType
-                {
-                    UniqueInt = 100,
-                    Int = 10,
-                    Nested = new NestedComplexType { UniqueInt = 101, NestedInt = 58 }
-                },
-                ComplexTypeCollection =
-                [
-                    new ComplexType { UniqueInt = 102, Int = 59 },
-                    new ComplexType { UniqueInt = 103, Int = 60 },
-                    new ComplexType { UniqueInt = 104, Int = 61 }
-                ]
-            }
-        };
+                UniqueInt = 100,
+                Int = 10,
+                Nested = new NestedComplexType { UniqueInt = 101, NestedInt = 58 }
+            },
+            ComplexTypeCollection =
+            [
+                new ComplexType { UniqueInt = 102, Int = 59 },
+                new ComplexType { UniqueInt = 103, Int = 60 },
+                new ComplexType { UniqueInt = 104, Int = 61 }
+            ]
+        }
+    ];
 
-    public static IReadOnlyList<Plant> CreatePlants()
-        => new List<Plant>
+    public static IReadOnlyList<Plant> CreatePlants() =>
+    [
+        new Rose
         {
-            new Rose
-            {
-                Genus = PlantGenus.Rose,
-                Species = "Rosa canina",
-                Name = "Dog-rose",
-                HasThorns = true
-            },
-            new Daisy
-            {
-                Genus = PlantGenus.Daisy,
-                Species = "Bellis perennis",
-                Name = "Common daisy"
-            },
-            new Daisy
-            {
-                Genus = PlantGenus.Daisy,
-                Species = "Bellis annua",
-                Name = "Annual daisy"
-            }
-        };
+            Genus = PlantGenus.Rose,
+            Species = "Rosa canina",
+            Name = "Dog-rose",
+            HasThorns = true
+        },
+        new Daisy
+        {
+            Genus = PlantGenus.Daisy,
+            Species = "Bellis perennis",
+            Name = "Common daisy"
+        },
+        new Daisy
+        {
+            Genus = PlantGenus.Daisy,
+            Species = "Bellis annua",
+            Name = "Annual daisy"
+        }
+    ];
 
     public static void WireUp(
         IReadOnlyList<Animal> animals,

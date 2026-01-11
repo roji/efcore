@@ -12,10 +12,6 @@ public class IncompleteMappingInheritanceQuerySqlServerTest(
     : TPHInheritanceQueryTestBase<IncompleteMappingInheritanceQuerySqlServerFixture>(fixture, testOutputHelper)
 {
     [ConditionalFact]
-    public virtual void Check_all_tests_overridden()
-        => TestHelpers.AssertAllMethodsOverridden(GetType());
-
-    [ConditionalFact]
     public virtual void Common_property_shares_column()
     {
         using var context = CreateContext();
@@ -783,4 +779,8 @@ WHERE [d].[Discriminator] IN (0, 1, 2, 3) AND EXISTS (
 
     private void AssertSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
+
+    [ConditionalFact]
+    public virtual void Check_all_tests_overridden()
+        => TestHelpers.AssertAllMethodsOverridden(GetType());
 }
