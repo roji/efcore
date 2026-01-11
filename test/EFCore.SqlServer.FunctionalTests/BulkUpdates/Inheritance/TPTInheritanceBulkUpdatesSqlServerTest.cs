@@ -9,10 +9,6 @@ public class TPTInheritanceBulkUpdatesSqlServerTest : TPTInheritanceBulkUpdatesT
         : base(fixture, testOutputHelper)
         => ClearLog();
 
-    [ConditionalFact]
-    public virtual void Check_all_tests_overridden()
-        => TestHelpers.AssertAllMethodsOverridden(GetType());
-
     public override async Task Delete_where_hierarchy()
     {
         await base.Delete_where_hierarchy();
@@ -235,4 +231,8 @@ INNER JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
 
     private void AssertExecuteUpdateSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected, forUpdate: true);
+
+    [ConditionalFact]
+    public virtual void Check_all_tests_overridden()
+        => TestHelpers.AssertAllMethodsOverridden(GetType());
 }

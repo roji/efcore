@@ -14,10 +14,6 @@ public class TPTFiltersInheritanceQuerySqlServerTest : TPTFiltersInheritanceQuer
         Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
-    [ConditionalFact]
-    public virtual void Check_all_tests_overridden()
-        => TestHelpers.AssertAllMethodsOverridden(GetType());
-
     public override async Task Can_use_of_type_animal()
     {
         await base.Can_use_of_type_animal();
@@ -215,4 +211,8 @@ WHERE [a].[Id] = @p
 
     private void AssertSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
+
+    [ConditionalFact]
+    public virtual void Check_all_tests_overridden()
+        => TestHelpers.AssertAllMethodsOverridden(GetType());
 }

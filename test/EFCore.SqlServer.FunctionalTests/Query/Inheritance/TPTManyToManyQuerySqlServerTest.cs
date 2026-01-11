@@ -12,10 +12,6 @@ public class TPTManyToManyQuerySqlServerTest : TPTManyToManyQueryRelationalTestB
         Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
-    [ConditionalFact]
-    public virtual void Check_all_tests_overridden()
-        => TestHelpers.AssertAllMethodsOverridden(GetType());
-
     public override async Task Skip_navigation_all(bool async)
     {
         await base.Skip_navigation_all(async);
@@ -2758,4 +2754,8 @@ WHERE 0 = 1
 
     private void AssertSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
+
+    [ConditionalFact]
+    public virtual void Check_all_tests_overridden()
+        => TestHelpers.AssertAllMethodsOverridden(GetType());
 }

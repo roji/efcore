@@ -8,10 +8,6 @@ public class TPCInheritanceBulkUpdatesSqlServerTest(
     ITestOutputHelper testOutputHelper)
     : TPCInheritanceBulkUpdatesTestBase<TPCInheritanceBulkUpdatesSqlServerFixture>(fixture, testOutputHelper)
 {
-    [ConditionalFact]
-    public virtual void Check_all_tests_overridden()
-        => TestHelpers.AssertAllMethodsOverridden(GetType());
-
     public override async Task Delete_where_hierarchy()
     {
         await base.Delete_where_hierarchy();
@@ -258,4 +254,8 @@ FROM [Coke] AS [c]
 
     private void AssertExecuteUpdateSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected, forUpdate: true);
+
+    [ConditionalFact]
+    public virtual void Check_all_tests_overridden()
+        => TestHelpers.AssertAllMethodsOverridden(GetType());
 }

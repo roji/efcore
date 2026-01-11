@@ -9,10 +9,6 @@ public class TPHInheritanceQuerySqlServerTest(TPHInheritanceQuerySqlServerFixtur
     : TPHInheritanceQueryTestBase<TPHInheritanceQuerySqlServerFixture>(fixture, testOutputHelper)
 {
     [ConditionalFact]
-    public virtual void Check_all_tests_overridden()
-        => TestHelpers.AssertAllMethodsOverridden(GetType());
-
-    [ConditionalFact]
     public virtual void Common_property_shares_column()
     {
         using var context = CreateContext();
@@ -754,4 +750,8 @@ WHERE EXISTS (
 
     private void AssertSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
+
+    [ConditionalFact]
+    public virtual void Check_all_tests_overridden()
+        => TestHelpers.AssertAllMethodsOverridden(GetType());
 }
