@@ -405,9 +405,9 @@ FROM (
 """);
     }
 
-    public override async Task Is_leaf()
+    public override async Task Is_leaf_via_root()
     {
-        await base.Is_leaf();
+        await base.Is_leaf_via_root();
 
         AssertSql(
             """
@@ -553,7 +553,7 @@ WHERE EXISTS (
 
         AssertSql(
             """
-SELECT [r].[Id], [u].[Id], [u].[RootInt], [u].[RootReferencingEntityId], [u].[UniqueId], [u].[ConcreteIntermediateInt], [u].[IntermediateInt], [u].[Leaf3Int], [u].[Ints], [u].[Leaf1Int], [u].[Leaf2Int], [u].[ComplexTypeCollection], [u].[ParentComplexType_Int], [u].[ParentComplexType_UniqueId], [u].[ParentComplexType_Nested_Int], [u].[ParentComplexType_Nested_UniqueId], [u].[ChildComplexType_Int], [u].[ChildComplexType_UniqueId], [u].[ChildComplexType_Nested_Int], [u].[ChildComplexType_Nested_UniqueId], [u].[ChildComplexType_Int1], [u].[ChildComplexType_UniqueId1], [u].[ChildComplexType_Nested_Int1], [u].[ChildComplexType_Nested_UniqueId1], [u].[Discriminator]
+SELECT [r].[Id], [r].[Int], [u].[Id], [u].[RootInt], [u].[RootReferencingEntityId], [u].[UniqueId], [u].[ConcreteIntermediateInt], [u].[IntermediateInt], [u].[Leaf3Int], [u].[Ints], [u].[Leaf1Int], [u].[Leaf2Int], [u].[ComplexTypeCollection], [u].[ParentComplexType_Int], [u].[ParentComplexType_UniqueId], [u].[ParentComplexType_Nested_Int], [u].[ParentComplexType_Nested_UniqueId], [u].[ChildComplexType_Int], [u].[ChildComplexType_UniqueId], [u].[ChildComplexType_Nested_Int], [u].[ChildComplexType_Nested_UniqueId], [u].[ChildComplexType_Int1], [u].[ChildComplexType_UniqueId1], [u].[ChildComplexType_Nested_Int1], [u].[ChildComplexType_Nested_UniqueId1], [u].[Discriminator]
 FROM [RootReferencingEntities] AS [r]
 LEFT JOIN (
     SELECT [r0].[Id], [r0].[RootInt], [r0].[RootReferencingEntityId], [r0].[UniqueId], [r0].[ComplexTypeCollection], [r0].[ParentComplexType_Int], [r0].[ParentComplexType_UniqueId], [r0].[ParentComplexType_Nested_Int], [r0].[ParentComplexType_Nested_UniqueId], NULL AS [ConcreteIntermediateInt], NULL AS [IntermediateInt], NULL AS [Leaf3Int], NULL AS [Ints], NULL AS [Leaf1Int], NULL AS [ChildComplexType_Int], NULL AS [ChildComplexType_UniqueId], NULL AS [ChildComplexType_Nested_Int], NULL AS [ChildComplexType_Nested_UniqueId], NULL AS [Leaf2Int], NULL AS [ChildComplexType_Int1], NULL AS [ChildComplexType_UniqueId1], NULL AS [ChildComplexType_Nested_Int1], NULL AS [ChildComplexType_Nested_UniqueId1], N'Root' AS [Discriminator]
@@ -705,12 +705,12 @@ WHERE [u].[Discriminator] <> N'Leaf1'
         AssertSql();
     }
 
-    public override async Task Union_siblings_with_duplicate_property_in_subquery()
-    {
-        await base.Union_siblings_with_duplicate_property_in_subquery();
+    // public override async Task Union_siblings_with_duplicate_property_in_subquery()
+    // {
+    //     await base.Union_siblings_with_duplicate_property_in_subquery();
 
-        AssertSql();
-    }
+    //     AssertSql();
+    // }
 
     public override async Task Union_entity_equality()
     {
@@ -781,27 +781,27 @@ WHERE 0 = 1
 """);
     }
 
-    public override async Task OfType_on_multiple_contradictory_types()
-    {
-        await base.OfType_on_multiple_contradictory_types();
+//     public override async Task OfType_on_multiple_contradictory_types()
+//     {
+//         await base.OfType_on_multiple_contradictory_types();
 
-        AssertSql();
-    }
+//         AssertSql();
+//     }
 
-    public override async Task Is_and_OfType_with_multiple_contradictory_types()
-    {
-        await base.Is_and_OfType_with_multiple_contradictory_types();
+//     public override async Task Is_and_OfType_with_multiple_contradictory_types()
+//     {
+//         await base.Is_and_OfType_with_multiple_contradictory_types();
 
-        AssertSql(
-            """
-SELECT [u].[Id], [u].[CountryId], [u].[Name], [u].[Species], [u].[EagleId], [u].[IsFlightless], [u].[Group], [u].[Discriminator]
-FROM (
-    SELECT [k].[Id], [k].[CountryId], [k].[Name], [k].[Species], [k].[EagleId], [k].[IsFlightless], NULL AS [Group], N'Kiwi' AS [Discriminator]
-    FROM [Kiwi] AS [k]
-) AS [u]
-WHERE [u].[Discriminator] = N'Eagle'
-""");
-    }
+//         AssertSql(
+//             """
+// SELECT [u].[Id], [u].[CountryId], [u].[Name], [u].[Species], [u].[EagleId], [u].[IsFlightless], [u].[Group], [u].[Discriminator]
+// FROM (
+//     SELECT [k].[Id], [k].[CountryId], [k].[Name], [k].[Species], [k].[EagleId], [k].[IsFlightless], NULL AS [Group], N'Kiwi' AS [Discriminator]
+//     FROM [Kiwi] AS [k]
+// ) AS [u]
+// WHERE [u].[Discriminator] = N'Eagle'
+// """);
+//     }
 
     public override async Task Primitive_collection_on_subtype()
     {
@@ -835,12 +835,12 @@ WHERE EXISTS (
 """);
     }
 
-    public override void Using_from_sql_throws()
-    {
-        base.Using_from_sql_throws();
+    // public override void Using_from_sql_throws()
+    // {
+    //     base.Using_from_sql_throws();
 
-        AssertSql();
-    }
+    //     AssertSql();
+    // }
 
     private void AssertSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);

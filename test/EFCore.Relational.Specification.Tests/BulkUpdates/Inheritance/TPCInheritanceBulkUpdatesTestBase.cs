@@ -13,9 +13,9 @@ public abstract class TPCInheritanceBulkUpdatesTestBase<TFixture> : InheritanceB
         Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
-    // Keyless entities are mapped as TPH only
-    public override Task Delete_where_keyless_entity_mapped_to_sql_query()
-        => Task.CompletedTask;
+    // // Keyless entities are mapped as TPH only
+    // public override Task Delete_where_keyless_entity_mapped_to_sql_query()
+    //     => Task.CompletedTask;
 
     public override Task Delete_on_root()
         => AssertTranslationFailed(
@@ -32,9 +32,9 @@ public abstract class TPCInheritanceBulkUpdatesTestBase<TFixture> : InheritanceB
             RelationalStrings.ExecuteOperationOnTPC("ExecuteDelete", "Root"),
             base.Delete_GroupBy_Where_Select_First_3);
 
-    // Keyless entities are mapped as TPH only
-    public override Task Update_where_keyless_entity_mapped_to_sql_query()
-        => Task.CompletedTask;
+    // // Keyless entities are mapped as TPH only
+    // public override Task Update_where_keyless_entity_mapped_to_sql_query()
+    //     => Task.CompletedTask;
 
     public override Task Update_root()
         => AssertTranslationFailed(

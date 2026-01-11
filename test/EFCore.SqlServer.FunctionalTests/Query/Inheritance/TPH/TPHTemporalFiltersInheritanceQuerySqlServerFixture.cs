@@ -1,8 +1,6 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
-
 namespace Microsoft.EntityFrameworkCore.Query.Inheritance.TPH;
 
 public class TPHTemporalFiltersInheritanceQuerySqlServerFixture : TPHFiltersInheritanceQuerySqlServerFixture
@@ -16,10 +14,10 @@ public class TPHTemporalFiltersInheritanceQuerySqlServerFixture : TPHFiltersInhe
     {
         base.OnModelCreating(modelBuilder, context);
 
-        modelBuilder.Entity<Animal>().ToTable(tb => tb.IsTemporal());
-        modelBuilder.Entity<Plant>().ToTable(tb => tb.IsTemporal());
-        modelBuilder.Entity<Country>().ToTable(tb => tb.IsTemporal());
-        modelBuilder.Entity<Drink>().ToTable(tb => tb.IsTemporal());
+    //     modelBuilder.Entity<Animal>().ToTable(tb => tb.IsTemporal());
+    //     modelBuilder.Entity<Plant>().ToTable(tb => tb.IsTemporal());
+    //     modelBuilder.Entity<Country>().ToTable(tb => tb.IsTemporal());
+    //     modelBuilder.Entity<Drink>().ToTable(tb => tb.IsTemporal());
     }
 
     protected override async Task SeedAsync(InheritanceContext context)
@@ -28,11 +26,11 @@ public class TPHTemporalFiltersInheritanceQuerySqlServerFixture : TPHFiltersInhe
 
         ChangesDate = new DateTime(2010, 1, 1);
 
-        context.RemoveRange(context.ChangeTracker.Entries().Where(e => e.Entity is Animal).Select(e => e.Entity));
-        context.RemoveRange(context.ChangeTracker.Entries().Where(e => e.Entity is Plant).Select(e => e.Entity));
-        context.RemoveRange(context.ChangeTracker.Entries().Where(e => e.Entity is Country).Select(e => e.Entity));
-        context.RemoveRange(context.ChangeTracker.Entries().Where(e => e.Entity is Drink).Select(e => e.Entity));
-        await context.SaveChangesAsync();
+        // context.RemoveRange(context.ChangeTracker.Entries().Where(e => e.Entity is Animal).Select(e => e.Entity));
+        // context.RemoveRange(context.ChangeTracker.Entries().Where(e => e.Entity is Plant).Select(e => e.Entity));
+        // context.RemoveRange(context.ChangeTracker.Entries().Where(e => e.Entity is Country).Select(e => e.Entity));
+        // context.RemoveRange(context.ChangeTracker.Entries().Where(e => e.Entity is Drink).Select(e => e.Entity));
+        // await context.SaveChangesAsync();
 
         var tableNames = new List<string>
         {

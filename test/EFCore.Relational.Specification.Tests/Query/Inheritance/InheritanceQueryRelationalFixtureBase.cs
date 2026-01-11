@@ -1,8 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
-
 namespace Microsoft.EntityFrameworkCore.Query.Inheritance;
 
 public abstract class InheritanceQueryRelationalFixtureBase : InheritanceQueryFixtureBase, ITestSqlLoggerFactory
@@ -16,7 +14,5 @@ public abstract class InheritanceQueryRelationalFixtureBase : InheritanceQueryFi
 
         // In relational, complex collections are only supported as JSON and must be explicitly configured as such
         modelBuilder.Entity<Root>().ComplexCollection(n => n.ComplexTypeCollection, n => n.ToJson());
-
-        modelBuilder.Entity<Drink>().ComplexCollection(n => n.ComplexTypeCollection, n => n.ToJson());
     }
 }

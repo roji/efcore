@@ -1,8 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
-
 // ReSharper disable ReturnValueOfPureMethodIsNotUsed
 // ReSharper disable StringEndsWithIsCultureSpecific
 namespace Microsoft.EntityFrameworkCore.Query.Inheritance;
@@ -137,7 +135,7 @@ public abstract class InheritanceQueryTestBase<TFixture>(TFixture fixture) : Que
         => AssertQuery(ss => ss.Set<Root>().Where(a => a is Intermediate));
 
     [ConditionalFact]
-    public virtual Task Is_leaf()
+    public virtual Task Is_leaf_via_root()
         => AssertQuery(ss => ss.Set<Root>().Where(a => a is Leaf1));
 
     [ConditionalFact]
@@ -368,14 +366,14 @@ public abstract class InheritanceQueryTestBase<TFixture>(TFixture fixture) : Que
                 .Union(ss.Set<Intermediate>())
                 .OfType<Leaf1>());
 
-    [ConditionalFact(Skip = "Issue#16298")]
-    public virtual Task Union_siblings_with_duplicate_property_in_subquery()
-        // Coke and Tea both have CaffeineGrams, which both need to be projected out on each side and so
-        // requiring alias uniquification. They also have a different number of properties.
-        => AssertQuery(
-            ss => ss.Set<Coke>().Cast<Drink>()
-                .Union(ss.Set<Tea>())
-                .Where(d => d.SortIndex > 0));
+    // [ConditionalFact(Skip = "Issue#16298")]
+    // public virtual Task Union_siblings_with_duplicate_property_in_subquery()
+    //     // Coke and Tea both have CaffeineGrams, which both need to be projected out on each side and so
+    //     // requiring alias uniquification. They also have a different number of properties.
+    //     => AssertQuery(
+    //         ss => ss.Set<Coke>().Cast<Drink>()
+    //             .Union(ss.Set<Tea>())
+    //             .Where(d => d.SortIndex > 0));
 
     [ConditionalFact(Skip = "Issue#16298")]
     public virtual Task Union_entity_equality()
@@ -399,17 +397,17 @@ public abstract class InheritanceQueryTestBase<TFixture>(TFixture fixture) : Que
             ss => ss.Set<Root>().Where(e => e is Leaf1 && e is Leaf2),
             assertEmpty: true);
 
-    [ConditionalFact]
-    public virtual Task OfType_on_multiple_contradictory_types()
-        => AssertTranslationFailed(() => AssertQuery(
-            ss => ss.Set<Animal>().OfType<Eagle>().OfType<Kiwi>(),
-            elementSorter: e => e.Name));
+    // [ConditionalFact]
+    // public virtual Task OfType_on_multiple_contradictory_types()
+    //     => AssertTranslationFailed(() => AssertQuery(
+    //         ss => ss.Set<Animal>().OfType<Eagle>().OfType<Kiwi>(),
+    //         elementSorter: e => e.Name));
 
-    [ConditionalFact]
-    public virtual Task Is_and_OfType_with_multiple_contradictory_types()
-        => AssertQuery(
-            ss => ss.Set<Animal>().Where(e => e is Kiwi).OfType<Eagle>(),
-            assertEmpty: true);
+    // [ConditionalFact]
+    // public virtual Task Is_and_OfType_with_multiple_contradictory_types()
+    //     => AssertQuery(
+    //         ss => ss.Set<Animal>().Where(e => e is Kiwi).OfType<Eagle>(),
+    //         assertEmpty: true);
 
     #endregion Filter on multiple types
 

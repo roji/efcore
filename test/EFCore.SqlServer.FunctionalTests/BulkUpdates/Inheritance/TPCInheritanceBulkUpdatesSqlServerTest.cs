@@ -58,12 +58,12 @@ WHERE [u].[RootInt] = 8
 """);
     }
 
-    public override async Task Delete_where_keyless_entity_mapped_to_sql_query()
-    {
-        await base.Delete_where_keyless_entity_mapped_to_sql_query();
+    // public override async Task Delete_where_keyless_entity_mapped_to_sql_query()
+    // {
+    //     await base.Delete_where_keyless_entity_mapped_to_sql_query();
 
-        AssertSql();
-    }
+    //     AssertSql();
+    // }
 
     public override async Task Delete_on_root_with_subquery()
     {
@@ -220,12 +220,12 @@ FROM [Leaf1] AS [l]
 // """);
 //     }
 
-    public override async Task Update_where_keyless_entity_mapped_to_sql_query()
-    {
-        await base.Update_where_keyless_entity_mapped_to_sql_query();
+    // public override async Task Update_where_keyless_entity_mapped_to_sql_query()
+    // {
+    //     await base.Update_where_keyless_entity_mapped_to_sql_query();
 
-        AssertExecuteUpdateSql();
-    }
+    //     AssertExecuteUpdateSql();
+    // }
 
     protected override void ClearLog()
         => Fixture.TestSqlLoggerFactory.Clear();

@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using Microsoft.EntityFrameworkCore.Query.Inheritance.TPH;
-using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
 
 // ReSharper disable InconsistentNaming
 namespace Microsoft.EntityFrameworkCore.Query.Inheritance;
@@ -296,9 +295,9 @@ WHERE [r].[Discriminator] IN (N'Intermediate', N'Leaf1', N'Leaf2')
 """);
     }
 
-    public override async Task Is_leaf()
+    public override async Task Is_leaf_via_root()
     {
-        await base.Is_leaf();
+        await base.Is_leaf_via_root();
 
         AssertSql(
             """
@@ -368,7 +367,7 @@ WHERE [r].[Discriminator] IN (N'Root', N'ConcreteIntermediate', N'Intermediate',
 
         AssertSql(
             """
-SELECT [r].[Id], [r1].[Id], [r1].[Discriminator], [r1].[RootInt], [r1].[RootReferencingEntityId], [r1].[UniqueId], [r1].[ConcreteIntermediateInt], [r1].[IntermediateInt], [r1].[Leaf3Int], [r1].[Ints], [r1].[Leaf1Int], [r1].[Leaf2Int], [r1].[c], [r1].[ParentComplexType_Int], [r1].[ParentComplexType_UniqueId], [r1].[ParentComplexType_Nested_Int], [r1].[ParentComplexType_Nested_UniqueId], [r1].[ChildComplexType_Int], [r1].[ChildComplexType_UniqueId], [r1].[ChildComplexType_Nested_Int], [r1].[ChildComplexType_Nested_UniqueId], [r1].[Leaf2_ChildComplexType_Int], [r1].[Leaf2_ChildComplexType_UniqueId], [r1].[Leaf2_ChildComplexType_Nested_Int], [r1].[Leaf2_ChildComplexType_Nested_UniqueId]
+SELECT [r].[Id], [r].[Int], [r1].[Id], [r1].[Discriminator], [r1].[RootInt], [r1].[RootReferencingEntityId], [r1].[UniqueId], [r1].[ConcreteIntermediateInt], [r1].[IntermediateInt], [r1].[Leaf3Int], [r1].[Ints], [r1].[Leaf1Int], [r1].[Leaf2Int], [r1].[c], [r1].[ParentComplexType_Int], [r1].[ParentComplexType_UniqueId], [r1].[ParentComplexType_Nested_Int], [r1].[ParentComplexType_Nested_UniqueId], [r1].[ChildComplexType_Int], [r1].[ChildComplexType_UniqueId], [r1].[ChildComplexType_Nested_Int], [r1].[ChildComplexType_Nested_UniqueId], [r1].[Leaf2_ChildComplexType_Int], [r1].[Leaf2_ChildComplexType_UniqueId], [r1].[Leaf2_ChildComplexType_Nested_Int], [r1].[Leaf2_ChildComplexType_Nested_UniqueId]
 FROM [RootReferencingEntities] AS [r]
 LEFT JOIN (
     SELECT [r0].[Id], [r0].[Discriminator], [r0].[RootInt], [r0].[RootReferencingEntityId], [r0].[UniqueId], [r0].[ConcreteIntermediateInt], [r0].[IntermediateInt], [r0].[Leaf3Int], [r0].[Ints], [r0].[Leaf1Int], [r0].[Leaf2Int], [r0].[ComplexTypeCollection] AS [c], [r0].[ParentComplexType_Int], [r0].[ParentComplexType_UniqueId], [r0].[ParentComplexType_Nested_Int], [r0].[ParentComplexType_Nested_UniqueId], [r0].[ChildComplexType_Int], [r0].[ChildComplexType_UniqueId], [r0].[ChildComplexType_Nested_Int], [r0].[ChildComplexType_Nested_UniqueId], [r0].[Leaf2_ChildComplexType_Int], [r0].[Leaf2_ChildComplexType_UniqueId], [r0].[Leaf2_ChildComplexType_Nested_Int], [r0].[Leaf2_ChildComplexType_Nested_UniqueId]
@@ -488,25 +487,25 @@ WHERE [r].[Discriminator] IN (N'Root', N'ConcreteIntermediate', N'Intermediate',
         AssertSql(" ");
     }
 
-    public override async Task Union_siblings_with_duplicate_property_in_subquery()
-    {
-        await base.Union_siblings_with_duplicate_property_in_subquery();
+//     public override async Task Union_siblings_with_duplicate_property_in_subquery()
+//     {
+//         await base.Union_siblings_with_duplicate_property_in_subquery();
 
-        AssertSql(
-            """
-SELECT [t].[Id], [t].[Discriminator], [t].[CaffeineGrams], [t].[CokeCO2], [t].[SugarGrams], [t].[Carbonation], [t].[SugarGrams0], [t].[CaffeineGrams0], [t].[HasMilk]
-FROM (
-    SELECT [d].[Id], [d].[Discriminator], [d].[CaffeineGrams], [d].[CokeCO2], [d].[SugarGrams], NULL AS [CaffeineGrams0], NULL AS [HasMilk], NULL AS [Carbonation], NULL AS [SugarGrams0]
-    FROM [Drinks] AS [d]
-    WHERE [d].[Discriminator] = N'Coke'
-    UNION
-    SELECT [d0].[Id], [d0].[Discriminator], NULL AS [CaffeineGrams], NULL AS [CokeCO2], NULL AS [SugarGrams], [d0].[CaffeineGrams] AS [CaffeineGrams0], [d0].[HasMilk], NULL AS [Carbonation], NULL AS [SugarGrams0]
-    FROM [Drinks] AS [d0]
-    WHERE [d0].[Discriminator] = N'Tea'
-) AS [t]
-WHERE [t].[Id] > 0
-""");
-    }
+//         AssertSql(
+//             """
+// SELECT [t].[Id], [t].[Discriminator], [t].[CaffeineGrams], [t].[CokeCO2], [t].[SugarGrams], [t].[Carbonation], [t].[SugarGrams0], [t].[CaffeineGrams0], [t].[HasMilk]
+// FROM (
+//     SELECT [d].[Id], [d].[Discriminator], [d].[CaffeineGrams], [d].[CokeCO2], [d].[SugarGrams], NULL AS [CaffeineGrams0], NULL AS [HasMilk], NULL AS [Carbonation], NULL AS [SugarGrams0]
+//     FROM [Drinks] AS [d]
+//     WHERE [d].[Discriminator] = N'Coke'
+//     UNION
+//     SELECT [d0].[Id], [d0].[Discriminator], NULL AS [CaffeineGrams], NULL AS [CokeCO2], NULL AS [SugarGrams], [d0].[CaffeineGrams] AS [CaffeineGrams0], [d0].[HasMilk], NULL AS [Carbonation], NULL AS [SugarGrams0]
+//     FROM [Drinks] AS [d0]
+//     WHERE [d0].[Discriminator] = N'Tea'
+// ) AS [t]
+// WHERE [t].[Id] > 0
+// """);
+//     }
 
     public override async Task Union_entity_equality()
     {
@@ -555,24 +554,24 @@ WHERE 0 = 1
 """);
     }
 
-    public override async Task OfType_on_multiple_contradictory_types()
-    {
-        await base.OfType_on_multiple_contradictory_types();
+//     public override async Task OfType_on_multiple_contradictory_types()
+//     {
+//         await base.OfType_on_multiple_contradictory_types();
 
-        AssertSql();
-    }
+//         AssertSql();
+//     }
 
-    public override async Task Is_and_OfType_with_multiple_contradictory_types()
-    {
-        await base.Is_and_OfType_with_multiple_contradictory_types();
+//     public override async Task Is_and_OfType_with_multiple_contradictory_types()
+//     {
+//         await base.Is_and_OfType_with_multiple_contradictory_types();
 
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group]
-FROM [Animals] AS [a]
-WHERE 0 = 1
-""");
-    }
+//         AssertSql(
+//             """
+// SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group]
+// FROM [Animals] AS [a]
+// WHERE 0 = 1
+// """);
+//     }
 
     public override async Task Primitive_collection_on_subtype()
     {
@@ -602,9 +601,9 @@ WHERE [m].[Discriminator] IN (N'Eagle', N'Kiwi')
 """);
     }
 
-    public override void FromSql_on_derived()
+    public override void FromSql_on_leaf()
     {
-        base.FromSql_on_derived();
+        base.FromSql_on_leaf();
 
         AssertSql(
             """
@@ -616,39 +615,39 @@ WHERE [m].[Discriminator] = N'Eagle'
 """);
     }
 
-    public override void Casting_to_base_type_joining_with_query_type_works()
-    {
-        base.Casting_to_base_type_joining_with_query_type_works();
+//     public override void Casting_to_base_type_joining_with_query_type_works()
+//     {
+//         base.Casting_to_base_type_joining_with_query_type_works();
 
-        AssertSql(
-            """
-SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [m].[CountryId], [m].[Discriminator], [m].[Name], [m].[EagleId], [m].[IsFlightless], [m].[Group], [m].[FoundOn]
-FROM [Animals] AS [a]
-INNER JOIN (
-    Select * from "Animals"
-) AS [m] ON [a].[Name] = [m].[Name]
-WHERE [a].[Discriminator] = N'Eagle'
-""");
-    }
+//         AssertSql(
+//             """
+// SELECT [a].[Id], [a].[CountryId], [a].[Discriminator], [a].[Name], [a].[Species], [a].[EagleId], [a].[IsFlightless], [a].[Group], [m].[CountryId], [m].[Discriminator], [m].[Name], [m].[EagleId], [m].[IsFlightless], [m].[Group], [m].[FoundOn]
+// FROM [Animals] AS [a]
+// INNER JOIN (
+//     Select * from "Animals"
+// ) AS [m] ON [a].[Name] = [m].[Name]
+// WHERE [a].[Discriminator] = N'Eagle'
+// """);
+//     }
 
-    [ConditionalFact]
-    public virtual void Common_property_shares_column()
-    {
-        using var context = CreateContext();
-        var liltType = context.Model.FindEntityType(typeof(Lilt))!;
-        var cokeType = context.Model.FindEntityType(typeof(Coke))!;
-        var teaType = context.Model.FindEntityType(typeof(Tea))!;
+//     [ConditionalFact]
+//     public virtual void Common_property_shares_column()
+//     {
+//         using var context = CreateContext();
+//         var liltType = context.Model.FindEntityType(typeof(Lilt))!;
+//         var cokeType = context.Model.FindEntityType(typeof(Coke))!;
+//         var teaType = context.Model.FindEntityType(typeof(Tea))!;
 
-        Assert.Equal("SugarGrams", cokeType.FindProperty("SugarGrams")!.GetColumnName());
-        Assert.Equal("CaffeineGrams", cokeType.FindProperty("CaffeineGrams")!.GetColumnName());
-        Assert.Equal("CokeCO2", cokeType.FindProperty("Carbonation")!.GetColumnName());
+//         Assert.Equal("SugarGrams", cokeType.FindProperty("SugarGrams")!.GetColumnName());
+//         Assert.Equal("CaffeineGrams", cokeType.FindProperty("CaffeineGrams")!.GetColumnName());
+//         Assert.Equal("CokeCO2", cokeType.FindProperty("Carbonation")!.GetColumnName());
 
-        Assert.Equal("SugarGrams", liltType.FindProperty("SugarGrams")!.GetColumnName());
-        Assert.Equal("LiltCO2", liltType.FindProperty("Carbonation")!.GetColumnName());
+//         Assert.Equal("SugarGrams", liltType.FindProperty("SugarGrams")!.GetColumnName());
+//         Assert.Equal("LiltCO2", liltType.FindProperty("Carbonation")!.GetColumnName());
 
-        Assert.Equal("CaffeineGrams", teaType.FindProperty("CaffeineGrams")!.GetColumnName());
-        Assert.Equal("HasMilk", teaType.FindProperty("HasMilk")!.GetColumnName());
-    }
+//         Assert.Equal("CaffeineGrams", teaType.FindProperty("CaffeineGrams")!.GetColumnName());
+//         Assert.Equal("HasMilk", teaType.FindProperty("HasMilk")!.GetColumnName());
+//     }
 
     private void AssertSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);

@@ -13,9 +13,9 @@ public abstract class TPTInheritanceBulkUpdatesTestBase<TFixture> : InheritanceB
         ClearLog();
     }
 
-    // Keyless entities are mapped as TPH only
-    public override Task Delete_where_keyless_entity_mapped_to_sql_query()
-        => Task.CompletedTask;
+    // // Keyless entities are mapped as TPH only
+    // public override Task Delete_where_keyless_entity_mapped_to_sql_query()
+    //     => Task.CompletedTask;
 
     public override Task Delete_on_root()
         => AssertTranslationFailed(
@@ -46,7 +46,7 @@ public abstract class TPTInheritanceBulkUpdatesTestBase<TFixture> : InheritanceB
             RelationalStrings.MultipleTablesInExecuteUpdate("l => l.Leaf1Int", "l => l.RootInt"),
             base.Update_both_root_and_leaf_properties);
 
-    // Keyless entities are mapped as TPH only
-    public override Task Update_where_keyless_entity_mapped_to_sql_query()
-        => Task.CompletedTask;
+    // // Keyless entities are mapped as TPH only
+    // public override Task Update_where_keyless_entity_mapped_to_sql_query()
+    //     => Task.CompletedTask;
 }

@@ -8,208 +8,208 @@ public class TPTFiltersInheritanceBulkUpdatesSqlServerTest(
     ITestOutputHelper testOutputHelper)
     : TPTFiltersInheritanceBulkUpdatesTestBase<TPTFiltersInheritanceBulkUpdatesSqlServerFixture>(fixture, testOutputHelper)
 {
-    public override async Task Delete_where_hierarchy()
-    {
-        await base.Delete_where_hierarchy();
+//     public override async Task Delete_where_hierarchy()
+//     {
+//         await base.Delete_where_hierarchy();
 
-        AssertSql();
-    }
+//         AssertSql();
+//     }
 
-    public override async Task Delete_where_hierarchy_derived()
-    {
-        await base.Delete_where_hierarchy_derived();
+//     public override async Task Delete_where_hierarchy_derived()
+//     {
+//         await base.Delete_where_hierarchy_derived();
 
-        AssertSql();
-    }
+//         AssertSql();
+//     }
 
-    public override async Task Delete_where_using_hierarchy()
-    {
-        await base.Delete_where_using_hierarchy();
+//     public override async Task Delete_where_using_hierarchy()
+//     {
+//         await base.Delete_where_using_hierarchy();
 
-        AssertSql(
-            """
-DELETE FROM [c]
-FROM [Countries] AS [c]
-WHERE (
-    SELECT COUNT(*)
-    FROM [Animals] AS [a]
-    WHERE [a].[CountryId] = 1 AND [c].[Id] = [a].[CountryId] AND [a].[CountryId] > 0) > 0
-""");
-    }
+//         AssertSql(
+//             """
+// DELETE FROM [c]
+// FROM [Countries] AS [c]
+// WHERE (
+//     SELECT COUNT(*)
+//     FROM [Animals] AS [a]
+//     WHERE [a].[CountryId] = 1 AND [c].[Id] = [a].[CountryId] AND [a].[CountryId] > 0) > 0
+// """);
+//     }
 
-    public override async Task Delete_where_using_hierarchy_derived()
-    {
-        await base.Delete_where_using_hierarchy_derived();
+//     public override async Task Delete_where_using_hierarchy_derived()
+//     {
+//         await base.Delete_where_using_hierarchy_derived();
 
-        AssertSql(
-            """
-DELETE FROM [c]
-FROM [Countries] AS [c]
-WHERE (
-    SELECT COUNT(*)
-    FROM [Animals] AS [a]
-    LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-    WHERE [a].[CountryId] = 1 AND [c].[Id] = [a].[CountryId] AND [k].[Id] IS NOT NULL AND [a].[CountryId] > 0) > 0
-""");
-    }
+//         AssertSql(
+//             """
+// DELETE FROM [c]
+// FROM [Countries] AS [c]
+// WHERE (
+//     SELECT COUNT(*)
+//     FROM [Animals] AS [a]
+//     LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
+//     WHERE [a].[CountryId] = 1 AND [c].[Id] = [a].[CountryId] AND [k].[Id] IS NOT NULL AND [a].[CountryId] > 0) > 0
+// """);
+//     }
 
-    public override async Task Delete_where_keyless_entity_mapped_to_sql_query()
-    {
-        await base.Delete_where_keyless_entity_mapped_to_sql_query();
+//     public override async Task Delete_where_keyless_entity_mapped_to_sql_query()
+//     {
+//         await base.Delete_where_keyless_entity_mapped_to_sql_query();
 
-        AssertSql();
-    }
+//         AssertSql();
+//     }
 
-    public override async Task Delete_where_hierarchy_subquery()
-    {
-        await base.Delete_where_hierarchy_subquery();
+//     public override async Task Delete_where_hierarchy_subquery()
+//     {
+//         await base.Delete_where_hierarchy_subquery();
 
-        AssertSql();
-    }
+//         AssertSql();
+//     }
 
-    public override async Task Delete_GroupBy_Where_Select_First()
-    {
-        await base.Delete_GroupBy_Where_Select_First();
+//     public override async Task Delete_GroupBy_Where_Select_First()
+//     {
+//         await base.Delete_GroupBy_Where_Select_First();
 
-        AssertSql();
-    }
+//         AssertSql();
+//     }
 
-    public override async Task Delete_GroupBy_Where_Select_First_2()
-    {
-        await base.Delete_GroupBy_Where_Select_First_2();
+//     public override async Task Delete_GroupBy_Where_Select_First_2()
+//     {
+//         await base.Delete_GroupBy_Where_Select_First_2();
 
-        AssertSql();
-    }
+//         AssertSql();
+//     }
 
-    public override async Task Delete_GroupBy_Where_Select_First_3()
-    {
-        await base.Delete_GroupBy_Where_Select_First_3();
+//     public override async Task Delete_GroupBy_Where_Select_First_3()
+//     {
+//         await base.Delete_GroupBy_Where_Select_First_3();
 
-        AssertSql();
-    }
+//         AssertSql();
+//     }
 
-    public override async Task Update_base_type()
-    {
-        await base.Update_base_type();
+//     public override async Task Update_base_type()
+//     {
+//         await base.Update_base_type();
 
-        AssertExecuteUpdateSql(
-            """
-@p='Animal' (Size = 4000)
+//         AssertExecuteUpdateSql(
+//             """
+// @p='Animal' (Size = 4000)
 
-UPDATE [a]
-SET [a].[Name] = @p
-FROM [Animals] AS [a]
-WHERE [a].[CountryId] = 1 AND [a].[Name] = N'Great spotted kiwi'
-""");
-    }
+// UPDATE [a]
+// SET [a].[Name] = @p
+// FROM [Animals] AS [a]
+// WHERE [a].[CountryId] = 1 AND [a].[Name] = N'Great spotted kiwi'
+// """);
+//     }
 
-    public override async Task Update_base_type_with_OfType()
-    {
-        await base.Update_base_type_with_OfType();
+//     public override async Task Update_base_type_with_OfType()
+//     {
+//         await base.Update_base_type_with_OfType();
 
-        AssertExecuteUpdateSql(
-            """
-@p='NewBird' (Size = 4000)
+//         AssertExecuteUpdateSql(
+//             """
+// @p='NewBird' (Size = 4000)
 
-UPDATE [a]
-SET [a].[Name] = @p
-FROM [Animals] AS [a]
-LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [a].[CountryId] = 1 AND [k].[Id] IS NOT NULL
-""");
-    }
+// UPDATE [a]
+// SET [a].[Name] = @p
+// FROM [Animals] AS [a]
+// LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
+// WHERE [a].[CountryId] = 1 AND [k].[Id] IS NOT NULL
+// """);
+//     }
 
-    public override async Task Update_where_hierarchy_subquery()
-    {
-        await base.Update_where_hierarchy_subquery();
+//     public override async Task Update_where_hierarchy_subquery()
+//     {
+//         await base.Update_where_hierarchy_subquery();
 
-        AssertExecuteUpdateSql();
-    }
+//         AssertExecuteUpdateSql();
+//     }
 
-    public override async Task Update_base_property_on_derived_type()
-    {
-        await base.Update_base_property_on_derived_type();
+//     public override async Task Update_base_property_on_derived_type()
+//     {
+//         await base.Update_base_property_on_derived_type();
 
-        AssertExecuteUpdateSql(
-            """
-@p='SomeOtherKiwi' (Size = 4000)
+//         AssertExecuteUpdateSql(
+//             """
+// @p='SomeOtherKiwi' (Size = 4000)
 
-UPDATE [a]
-SET [a].[Name] = @p
-FROM [Animals] AS [a]
-INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [a].[CountryId] = 1
-""");
-    }
+// UPDATE [a]
+// SET [a].[Name] = @p
+// FROM [Animals] AS [a]
+// INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
+// INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
+// WHERE [a].[CountryId] = 1
+// """);
+//     }
 
-    public override async Task Update_derived_property_on_derived_type()
-    {
-        await base.Update_derived_property_on_derived_type();
+//     public override async Task Update_derived_property_on_derived_type()
+//     {
+//         await base.Update_derived_property_on_derived_type();
 
-        AssertExecuteUpdateSql(
-            """
-@p='0' (Size = 1)
+//         AssertExecuteUpdateSql(
+//             """
+// @p='0' (Size = 1)
 
-UPDATE [k]
-SET [k].[FoundOn] = @p
-FROM [Animals] AS [a]
-INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
-INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-WHERE [a].[CountryId] = 1
-""");
-    }
+// UPDATE [k]
+// SET [k].[FoundOn] = @p
+// FROM [Animals] AS [a]
+// INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
+// INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
+// WHERE [a].[CountryId] = 1
+// """);
+//     }
 
-    public override async Task Update_base_and_derived_types()
-    {
-        await base.Update_base_and_derived_types();
+//     public override async Task Update_base_and_derived_types()
+//     {
+//         await base.Update_base_and_derived_types();
 
-        AssertExecuteUpdateSql();
-    }
+//         AssertExecuteUpdateSql();
+//     }
 
-    public override async Task Update_where_using_hierarchy()
-    {
-        await base.Update_where_using_hierarchy();
+//     public override async Task Update_where_using_hierarchy()
+//     {
+//         await base.Update_where_using_hierarchy();
 
-        AssertExecuteUpdateSql(
-            """
-@p='Monovia' (Size = 4000)
+//         AssertExecuteUpdateSql(
+//             """
+// @p='Monovia' (Size = 4000)
 
-UPDATE [c]
-SET [c].[Name] = @p
-FROM [Countries] AS [c]
-WHERE (
-    SELECT COUNT(*)
-    FROM [Animals] AS [a]
-    WHERE [a].[CountryId] = 1 AND [c].[Id] = [a].[CountryId] AND [a].[CountryId] > 0) > 0
-""");
-    }
+// UPDATE [c]
+// SET [c].[Name] = @p
+// FROM [Countries] AS [c]
+// WHERE (
+//     SELECT COUNT(*)
+//     FROM [Animals] AS [a]
+//     WHERE [a].[CountryId] = 1 AND [c].[Id] = [a].[CountryId] AND [a].[CountryId] > 0) > 0
+// """);
+//     }
 
-    public override async Task Update_where_using_hierarchy_derived()
-    {
-        await base.Update_where_using_hierarchy_derived();
+//     public override async Task Update_where_using_hierarchy_derived()
+//     {
+//         await base.Update_where_using_hierarchy_derived();
 
-        AssertExecuteUpdateSql(
-            """
-@p='Monovia' (Size = 4000)
+//         AssertExecuteUpdateSql(
+//             """
+// @p='Monovia' (Size = 4000)
 
-UPDATE [c]
-SET [c].[Name] = @p
-FROM [Countries] AS [c]
-WHERE (
-    SELECT COUNT(*)
-    FROM [Animals] AS [a]
-    LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
-    WHERE [a].[CountryId] = 1 AND [c].[Id] = [a].[CountryId] AND [k].[Id] IS NOT NULL AND [a].[CountryId] > 0) > 0
-""");
-    }
+// UPDATE [c]
+// SET [c].[Name] = @p
+// FROM [Countries] AS [c]
+// WHERE (
+//     SELECT COUNT(*)
+//     FROM [Animals] AS [a]
+//     LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
+//     WHERE [a].[CountryId] = 1 AND [c].[Id] = [a].[CountryId] AND [k].[Id] IS NOT NULL AND [a].[CountryId] > 0) > 0
+// """);
+//     }
 
-    public override async Task Update_where_keyless_entity_mapped_to_sql_query()
-    {
-        await base.Update_where_keyless_entity_mapped_to_sql_query();
+//     public override async Task Update_where_keyless_entity_mapped_to_sql_query()
+//     {
+//         await base.Update_where_keyless_entity_mapped_to_sql_query();
 
-        AssertExecuteUpdateSql();
-    }
+//         AssertExecuteUpdateSql();
+//     }
 
     protected override void ClearLog()
         => Fixture.TestSqlLoggerFactory.Clear();

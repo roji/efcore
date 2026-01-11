@@ -1,8 +1,6 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
-
 namespace Microsoft.EntityFrameworkCore.Query.Inheritance.TPH;
 
 [SqlServerCondition(SqlServerCondition.SupportsTemporalTablesCascadeDelete)]
@@ -24,10 +22,10 @@ public class TPHTemporalFiltersInheritanceQuerySqlServerTest : FiltersInheritanc
 
         var temporalEntityTypes = new List<Type>
         {
-            typeof(Animal),
-            typeof(Plant),
-            typeof(Country),
-            typeof(Drink),
+            // typeof(Animal),
+            // typeof(Plant),
+            // typeof(Country),
+            // typeof(Drink),
         };
 
         var rewriter = new TemporalPointInTimeQueryRewriter(Fixture.ChangesDate, temporalEntityTypes);

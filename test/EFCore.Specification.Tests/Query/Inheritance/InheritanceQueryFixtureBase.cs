@@ -1,8 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
-
 namespace Microsoft.EntityFrameworkCore.Query.Inheritance;
 
 public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<InheritanceContext>, IFilteredQueryFixtureBase
@@ -52,8 +50,7 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
         if (EnableFilters)
         {
             var roots = expectedData.Roots.Where(a => a.RootInt != 8).ToList();
-            expectedData = new InheritanceData(
-                roots, expectedData.RootReferencingEntities, expectedData.Animals, expectedData.AnimalQueries, expectedData.Countries, expectedData.Drinks, expectedData.Plants);
+            expectedData = new InheritanceData(roots, expectedData.RootReferencingEntities);
         }
 
         _expectedDataCache[EnableFilters] = expectedData;
@@ -69,28 +66,11 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
         { typeof(Leaf2), object? (Leaf2 e) => e?.UniqueId },
         { typeof(ConcreteIntermediate), object? (ConcreteIntermediate e) => e?.UniqueId },
         { typeof(Leaf3), object? (Leaf3 e) => e?.UniqueId },
-        { typeof(RootReferencingEntity), object? (RootReferencingEntity e) => e?.Id },
 
-        // TODO: Remove
-        { typeof(Animal), object? (Animal e) => e?.Species },
-        { typeof(Bird), object? (Bird e) => e?.Species },
-        { typeof(Kiwi), object? (Kiwi e) => e?.Species },
-        { typeof(Eagle), object? (Eagle e) => e?.Species },
-        { typeof(AnimalQuery), object? (AnimalQuery e) => e?.Name },
-        { typeof(BirdQuery), object? (BirdQuery e) => e?.Name },
-        { typeof(KiwiQuery), object? (KiwiQuery e) => e?.Name },
-        { typeof(EagleQuery), object? (EagleQuery e) => e?.Name },
-        { typeof(Plant), object? (Plant e) => e?.Species },
-        { typeof(Flower), object? (Flower e) => e?.Species },
-        { typeof(Daisy), object? (Daisy e) => e?.Species },
-        { typeof(Rose), object? (Rose e) => e?.Species },
-        { typeof(Country), object? (Country e) => e?.Id },
-        { typeof(Drink), object? (Drink e) => e?.SortIndex },
-        { typeof(Coke), object? (Coke e) => e?.SortIndex },
-        { typeof(Lilt), object? (Lilt e) => e?.SortIndex },
-        { typeof(Tea), object? (Tea e) => e?.SortIndex },
         { typeof(ComplexType), object? (ComplexType e) => e?.UniqueId },
         { typeof(NestedComplexType), object? (NestedComplexType e) => e?.UniqueId },
+
+        { typeof(RootReferencingEntity), object? (RootReferencingEntity e) => e?.Id }
     }.ToDictionary(e => e.Key, e => e.Value);
 
     public IReadOnlyDictionary<Type, object> EntityAsserters { get; }
@@ -267,10 +247,16 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             // modelBuilder.Entity<Root>().Ignore(e => e.Discriminator);
         }
 
+        // modelBuilder.Entity<KiwiQuery>().HasDiscriminator().IsComplete(IsDiscriminatorMappingComplete);
+
         if (EnableFilters)
         {
             modelBuilder.Entity<Root>().HasQueryFilter(a => a.RootInt != 8);
         }
+
+        // modelBuilder.Entity<AnimalQuery>().HasNoKey();
+        // modelBuilder.Entity<BirdQuery>();
+        // modelBuilder.Entity<KiwiQuery>();
 
         if (EnableComplexTypes)
         {
@@ -293,75 +279,6 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
 
             modelBuilder.Entity<Leaf1>().Ignore(c => c.ChildComplexType);
             modelBuilder.Entity<Leaf2>().Ignore(t => t.ChildComplexType);
-        }
-
-
-
-
-        // TODO: REMOVE
-        modelBuilder.Entity<Kiwi>();
-        modelBuilder.Entity<Eagle>();
-        modelBuilder.Entity<Bird>();
-        modelBuilder.Entity<Animal>();
-        modelBuilder.Entity<Rose>();
-        modelBuilder.Entity<Daisy>();
-        modelBuilder.Entity<Flower>();
-        modelBuilder.Entity<Plant>().HasKey(e => e.Species);
-        modelBuilder.Entity<Country>();
-        modelBuilder.Entity<Drink>();
-        modelBuilder.Entity<Tea>();
-        modelBuilder.Entity<Lilt>();
-        modelBuilder.Entity<Coke>();
-
-        if (HasDiscriminator)
-        {
-            modelBuilder.Entity<Bird>().HasDiscriminator<string>("Discriminator").IsComplete(IsDiscriminatorMappingComplete);
-
-            modelBuilder.Entity<Drink>()
-                .HasDiscriminator(e => e.Discriminator)
-                .HasValue<Drink>(DrinkType.Drink)
-                .HasValue<Coke>(DrinkType.Coke)
-                .HasValue<Lilt>(DrinkType.Lilt)
-                .HasValue<Tea>(DrinkType.Tea)
-                .IsComplete(IsDiscriminatorMappingComplete);
-        }
-        else
-        {
-            modelBuilder.Entity<Drink>().Ignore(e => e.Discriminator);
-        }
-
-        modelBuilder.Entity<KiwiQuery>().HasDiscriminator().IsComplete(IsDiscriminatorMappingComplete);
-
-        if (EnableFilters)
-        {
-            modelBuilder.Entity<Animal>().HasQueryFilter(a => a.CountryId == 1);
-        }
-
-        modelBuilder.Entity<AnimalQuery>().HasNoKey();
-        modelBuilder.Entity<BirdQuery>();
-        modelBuilder.Entity<KiwiQuery>();
-
-        if (EnableComplexTypes)
-        {
-            modelBuilder.Entity<Drink>(b =>
-            {
-                b.ComplexProperty(d => d.ParentComplexType);
-                b.ComplexCollection(d => d.ComplexTypeCollection);
-            });
-
-            modelBuilder.Entity<Coke>().ComplexProperty(c => c.ChildComplexType);
-            modelBuilder.Entity<Tea>().ComplexProperty(t => t.ChildComplexType);
-        }
-        else
-        {
-            modelBuilder.Entity<Drink>(b =>
-            {
-                b.Ignore(d => d.ParentComplexType);
-                b.Ignore(d => d.ComplexTypeCollection);
-            });
-
-            modelBuilder.Entity<Coke>().Ignore(c => c.ChildComplexType);
-            modelBuilder.Entity<Tea>().Ignore(t => t.ChildComplexType);
         }
     }
 
