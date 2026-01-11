@@ -11,6 +11,16 @@ public abstract class FilteredQueryTestBase<TFixture>(TFixture fixture) : QueryT
     where TFixture : class, IQueryFixtureBase, new()
 {
     public Task AssertFilteredQuery<TResult>(
+        Func<ISetSource, IQueryable<TResult>> query,
+        Func<TResult, object> elementSorter = null,
+        Action<TResult, TResult> elementAsserter = null,
+        bool assertOrder = false,
+        bool assertEmpty = false,
+        [CallerMemberName] string testMethodName = null)
+        where TResult : class
+        => AssertFilteredQuery(async: true, query, query, elementSorter, elementAsserter, assertOrder, assertEmpty, testMethodName);
+
+    public Task AssertFilteredQuery<TResult>(
         bool async,
         Func<ISetSource, IQueryable<TResult>> query,
         Func<TResult, object> elementSorter = null,
@@ -35,6 +45,15 @@ public abstract class FilteredQueryTestBase<TFixture>(TFixture fixture) : QueryT
             actualQuery, expectedQuery, elementSorter, elementAsserter, assertOrder, assertEmpty, async, queryTrackingBehavior: null,
             testMethodName,
             filteredQuery: true);
+
+    public Task AssertFilteredQueryScalar<TResult>(
+        Func<ISetSource, IQueryable<TResult>> query,
+        Action<TResult, TResult> asserter = null,
+        bool assertOrder = false,
+        bool assertEmpty = false,
+        [CallerMemberName] string testMethodName = null)
+        where TResult : struct
+        => AssertFilteredQueryScalar(async: true, query, query, asserter, assertOrder, assertEmpty, testMethodName);
 
     public Task AssertFilteredQueryScalar<TResult>(
         bool async,

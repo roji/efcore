@@ -18,23 +18,23 @@ public abstract class TPTInheritanceQueryTestBase<TFixture> : InheritanceQueryTe
     }
 
     // Keyless entities does not have TPT
-    public override Task Can_query_all_animal_views(bool async)
+    public override Task Can_query_all_animal_views()
         => Task.CompletedTask;
 
     // TPT does not have discriminator
-    public override Task Discriminator_used_when_projection_over_derived_type(bool async)
+    public override Task Discriminator_used_when_projection_over_derived_type()
         => Task.CompletedTask;
 
     // TPT does not have discriminator
-    public override Task Discriminator_used_when_projection_over_derived_type2(bool async)
+    public override Task Discriminator_used_when_projection_over_derived_type2()
         => Task.CompletedTask;
 
     // TPT does not have discriminator
-    public override Task Discriminator_used_when_projection_over_of_type(bool async)
+    public override Task Discriminator_used_when_projection_over_of_type()
         => Task.CompletedTask;
 
     // TPT does not have discriminator
-    public override Task Discriminator_with_cast_in_shadow_property(bool async)
+    public override Task Discriminator_with_cast_in_shadow_property()
         => Task.CompletedTask;
 
     [ConditionalFact]

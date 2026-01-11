@@ -10,35 +10,35 @@ public abstract class TPCFiltersInheritanceBulkUpdatesTestBase<TFixture>(TFixtur
     where TFixture : TPCInheritanceBulkUpdatesFixture, new()
 {
     // Keyless entities are mapped as TPH only
-    public override Task Delete_where_keyless_entity_mapped_to_sql_query(bool async)
+    public override Task Delete_where_keyless_entity_mapped_to_sql_query()
         => Task.CompletedTask;
 
-    public override Task Delete_where_hierarchy(bool async)
+    public override Task Delete_where_hierarchy()
         => AssertTranslationFailed(
             RelationalStrings.ExecuteOperationOnTPC("ExecuteDelete", "Animal"),
-            () => base.Delete_where_hierarchy(async));
+            base.Delete_where_hierarchy);
 
-    public override Task Delete_where_hierarchy_subquery(bool async)
+    public override Task Delete_where_hierarchy_subquery()
         => AssertTranslationFailed(
             RelationalStrings.ExecuteOperationOnTPC("ExecuteDelete", "Animal"),
-            () => base.Delete_where_hierarchy_subquery(async));
+            base.Delete_where_hierarchy_subquery);
 
-    public override Task Delete_GroupBy_Where_Select_First_3(bool async)
+    public override Task Delete_GroupBy_Where_Select_First_3()
         => AssertTranslationFailed(
             RelationalStrings.ExecuteOperationOnTPC("ExecuteDelete", "Animal"),
-            () => base.Delete_GroupBy_Where_Select_First_3(async));
+            base.Delete_GroupBy_Where_Select_First_3);
 
     // Keyless entities are mapped as TPH only
-    public override Task Update_where_keyless_entity_mapped_to_sql_query(bool async)
+    public override Task Update_where_keyless_entity_mapped_to_sql_query()
         => Task.CompletedTask;
 
-    public override Task Update_base_type(bool async)
+    public override Task Update_base_type()
         => AssertTranslationFailed(
             RelationalStrings.ExecuteOperationOnTPC("ExecuteUpdate", "Animal"),
-            () => base.Update_base_type(async));
+            base.Update_base_type);
 
-    public override Task Update_base_type_with_OfType(bool async)
+    public override Task Update_base_type_with_OfType()
         => AssertTranslationFailed(
             RelationalStrings.ExecuteOperationOnTPC("ExecuteUpdate", "Animal"),
-            () => base.Update_base_type_with_OfType(async));
+            base.Update_base_type_with_OfType);
 }

@@ -41,9 +41,9 @@ public class TPHTemporalFiltersInheritanceQuerySqlServerTest : FiltersInheritanc
     public virtual void Check_all_tests_overridden()
         => TestHelpers.AssertAllMethodsOverridden(GetType());
 
-    public override async Task Can_use_of_type_animal(bool async)
+    public override async Task Can_use_of_type_animal()
     {
-        await base.Can_use_of_type_animal(async);
+        await base.Can_use_of_type_animal();
 
         AssertSql(
             """
@@ -54,9 +54,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Can_use_is_kiwi(bool async)
+    public override async Task Can_use_is_kiwi()
     {
-        await base.Can_use_is_kiwi(async);
+        await base.Can_use_is_kiwi();
 
         AssertSql(
             """
@@ -66,9 +66,9 @@ WHERE [a].[CountryId] = 1 AND [a].[Discriminator] = N'Kiwi'
 """);
     }
 
-    public override async Task Can_use_is_kiwi_with_other_predicate(bool async)
+    public override async Task Can_use_is_kiwi_with_other_predicate()
     {
-        await base.Can_use_is_kiwi_with_other_predicate(async);
+        await base.Can_use_is_kiwi_with_other_predicate();
 
         AssertSql(
             """
@@ -78,9 +78,9 @@ WHERE [a].[CountryId] = 1 AND [a].[Discriminator] = N'Kiwi' AND [a].[CountryId] 
 """);
     }
 
-    public override async Task Can_use_is_kiwi_in_projection(bool async)
+    public override async Task Can_use_is_kiwi_in_projection()
     {
-        await base.Can_use_is_kiwi_in_projection(async);
+        await base.Can_use_is_kiwi_in_projection();
 
         AssertSql(
             """
@@ -93,9 +93,9 @@ WHERE [a].[CountryId] = 1
 """);
     }
 
-    public override async Task Can_use_of_type_bird(bool async)
+    public override async Task Can_use_of_type_bird()
     {
-        await base.Can_use_of_type_bird(async);
+        await base.Can_use_of_type_bird();
 
         AssertSql(
             """
@@ -106,9 +106,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Can_use_of_type_bird_predicate(bool async)
+    public override async Task Can_use_of_type_bird_predicate()
     {
-        await base.Can_use_of_type_bird_predicate(async);
+        await base.Can_use_of_type_bird_predicate();
 
         AssertSql(
             """
@@ -119,9 +119,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Can_use_of_type_bird_with_projection(bool async)
+    public override async Task Can_use_of_type_bird_with_projection()
     {
-        await base.Can_use_of_type_bird_with_projection(async);
+        await base.Can_use_of_type_bird_with_projection();
 
         AssertSql(
             """
@@ -131,9 +131,9 @@ WHERE [a].[CountryId] = 1
 """);
     }
 
-    public override async Task Can_use_of_type_bird_first(bool async)
+    public override async Task Can_use_of_type_bird_first()
     {
-        await base.Can_use_of_type_bird_first(async);
+        await base.Can_use_of_type_bird_first();
 
         AssertSql(
             """
@@ -144,9 +144,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Can_use_of_type_kiwi(bool async)
+    public override async Task Can_use_of_type_kiwi()
     {
-        await base.Can_use_of_type_kiwi(async);
+        await base.Can_use_of_type_kiwi();
 
         AssertSql(
             """
@@ -156,9 +156,9 @@ WHERE [a].[CountryId] = 1 AND [a].[Discriminator] = N'Kiwi'
 """);
     }
 
-    public override async Task Can_use_derived_set(bool async)
+    public override async Task Can_use_derived_set()
     {
-        await base.Can_use_derived_set(async);
+        await base.Can_use_derived_set();
 
         AssertSql(
             """
@@ -168,7 +168,7 @@ WHERE [a].[Discriminator] = N'Eagle' AND [a].[CountryId] = 1
 """);
     }
 
-    public override Task Can_use_IgnoreQueryFilters_and_GetDatabaseValues(bool async)
+    public override Task Can_use_IgnoreQueryFilters_and_GetDatabaseValues()
         => Task.CompletedTask;
 
     private void AssertSql(params string[] expected)

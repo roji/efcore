@@ -6,9 +6,9 @@ namespace Microsoft.EntityFrameworkCore.Query.Inheritance;
 public class TPTInheritanceJsonQuerySqlServerTest(TPTInheritanceJsonQuerySqlServerFixture fixture, ITestOutputHelper testOutputHelper)
     : TPTInheritanceJsonQueryRelationalTestBase<TPTInheritanceJsonQuerySqlServerFixture>(fixture, testOutputHelper)
 {
-    public override async Task Filter_on_complex_type_property_on_derived_type(bool async)
+    public override async Task Filter_on_complex_type_property_on_derived_type()
     {
-        await base.Filter_on_complex_type_property_on_derived_type(async);
+        await base.Filter_on_complex_type_property_on_derived_type();
 
         AssertSql(
             """
@@ -19,9 +19,9 @@ WHERE CAST(JSON_VALUE([c].[ChildComplexType], '$.Int') AS int) = 10
 """);
     }
 
-    public override async Task Filter_on_complex_type_property_on_base_type(bool async)
+    public override async Task Filter_on_complex_type_property_on_base_type()
     {
-        await base.Filter_on_complex_type_property_on_base_type(async);
+        await base.Filter_on_complex_type_property_on_base_type();
 
         AssertSql(
             """
@@ -38,9 +38,9 @@ WHERE CAST(JSON_VALUE([d].[ParentComplexType], '$.Int') AS int) = 8
 """);
     }
 
-    public override async Task Filter_on_nested_complex_type_property_on_derived_type(bool async)
+    public override async Task Filter_on_nested_complex_type_property_on_derived_type()
     {
-        await base.Filter_on_nested_complex_type_property_on_derived_type(async);
+        await base.Filter_on_nested_complex_type_property_on_derived_type();
 
         AssertSql(
             """
@@ -51,9 +51,9 @@ WHERE CAST(JSON_VALUE([c].[ChildComplexType], '$.Nested.NestedInt') AS int) = 58
 """);
     }
 
-    public override async Task Filter_on_nested_complex_type_property_on_base_type(bool async)
+    public override async Task Filter_on_nested_complex_type_property_on_base_type()
     {
-        await base.Filter_on_nested_complex_type_property_on_base_type(async);
+        await base.Filter_on_nested_complex_type_property_on_base_type();
 
         AssertSql(
             """
@@ -70,9 +70,9 @@ WHERE CAST(JSON_VALUE([d].[ParentComplexType], '$.Nested.NestedInt') AS int) = 5
 """);
     }
 
-    public override async Task Project_complex_type_on_derived_type(bool async)
+    public override async Task Project_complex_type_on_derived_type()
     {
-        await base.Project_complex_type_on_derived_type(async);
+        await base.Project_complex_type_on_derived_type();
 
         AssertSql(
             """
@@ -82,9 +82,9 @@ INNER JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
 """);
     }
 
-    public override async Task Project_complex_type_on_base_type(bool async)
+    public override async Task Project_complex_type_on_base_type()
     {
-        await base.Project_complex_type_on_base_type(async);
+        await base.Project_complex_type_on_base_type();
 
         AssertSql(
             """
@@ -93,9 +93,9 @@ FROM [Drinks] AS [d]
 """);
     }
 
-    public override async Task Project_nested_complex_type_on_derived_type(bool async)
+    public override async Task Project_nested_complex_type_on_derived_type()
     {
-        await base.Project_nested_complex_type_on_derived_type(async);
+        await base.Project_nested_complex_type_on_derived_type();
 
         AssertSql(
             """
@@ -105,9 +105,9 @@ INNER JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
 """);
     }
 
-    public override async Task Project_nested_complex_type_on_base_type(bool async)
+    public override async Task Project_nested_complex_type_on_base_type()
     {
-        await base.Project_nested_complex_type_on_base_type(async);
+        await base.Project_nested_complex_type_on_base_type();
 
         AssertSql(
             """
@@ -116,9 +116,9 @@ FROM [Drinks] AS [d]
 """);
     }
 
-    public override async Task Subquery_over_complex_collection(bool async)
+    public override async Task Subquery_over_complex_collection()
     {
-        await base.Subquery_over_complex_collection(async);
+        await base.Subquery_over_complex_collection();
 
         AssertSql(
             """

@@ -6,9 +6,9 @@ namespace Microsoft.EntityFrameworkCore.Query.Inheritance;
 public class TPCInheritanceTableSplittingQuerySqlServerTest(TPCInheritanceQuerySqlServerFixture fixture, ITestOutputHelper testOutputHelper)
     : TPCInheritanceTableSplittingQueryRelationalTestBase<TPCInheritanceQuerySqlServerFixture>(fixture, testOutputHelper)
 {
-    public override async Task Filter_on_complex_type_property_on_derived_type(bool async)
+    public override async Task Filter_on_complex_type_property_on_derived_type()
     {
-        await base.Filter_on_complex_type_property_on_derived_type(async);
+        await base.Filter_on_complex_type_property_on_derived_type();
 
         AssertSql(
             """
@@ -18,9 +18,9 @@ WHERE [c].[ChildComplexType_Int] = 10
 """);
     }
 
-    public override async Task Filter_on_complex_type_property_on_base_type(bool async)
+    public override async Task Filter_on_complex_type_property_on_base_type()
     {
-        await base.Filter_on_complex_type_property_on_base_type(async);
+        await base.Filter_on_complex_type_property_on_base_type();
 
         AssertSql(
             """
@@ -42,9 +42,9 @@ WHERE [u].[ParentComplexType_Int] = 8
 """);
     }
 
-    public override async Task Filter_on_nested_complex_type_property_on_derived_type(bool async)
+    public override async Task Filter_on_nested_complex_type_property_on_derived_type()
     {
-        await base.Filter_on_nested_complex_type_property_on_derived_type(async);
+        await base.Filter_on_nested_complex_type_property_on_derived_type();
 
         AssertSql(
             """
@@ -54,9 +54,9 @@ WHERE [c].[ChildComplexType_Nested_NestedInt] = 58
 """);
     }
 
-    public override async Task Filter_on_nested_complex_type_property_on_base_type(bool async)
+    public override async Task Filter_on_nested_complex_type_property_on_base_type()
     {
-        await base.Filter_on_nested_complex_type_property_on_base_type(async);
+        await base.Filter_on_nested_complex_type_property_on_base_type();
 
         AssertSql(
             """
@@ -78,9 +78,9 @@ WHERE [u].[ParentComplexType_Nested_NestedInt] = 50
 """);
     }
 
-    public override async Task Project_complex_type_on_derived_type(bool async)
+    public override async Task Project_complex_type_on_derived_type()
     {
-        await base.Project_complex_type_on_derived_type(async);
+        await base.Project_complex_type_on_derived_type();
 
         AssertSql(
             """
@@ -89,9 +89,9 @@ FROM [Coke] AS [c]
 """);
     }
 
-    public override async Task Project_complex_type_on_base_type(bool async)
+    public override async Task Project_complex_type_on_base_type()
     {
-        await base.Project_complex_type_on_base_type(async);
+        await base.Project_complex_type_on_base_type();
 
         AssertSql(
             """
@@ -109,9 +109,9 @@ FROM [Tea] AS [t]
 """);
     }
 
-    public override async Task Project_nested_complex_type_on_derived_type(bool async)
+    public override async Task Project_nested_complex_type_on_derived_type()
     {
-        await base.Project_nested_complex_type_on_derived_type(async);
+        await base.Project_nested_complex_type_on_derived_type();
 
         AssertSql(
             """
@@ -120,9 +120,9 @@ FROM [Coke] AS [c]
 """);
     }
 
-    public override async Task Project_nested_complex_type_on_base_type(bool async)
+    public override async Task Project_nested_complex_type_on_base_type()
     {
-        await base.Project_nested_complex_type_on_base_type(async);
+        await base.Project_nested_complex_type_on_base_type();
 
         AssertSql(
             """
@@ -140,9 +140,9 @@ FROM [Tea] AS [t]
 """);
     }
 
-    public override async Task Subquery_over_complex_collection(bool async)
+    public override async Task Subquery_over_complex_collection()
     {
-        await base.Subquery_over_complex_collection(async);
+        await base.Subquery_over_complex_collection();
 
         AssertSql(
             """
