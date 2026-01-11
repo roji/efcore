@@ -17,21 +17,19 @@ public abstract class InheritanceBulkUpdatesRelationalTestBase<TFixture> : Inher
         Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Delete_where_keyless_entity_mapped_to_sql_query(bool async)
+    [ConditionalFact]
+    public virtual Task Delete_where_keyless_entity_mapped_to_sql_query()
         => AssertTranslationFailed(
             RelationalStrings.ExecuteOperationOnKeylessEntityTypeWithUnsupportedOperator("ExecuteDelete", "EagleQuery"),
             () => AssertDelete(
-                async,
                 ss => ss.Set<EagleQuery>().Where(e => e.CountryId > 0),
                 rowsAffectedCount: 1));
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Update_where_keyless_entity_mapped_to_sql_query(bool async)
+    [ConditionalFact]
+    public virtual Task Update_where_keyless_entity_mapped_to_sql_query()
         => AssertTranslationFailed(
             RelationalStrings.ExecuteOperationOnKeylessEntityTypeWithUnsupportedOperator("ExecuteUpdate", "EagleQuery"),
             () => AssertUpdate(
-                async,
                 ss => ss.Set<EagleQuery>().Where(e => e.CountryId > 0),
                 e => e,
                 s => s.SetProperty(e => e.Name, "Eagle"),
@@ -47,4 +45,5 @@ public abstract class InheritanceBulkUpdatesRelationalTestBase<TFixture> : Inher
 
     protected virtual void ClearLog()
         => Fixture.TestSqlLoggerFactory.Clear();
+    internal async Task Delete_where_hierarchy_subquery(object async) => throw new NotImplementedException();
 }

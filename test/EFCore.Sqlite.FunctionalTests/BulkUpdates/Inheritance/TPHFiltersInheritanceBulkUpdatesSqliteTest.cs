@@ -15,9 +15,9 @@ public class TPHFiltersInheritanceBulkUpdatesSqliteTest(
     public virtual void Check_all_tests_overridden()
         => TestHelpers.AssertAllMethodsOverridden(GetType());
 
-    public override async Task Delete_where_hierarchy(bool async)
+    public override async Task Delete_where_hierarchy()
     {
-        await base.Delete_where_hierarchy(async);
+        await base.Delete_where_hierarchy();
 
         AssertSql(
             """
@@ -26,9 +26,9 @@ WHERE "a"."CountryId" = 1 AND "a"."Name" = 'Great spotted kiwi'
 """);
     }
 
-    public override async Task Delete_where_hierarchy_subquery(bool async)
+    public override async Task Delete_where_hierarchy_subquery()
     {
-        await base.Delete_where_hierarchy_subquery(async);
+        await base.Delete_where_hierarchy_subquery();
 
         AssertSql(
             """
@@ -46,9 +46,9 @@ WHERE "a"."Id" IN (
 """);
     }
 
-    public override async Task Delete_where_hierarchy_derived(bool async)
+    public override async Task Delete_where_hierarchy_derived()
     {
-        await base.Delete_where_hierarchy_derived(async);
+        await base.Delete_where_hierarchy_derived();
 
         AssertSql(
             """
@@ -57,9 +57,9 @@ WHERE "a"."Discriminator" = 'Kiwi' AND "a"."CountryId" = 1 AND "a"."Name" = 'Gre
 """);
     }
 
-    public override async Task Delete_where_using_hierarchy(bool async)
+    public override async Task Delete_where_using_hierarchy()
     {
-        await base.Delete_where_using_hierarchy(async);
+        await base.Delete_where_using_hierarchy();
 
         AssertSql(
             """
@@ -71,9 +71,9 @@ WHERE (
 """);
     }
 
-    public override async Task Delete_where_using_hierarchy_derived(bool async)
+    public override async Task Delete_where_using_hierarchy_derived()
     {
-        await base.Delete_where_using_hierarchy_derived(async);
+        await base.Delete_where_using_hierarchy_derived();
 
         AssertSql(
             """
@@ -85,30 +85,30 @@ WHERE (
 """);
     }
 
-    public override async Task Delete_where_keyless_entity_mapped_to_sql_query(bool async)
+    public override async Task Delete_where_keyless_entity_mapped_to_sql_query()
     {
-        await base.Delete_where_keyless_entity_mapped_to_sql_query(async);
+        await base.Delete_where_keyless_entity_mapped_to_sql_query();
 
         AssertSql();
     }
 
-    public override async Task Delete_GroupBy_Where_Select_First(bool async)
+    public override async Task Delete_GroupBy_Where_Select_First()
     {
-        await base.Delete_GroupBy_Where_Select_First(async);
+        await base.Delete_GroupBy_Where_Select_First();
 
         AssertSql();
     }
 
-    public override async Task Delete_GroupBy_Where_Select_First_2(bool async)
+    public override async Task Delete_GroupBy_Where_Select_First_2()
     {
-        await base.Delete_GroupBy_Where_Select_First_2(async);
+        await base.Delete_GroupBy_Where_Select_First_2();
 
         AssertSql();
     }
 
-    public override async Task Delete_GroupBy_Where_Select_First_3(bool async)
+    public override async Task Delete_GroupBy_Where_Select_First_3()
     {
-        await base.Delete_GroupBy_Where_Select_First_3(async);
+        await base.Delete_GroupBy_Where_Select_First_3();
 
         AssertSql(
             """
@@ -127,9 +127,9 @@ WHERE "a"."CountryId" = 1 AND "a"."Id" IN (
 """);
     }
 
-    public override async Task Update_base_type(bool async)
+    public override async Task Update_base_type()
     {
-        await base.Update_base_type(async);
+        await base.Update_base_type();
 
         AssertExecuteUpdateSql(
             """
@@ -141,9 +141,9 @@ WHERE "a"."CountryId" = 1 AND "a"."Name" = 'Great spotted kiwi'
 """);
     }
 
-    public override async Task Update_base_type_with_OfType(bool async)
+    public override async Task Update_base_type_with_OfType()
     {
-        await base.Update_base_type_with_OfType(async);
+        await base.Update_base_type_with_OfType();
 
         AssertExecuteUpdateSql(
             """
@@ -155,16 +155,16 @@ WHERE "a"."CountryId" = 1 AND "a"."Discriminator" = 'Kiwi'
 """);
     }
 
-    public override async Task Update_where_hierarchy_subquery(bool async)
+    public override async Task Update_where_hierarchy_subquery()
     {
-        await base.Update_where_hierarchy_subquery(async);
+        await base.Update_where_hierarchy_subquery();
 
         AssertExecuteUpdateSql();
     }
 
-    public override async Task Update_base_property_on_derived_type(bool async)
+    public override async Task Update_base_property_on_derived_type()
     {
-        await base.Update_base_property_on_derived_type(async);
+        await base.Update_base_property_on_derived_type();
 
         AssertExecuteUpdateSql(
             """
@@ -176,9 +176,9 @@ WHERE "a"."Discriminator" = 'Kiwi' AND "a"."CountryId" = 1
 """);
     }
 
-    public override async Task Update_derived_property_on_derived_type(bool async)
+    public override async Task Update_derived_property_on_derived_type()
     {
-        await base.Update_derived_property_on_derived_type(async);
+        await base.Update_derived_property_on_derived_type();
 
         AssertExecuteUpdateSql(
             """
@@ -190,9 +190,9 @@ WHERE "a"."Discriminator" = 'Kiwi' AND "a"."CountryId" = 1
 """);
     }
 
-    public override async Task Update_where_using_hierarchy(bool async)
+    public override async Task Update_where_using_hierarchy()
     {
-        await base.Update_where_using_hierarchy(async);
+        await base.Update_where_using_hierarchy();
 
         AssertExecuteUpdateSql(
             """
@@ -207,9 +207,9 @@ WHERE (
 """);
     }
 
-    public override async Task Update_base_and_derived_types(bool async)
+    public override async Task Update_base_and_derived_types()
     {
-        await base.Update_base_and_derived_types(async);
+        await base.Update_base_and_derived_types();
 
         AssertExecuteUpdateSql(
             """
@@ -223,9 +223,9 @@ WHERE "a"."Discriminator" = 'Kiwi' AND "a"."CountryId" = 1
 """);
     }
 
-    public override async Task Update_where_using_hierarchy_derived(bool async)
+    public override async Task Update_where_using_hierarchy_derived()
     {
-        await base.Update_where_using_hierarchy_derived(async);
+        await base.Update_where_using_hierarchy_derived();
 
         AssertExecuteUpdateSql(
             """
@@ -240,9 +240,9 @@ WHERE (
 """);
     }
 
-    public override async Task Update_where_keyless_entity_mapped_to_sql_query(bool async)
+    public override async Task Update_where_keyless_entity_mapped_to_sql_query()
     {
-        await base.Update_where_keyless_entity_mapped_to_sql_query(async);
+        await base.Update_where_keyless_entity_mapped_to_sql_query();
 
         AssertExecuteUpdateSql();
     }

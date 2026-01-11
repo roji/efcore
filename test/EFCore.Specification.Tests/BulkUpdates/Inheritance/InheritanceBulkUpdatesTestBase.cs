@@ -10,82 +10,72 @@ namespace Microsoft.EntityFrameworkCore.BulkUpdates.Inheritance;
 public abstract class InheritanceBulkUpdatesTestBase<TFixture>(TFixture fixture) : BulkUpdatesTestBase<TFixture>(fixture)
     where TFixture : InheritanceBulkUpdatesFixtureBase, new()
 {
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Delete_where_hierarchy(bool async)
+    [ConditionalFact]
+    public virtual Task Delete_where_hierarchy()
         => AssertDelete(
-            async,
             ss => ss.Set<Animal>().Where(e => e.Name == "Great spotted kiwi"),
             rowsAffectedCount: 1);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Delete_where_hierarchy_subquery(bool async)
+    [ConditionalFact]
+    public virtual Task Delete_where_hierarchy_subquery()
         => AssertDelete(
-            async,
             ss => ss.Set<Animal>().Where(e => e.Name == "Great spotted kiwi").OrderBy(e => e.Name).Skip(0).Take(3),
             rowsAffectedCount: 1);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Delete_where_hierarchy_derived(bool async)
+    [ConditionalFact]
+    public virtual Task Delete_where_hierarchy_derived()
         => AssertDelete(
-            async,
             ss => ss.Set<Kiwi>().Where(e => e.Name == "Great spotted kiwi"),
             rowsAffectedCount: 1);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Delete_where_using_hierarchy(bool async)
+    [ConditionalFact]
+    public virtual Task Delete_where_using_hierarchy()
         => AssertDelete(
-            async,
             ss => ss.Set<Country>().Where(e => e.Animals.Where(a => a.CountryId > 0).Count() > 0),
             rowsAffectedCount: 2);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Delete_where_using_hierarchy_derived(bool async)
+    [ConditionalFact]
+    public virtual Task Delete_where_using_hierarchy_derived()
         => AssertDelete(
-            async,
             ss => ss.Set<Country>().Where(e => e.Animals.OfType<Kiwi>().Where(a => a.CountryId > 0).Count() > 0),
             rowsAffectedCount: 1);
 
-    [ConditionalTheory(Skip = "Issue#28525"), MemberData(nameof(IsAsyncData))]
-    public virtual Task Delete_GroupBy_Where_Select_First(bool async)
+    [ConditionalFact(Skip = "Issue#28525")]
+    public virtual Task Delete_GroupBy_Where_Select_First()
         => AssertDelete(
-            async,
             ss => ss.Set<Animal>()
                 .GroupBy(e => e.CountryId)
                 .Where(g => g.Count() < 3)
                 .Select(g => g.First()),
             rowsAffectedCount: 2);
 
-    [ConditionalTheory(Skip = "Issue#26753"), MemberData(nameof(IsAsyncData))]
-    public virtual Task Delete_GroupBy_Where_Select_First_2(bool async)
+    [ConditionalFact(Skip = "Issue#26753")]
+    public virtual Task Delete_GroupBy_Where_Select_First_2()
         => AssertDelete(
-            async,
             ss => ss.Set<Animal>().Where(e => e
                 == ss.Set<Animal>().GroupBy(e => e.CountryId)
                     .Where(g => g.Count() < 3).Select(g => g.First()).FirstOrDefault()),
             rowsAffectedCount: 2);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Delete_GroupBy_Where_Select_First_3(bool async)
+    [ConditionalFact]
+    public virtual Task Delete_GroupBy_Where_Select_First_3()
         => AssertDelete(
-            async,
             ss => ss.Set<Animal>().Where(e => ss.Set<Animal>().GroupBy(e => e.CountryId)
                 .Where(g => g.Count() < 3).Select(g => g.First()).Any(i => i == e)),
             rowsAffectedCount: 2);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Update_base_type(bool async)
+    [ConditionalFact]
+    public virtual Task Update_base_type()
         => AssertUpdate(
-            async,
             ss => ss.Set<Animal>().Where(e => e.Name == "Great spotted kiwi"),
             e => e,
             s => s.SetProperty(e => e.Name, "Animal"),
             rowsAffectedCount: 1,
             (b, a) => a.ForEach(e => Assert.Equal("Animal", e.Name)));
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Update_base_type_with_OfType(bool async)
+    [ConditionalFact]
+    public virtual Task Update_base_type_with_OfType()
         => AssertUpdate(
-            async,
             ss => ss.Set<Animal>().OfType<Kiwi>(),
             e => e,
             s => s.SetProperty(e => e.Name, "NewBird"),
@@ -93,36 +83,32 @@ public abstract class InheritanceBulkUpdatesTestBase<TFixture>(TFixture fixture)
             (b, a) => a.ForEach(e => Assert.Equal("NewBird", e.Name)));
 
     [ConditionalTheory(Skip = "InnerJoin"), MemberData(nameof(IsAsyncData))]
-    public virtual Task Update_where_hierarchy_subquery(bool async)
+    public virtual Task Update_where_hierarchy_subquery()
         => AssertUpdate(
-            async,
             ss => ss.Set<Animal>().Where(e => e.Name == "Great spotted kiwi").OrderBy(e => e.Name).Skip(0).Take(3),
             e => e,
             s => s.SetProperty(e => e.Name, "Animal"),
             rowsAffectedCount: 1);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Update_base_property_on_derived_type(bool async)
+    [ConditionalFact]
+    public virtual Task Update_base_property_on_derived_type()
         => AssertUpdate(
-            async,
             ss => ss.Set<Kiwi>(),
             e => e,
             s => s.SetProperty(e => e.Name, "SomeOtherKiwi"),
             rowsAffectedCount: 1);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Update_derived_property_on_derived_type(bool async)
+    [ConditionalFact]
+    public virtual Task Update_derived_property_on_derived_type()
         => AssertUpdate(
-            async,
             ss => ss.Set<Kiwi>(),
             e => e,
             s => s.SetProperty(e => e.FoundOn, Island.North),
             rowsAffectedCount: 1);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Update_base_and_derived_types(bool async)
+    [ConditionalFact]
+    public virtual Task Update_base_and_derived_types()
         => AssertUpdate(
-            async,
             ss => ss.Set<Kiwi>(),
             e => e,
             s => s
@@ -130,37 +116,33 @@ public abstract class InheritanceBulkUpdatesTestBase<TFixture>(TFixture fixture)
                 .SetProperty(e => e.FoundOn, Island.North),
             rowsAffectedCount: 1);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Update_where_using_hierarchy(bool async)
+    [ConditionalFact]
+    public virtual Task Update_where_using_hierarchy()
         => AssertUpdate(
-            async,
             ss => ss.Set<Country>().Where(e => e.Animals.Where(a => a.CountryId > 0).Count() > 0),
             e => e,
             s => s.SetProperty(e => e.Name, "Monovia"),
             rowsAffectedCount: 2);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Update_where_using_hierarchy_derived(bool async)
+    [ConditionalFact]
+    public virtual Task Update_where_using_hierarchy_derived()
         => AssertUpdate(
-            async,
             ss => ss.Set<Country>().Where(e => e.Animals.OfType<Kiwi>().Where(a => a.CountryId > 0).Count() > 0),
             e => e,
             s => s.SetProperty(e => e.Name, "Monovia"),
             rowsAffectedCount: 1);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Update_with_interface_in_property_expression(bool async)
+    [ConditionalFact]
+    public virtual Task Update_with_interface_in_property_expression()
         => AssertUpdate(
-            async,
             ss => ss.Set<Coke>(),
             e => e,
             s => s.SetProperty(c => ((ISugary)c).SugarGrams, 0),
             rowsAffectedCount: 1);
 
-    [ConditionalTheory, MemberData(nameof(IsAsyncData))]
-    public virtual Task Update_with_interface_in_EF_Property_in_property_expression(bool async)
+    [ConditionalFact]
+    public virtual Task Update_with_interface_in_EF_Property_in_property_expression()
         => AssertUpdate(
-            async,
             ss => ss.Set<Coke>(),
             e => e,
             // ReSharper disable once RedundantCast

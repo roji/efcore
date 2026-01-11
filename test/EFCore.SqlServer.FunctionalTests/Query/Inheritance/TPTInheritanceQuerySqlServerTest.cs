@@ -12,9 +12,9 @@ public class TPTInheritanceQuerySqlServerTest(TPTInheritanceQuerySqlServerFixtur
     public virtual void Check_all_tests_overridden()
         => TestHelpers.AssertAllMethodsOverridden(GetType());
 
-    public override async Task Byte_enum_value_constant_used_in_projection(bool async)
+    public override async Task Byte_enum_value_constant_used_in_projection()
     {
-        await base.Byte_enum_value_constant_used_in_projection(async);
+        await base.Byte_enum_value_constant_used_in_projection();
 
         AssertSql(
             """
@@ -28,9 +28,9 @@ INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
 """);
     }
 
-    public override async Task Can_filter_all_animals(bool async)
+    public override async Task Can_filter_all_animals()
     {
-        await base.Can_filter_all_animals(async);
+        await base.Can_filter_all_animals();
 
         AssertSql(
             """
@@ -47,9 +47,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Can_include_animals(bool async)
+    public override async Task Can_include_animals()
     {
-        await base.Can_include_animals(async);
+        await base.Can_include_animals();
 
         AssertSql(
             """
@@ -69,9 +69,9 @@ ORDER BY [c].[Name], [c].[Id]
 """);
     }
 
-    public override async Task Can_include_prey(bool async)
+    public override async Task Can_include_prey()
     {
-        await base.Can_include_prey(async);
+        await base.Can_include_prey();
 
         AssertSql(
             """
@@ -99,9 +99,9 @@ ORDER BY [s].[Id]
     public override Task Can_insert_update_delete()
         => base.Can_insert_update_delete();
 
-    public override async Task Can_query_all_animals(bool async)
+    public override async Task Can_query_all_animals()
     {
-        await base.Can_query_all_animals(async);
+        await base.Can_query_all_animals();
 
         AssertSql(
             """
@@ -117,9 +117,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Can_query_all_birds(bool async)
+    public override async Task Can_query_all_birds()
     {
-        await base.Can_query_all_birds(async);
+        await base.Can_query_all_birds();
 
         AssertSql(
             """
@@ -135,9 +135,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Can_query_all_plants(bool async)
+    public override async Task Can_query_all_plants()
     {
-        await base.Can_query_all_plants(async);
+        await base.Can_query_all_plants();
 
         AssertSql(
             """
@@ -152,9 +152,9 @@ ORDER BY [p].[Species]
 """);
     }
 
-    public override async Task Can_query_all_types_when_shared_column(bool async)
+    public override async Task Can_query_all_types_when_shared_column()
     {
-        await base.Can_query_all_types_when_shared_column(async);
+        await base.Can_query_all_types_when_shared_column();
 
         AssertSql(
             """
@@ -170,9 +170,9 @@ LEFT JOIN [Tea] AS [t] ON [d].[Id] = [t].[Id]
 """);
     }
 
-    public override async Task Can_query_just_kiwis(bool async)
+    public override async Task Can_query_just_kiwis()
     {
-        await base.Can_query_just_kiwis(async);
+        await base.Can_query_just_kiwis();
 
         AssertSql(
             """
@@ -183,9 +183,9 @@ INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
 """);
     }
 
-    public override async Task Can_query_just_roses(bool async)
+    public override async Task Can_query_just_roses()
     {
-        await base.Can_query_just_roses(async);
+        await base.Can_query_just_roses();
 
         AssertSql(
             """
@@ -196,9 +196,9 @@ INNER JOIN [Roses] AS [r] ON [p].[Species] = [r].[Species]
 """);
     }
 
-    public override async Task Can_query_when_shared_column(bool async)
+    public override async Task Can_query_when_shared_column()
     {
-        await base.Can_query_when_shared_column(async);
+        await base.Can_query_when_shared_column();
 
         AssertSql(
             """
@@ -220,9 +220,9 @@ INNER JOIN [Tea] AS [t] ON [d].[Id] = [t].[Id]
 """);
     }
 
-    public override async Task Can_use_backwards_is_animal(bool async)
+    public override async Task Can_use_backwards_is_animal()
     {
-        await base.Can_use_backwards_is_animal(async);
+        await base.Can_use_backwards_is_animal();
 
         AssertSql(
             """
@@ -233,9 +233,9 @@ INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
 """);
     }
 
-    public override async Task Can_use_backwards_of_type_animal(bool async)
+    public override async Task Can_use_backwards_of_type_animal()
     {
-        await base.Can_use_backwards_of_type_animal(async);
+        await base.Can_use_backwards_of_type_animal();
 
         AssertSql(
             """
@@ -246,9 +246,9 @@ INNER JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
 """);
     }
 
-    public override async Task Can_use_is_kiwi(bool async)
+    public override async Task Can_use_is_kiwi()
     {
-        await base.Can_use_is_kiwi(async);
+        await base.Can_use_is_kiwi();
 
         AssertSql(
             """
@@ -264,9 +264,9 @@ WHERE [k].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task Can_use_is_kiwi_with_cast(bool async)
+    public override async Task Can_use_is_kiwi_with_cast()
     {
-        await base.Can_use_is_kiwi_with_cast(async);
+        await base.Can_use_is_kiwi_with_cast();
 
         AssertSql(
             """
@@ -279,9 +279,9 @@ LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
 """);
     }
 
-    public override async Task Can_use_is_kiwi_in_projection(bool async)
+    public override async Task Can_use_is_kiwi_in_projection()
     {
-        await base.Can_use_is_kiwi_in_projection(async);
+        await base.Can_use_is_kiwi_in_projection();
 
         AssertSql(
             """
@@ -294,9 +294,9 @@ LEFT JOIN [Kiwi] AS [k] ON [a].[Id] = [k].[Id]
 """);
     }
 
-    public override async Task Can_use_is_kiwi_with_other_predicate(bool async)
+    public override async Task Can_use_is_kiwi_with_other_predicate()
     {
-        await base.Can_use_is_kiwi_with_other_predicate(async);
+        await base.Can_use_is_kiwi_with_other_predicate();
 
         AssertSql(
             """
@@ -312,9 +312,9 @@ WHERE [k].[Id] IS NOT NULL AND [a].[CountryId] = 1
 """);
     }
 
-    public override async Task Can_use_of_type_animal(bool async)
+    public override async Task Can_use_of_type_animal()
     {
-        await base.Can_use_of_type_animal(async);
+        await base.Can_use_of_type_animal();
 
         AssertSql(
             """
@@ -330,9 +330,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Can_use_of_type_bird(bool async)
+    public override async Task Can_use_of_type_bird()
     {
-        await base.Can_use_of_type_bird(async);
+        await base.Can_use_of_type_bird();
 
         AssertSql(
             """
@@ -349,9 +349,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Can_use_of_type_bird_first(bool async)
+    public override async Task Can_use_of_type_bird_first()
     {
-        await base.Can_use_of_type_bird_first(async);
+        await base.Can_use_of_type_bird_first();
 
         AssertSql(
             """
@@ -368,9 +368,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Can_use_of_type_bird_predicate(bool async)
+    public override async Task Can_use_of_type_bird_predicate()
     {
-        await base.Can_use_of_type_bird_predicate(async);
+        await base.Can_use_of_type_bird_predicate();
 
         AssertSql(
             """
@@ -387,9 +387,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Can_use_of_type_bird_with_projection(bool async)
+    public override async Task Can_use_of_type_bird_with_projection()
     {
-        await base.Can_use_of_type_bird_with_projection(async);
+        await base.Can_use_of_type_bird_with_projection();
 
         AssertSql(
             """
@@ -402,9 +402,9 @@ WHERE [k].[Id] IS NOT NULL OR [e].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task Can_use_of_type_kiwi(bool async)
+    public override async Task Can_use_of_type_kiwi()
     {
-        await base.Can_use_of_type_kiwi(async);
+        await base.Can_use_of_type_kiwi();
 
         AssertSql(
             """
@@ -418,9 +418,9 @@ WHERE [k].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task Can_use_of_type_kiwi_where_north_on_derived_property(bool async)
+    public override async Task Can_use_of_type_kiwi_where_north_on_derived_property()
     {
-        await base.Can_use_of_type_kiwi_where_north_on_derived_property(async);
+        await base.Can_use_of_type_kiwi_where_north_on_derived_property();
 
         AssertSql(
             """
@@ -434,9 +434,9 @@ WHERE [k].[Id] IS NOT NULL AND [k].[FoundOn] = CAST(0 AS tinyint)
 """);
     }
 
-    public override async Task Can_use_of_type_kiwi_where_south_on_derived_property(bool async)
+    public override async Task Can_use_of_type_kiwi_where_south_on_derived_property()
     {
-        await base.Can_use_of_type_kiwi_where_south_on_derived_property(async);
+        await base.Can_use_of_type_kiwi_where_south_on_derived_property();
 
         AssertSql(
             """
@@ -450,9 +450,9 @@ WHERE [k].[Id] IS NOT NULL AND [k].[FoundOn] = CAST(1 AS tinyint)
 """);
     }
 
-    public override async Task Can_use_of_type_rose(bool async)
+    public override async Task Can_use_of_type_rose()
     {
-        await base.Can_use_of_type_rose(async);
+        await base.Can_use_of_type_rose();
 
         AssertSql(
             """
@@ -479,16 +479,16 @@ ORDER BY [a].[Name]
 """);
     }
 
-    public override async Task OfType_Union_OfType(bool async)
+    public override async Task OfType_Union_OfType()
     {
-        await base.OfType_Union_OfType(async);
+        await base.OfType_Union_OfType();
 
         AssertSql(" ");
     }
 
-    public override async Task OfType_Union_subquery(bool async)
+    public override async Task OfType_Union_subquery()
     {
-        await base.OfType_Union_subquery(async);
+        await base.OfType_Union_subquery();
 
         AssertSql(" ");
     }
@@ -518,9 +518,9 @@ VALUES (@p0, @p1, @p2);
 """);
     }
 
-    public override async Task Subquery_OfType(bool async)
+    public override async Task Subquery_OfType()
     {
-        await base.Subquery_OfType(async);
+        await base.Subquery_OfType();
 
         AssertSql(
             """
@@ -542,16 +542,16 @@ WHERE [s].[Discriminator] = N'Kiwi'
 """);
     }
 
-    public override async Task Union_entity_equality(bool async)
+    public override async Task Union_entity_equality()
     {
-        await base.Union_entity_equality(async);
+        await base.Union_entity_equality();
 
         AssertSql(" ");
     }
 
-    public override async Task Union_siblings_with_duplicate_property_in_subquery(bool async)
+    public override async Task Union_siblings_with_duplicate_property_in_subquery()
     {
-        await base.Union_siblings_with_duplicate_property_in_subquery(async);
+        await base.Union_siblings_with_duplicate_property_in_subquery();
 
         AssertSql(
             """
@@ -581,9 +581,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Is_operator_on_result_of_FirstOrDefault(bool async)
+    public override async Task Is_operator_on_result_of_FirstOrDefault()
     {
-        await base.Is_operator_on_result_of_FirstOrDefault(async);
+        await base.Is_operator_on_result_of_FirstOrDefault();
 
         AssertSql(
             """
@@ -608,9 +608,9 @@ ORDER BY [a].[Species]
 """);
     }
 
-    public override async Task Selecting_only_base_properties_on_base_type(bool async)
+    public override async Task Selecting_only_base_properties_on_base_type()
     {
-        await base.Selecting_only_base_properties_on_base_type(async);
+        await base.Selecting_only_base_properties_on_base_type();
 
         AssertSql(
             """
@@ -619,9 +619,9 @@ FROM [Animals] AS [a]
 """);
     }
 
-    public override async Task Selecting_only_base_properties_on_derived_type(bool async)
+    public override async Task Selecting_only_base_properties_on_derived_type()
     {
-        await base.Selecting_only_base_properties_on_derived_type(async);
+        await base.Selecting_only_base_properties_on_derived_type();
 
         AssertSql(
             """
@@ -631,37 +631,37 @@ INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
 """);
     }
 
-    public override async Task Can_query_all_animal_views(bool async)
+    public override async Task Can_query_all_animal_views()
     {
-        await base.Can_query_all_animal_views(async);
+        await base.Can_query_all_animal_views();
 
         AssertSql();
     }
 
-    public override async Task Discriminator_used_when_projection_over_derived_type(bool async)
+    public override async Task Discriminator_used_when_projection_over_derived_type()
     {
-        await base.Discriminator_used_when_projection_over_derived_type(async);
+        await base.Discriminator_used_when_projection_over_derived_type();
 
         AssertSql();
     }
 
-    public override async Task Discriminator_used_when_projection_over_derived_type2(bool async)
+    public override async Task Discriminator_used_when_projection_over_derived_type2()
     {
-        await base.Discriminator_used_when_projection_over_derived_type2(async);
+        await base.Discriminator_used_when_projection_over_derived_type2();
 
         AssertSql();
     }
 
-    public override async Task Discriminator_used_when_projection_over_of_type(bool async)
+    public override async Task Discriminator_used_when_projection_over_of_type()
     {
-        await base.Discriminator_used_when_projection_over_of_type(async);
+        await base.Discriminator_used_when_projection_over_of_type();
 
         AssertSql();
     }
 
-    public override async Task Discriminator_with_cast_in_shadow_property(bool async)
+    public override async Task Discriminator_with_cast_in_shadow_property()
     {
-        await base.Discriminator_with_cast_in_shadow_property(async);
+        await base.Discriminator_with_cast_in_shadow_property();
 
         AssertSql();
     }
@@ -673,9 +673,9 @@ INNER JOIN [Birds] AS [b] ON [a].[Id] = [b].[Id]
         AssertSql();
     }
 
-    public override async Task Using_is_operator_on_multiple_type_with_no_result(bool async)
+    public override async Task Using_is_operator_on_multiple_type_with_no_result()
     {
-        await base.Using_is_operator_on_multiple_type_with_no_result(async);
+        await base.Using_is_operator_on_multiple_type_with_no_result();
 
         AssertSql(
             """
@@ -691,9 +691,9 @@ WHERE [k].[Id] IS NOT NULL AND [e].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task Using_is_operator_with_of_type_on_multiple_type_with_no_result(bool async)
+    public override async Task Using_is_operator_with_of_type_on_multiple_type_with_no_result()
     {
-        await base.Using_is_operator_with_of_type_on_multiple_type_with_no_result(async);
+        await base.Using_is_operator_with_of_type_on_multiple_type_with_no_result();
 
         AssertSql(
             """
@@ -708,16 +708,16 @@ WHERE [k].[Id] IS NOT NULL AND [e].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task Using_OfType_on_multiple_type_with_no_result(bool async)
+    public override async Task Using_OfType_on_multiple_type_with_no_result()
     {
-        await base.Using_OfType_on_multiple_type_with_no_result(async);
+        await base.Using_OfType_on_multiple_type_with_no_result();
 
         AssertSql();
     }
 
-    public override async Task GetType_in_hierarchy_in_abstract_base_type(bool async)
+    public override async Task GetType_in_hierarchy_in_abstract_base_type()
     {
-        await base.GetType_in_hierarchy_in_abstract_base_type(async);
+        await base.GetType_in_hierarchy_in_abstract_base_type();
 
         AssertSql(
             """
@@ -733,9 +733,9 @@ WHERE 0 = 1
 """);
     }
 
-    public override async Task GetType_in_hierarchy_in_intermediate_type(bool async)
+    public override async Task GetType_in_hierarchy_in_intermediate_type()
     {
-        await base.GetType_in_hierarchy_in_intermediate_type(async);
+        await base.GetType_in_hierarchy_in_intermediate_type();
 
         AssertSql(
             """
@@ -751,9 +751,9 @@ WHERE 0 = 1
 """);
     }
 
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling(bool async)
+    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling()
     {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling(async);
+        await base.GetType_in_hierarchy_in_leaf_type_with_sibling();
 
         AssertSql(
             """
@@ -769,9 +769,9 @@ WHERE [e].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2(bool async)
+    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2()
     {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2(async);
+        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2();
 
         AssertSql(
             """
@@ -787,9 +787,9 @@ WHERE [k].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2_reverse(bool async)
+    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2_reverse()
     {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2_reverse(async);
+        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2_reverse();
 
         AssertSql(
             """
@@ -805,9 +805,9 @@ WHERE [k].[Id] IS NOT NULL
 """);
     }
 
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2_not_equal(bool async)
+    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2_not_equal()
     {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2_not_equal(async);
+        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2_not_equal();
 
         AssertSql(
             """
@@ -823,9 +823,9 @@ WHERE [k].[Id] IS NULL
 """);
     }
 
-    public override async Task Primitive_collection_on_subtype(bool async)
+    public override async Task Primitive_collection_on_subtype()
     {
-        await base.Primitive_collection_on_subtype(async);
+        await base.Primitive_collection_on_subtype();
 
         AssertSql(
             """

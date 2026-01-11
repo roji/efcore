@@ -324,6 +324,11 @@ public abstract class QueryTestBase<TFixture> : IClassFixture<TFixture>
             actualQuery, expectedQuery, actualPredicate, expectedPredicate, asserter, async));
 
     protected Task AssertSingle<TResult>(
+        Func<ISetSource, IQueryable<TResult>> query,
+        Action<TResult, TResult>? asserter = null)
+        => AssertSingle(async: true, query, query, asserter);
+
+    protected Task AssertSingle<TResult>(
         bool async,
         Func<ISetSource, IQueryable<TResult>> query,
         Action<TResult, TResult>? asserter = null)
