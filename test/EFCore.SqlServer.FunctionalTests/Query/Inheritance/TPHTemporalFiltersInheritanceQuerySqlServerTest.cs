@@ -5,8 +5,6 @@ using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
 
 namespace Microsoft.EntityFrameworkCore.Query.Inheritance;
 
-#nullable disable
-
 [SqlServerCondition(SqlServerCondition.SupportsTemporalTablesCascadeDelete)]
 public class TPHTemporalFiltersInheritanceQuerySqlServerTest : FiltersInheritanceQueryTestBase<
     TPHTemporalFiltersInheritanceQuerySqlServerFixture>

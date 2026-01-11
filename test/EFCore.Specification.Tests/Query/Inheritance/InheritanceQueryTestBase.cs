@@ -310,7 +310,7 @@ public abstract class InheritanceQueryTestBase<TFixture>(TFixture fixture) : Que
     public virtual async Task Member_access_on_intermediate_type_works()
     {
         using var context = CreateContext();
-        var query = context.Set<Kiwi>().Select(k => new Kiwi { Name = k.Name });
+        var query = context.Set<Kiwi>().Select(k => new Kiwi { Name = k.Name, Species = k.Species });
 
         var parameter = Expression.Parameter(query.ElementType, "p");
         var property = Expression.Property(parameter, "Name");
