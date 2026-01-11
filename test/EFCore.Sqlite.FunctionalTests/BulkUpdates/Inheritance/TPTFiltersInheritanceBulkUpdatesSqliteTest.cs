@@ -5,8 +5,6 @@ using Microsoft.Data.Sqlite;
 
 namespace Microsoft.EntityFrameworkCore.BulkUpdates.Inheritance;
 
-#nullable disable
-
 public class TPTFiltersInheritanceBulkUpdatesSqliteTest(
     TPTFiltersInheritanceBulkUpdatesSqliteFixture fixture,
     ITestOutputHelper testOutputHelper)

@@ -5,8 +5,6 @@ using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
 
 namespace Microsoft.EntityFrameworkCore.Query.Inheritance;
 
-#nullable disable
-
 public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<InheritanceContext>, IFilteredQueryFixtureBase
 {
     private readonly Dictionary<bool, ISetSource> _expectedDataCache = new();
@@ -64,28 +62,28 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
         return expectedData;
     }
 
-    public IReadOnlyDictionary<Type, object> EntitySorters { get; } = new Dictionary<Type, Func<object, object>>
+    public IReadOnlyDictionary<Type, object> EntitySorters { get; } = new Dictionary<Type, object>
     {
-        { typeof(Animal), e => ((Animal)e)?.Species },
-        { typeof(Bird), e => ((Bird)e)?.Species },
-        { typeof(Kiwi), e => ((Kiwi)e)?.Species },
-        { typeof(Eagle), e => ((Eagle)e)?.Species },
-        { typeof(AnimalQuery), e => ((AnimalQuery)e)?.Name },
-        { typeof(BirdQuery), e => ((BirdQuery)e)?.Name },
-        { typeof(KiwiQuery), e => ((KiwiQuery)e)?.Name },
-        { typeof(EagleQuery), e => ((EagleQuery)e)?.Name },
-        { typeof(Plant), e => ((Plant)e)?.Species },
-        { typeof(Flower), e => ((Flower)e)?.Species },
-        { typeof(Daisy), e => ((Daisy)e)?.Species },
-        { typeof(Rose), e => ((Rose)e)?.Species },
-        { typeof(Country), e => ((Country)e)?.Id },
-        { typeof(Drink), e => ((Drink)e)?.SortIndex },
-        { typeof(Coke), e => ((Coke)e)?.SortIndex },
-        { typeof(Lilt), e => ((Lilt)e)?.SortIndex },
-        { typeof(Tea), e => ((Tea)e)?.SortIndex },
-        { typeof(ComplexType), e => ((ComplexType)e)?.UniqueInt },
-        { typeof(NestedComplexType), e => ((NestedComplexType)e)?.UniqueInt },
-    }.ToDictionary(e => e.Key, e => (object)e.Value);
+        { typeof(Animal), object? (Animal e) => e?.Species },
+        { typeof(Bird), object? (Bird e) => e?.Species },
+        { typeof(Kiwi), object? (Kiwi e) => e?.Species },
+        { typeof(Eagle), object? (Eagle e) => e?.Species },
+        { typeof(AnimalQuery), object? (AnimalQuery e) => e?.Name },
+        { typeof(BirdQuery), object? (BirdQuery e) => e?.Name },
+        { typeof(KiwiQuery), object? (KiwiQuery e) => e?.Name },
+        { typeof(EagleQuery), object? (EagleQuery e) => e?.Name },
+        { typeof(Plant), object? (Plant e) => e?.Species },
+        { typeof(Flower), object? (Flower e) => e?.Species },
+        { typeof(Daisy), object? (Daisy e) => e?.Species },
+        { typeof(Rose), object? (Rose e) => e?.Species },
+        { typeof(Country), object? (Country e) => e?.Id },
+        { typeof(Drink), object? (Drink e) => e?.SortIndex },
+        { typeof(Coke), object? (Coke e) => e?.SortIndex },
+        { typeof(Lilt), object? (Lilt e) => e?.SortIndex },
+        { typeof(Tea), object? (Tea e) => e?.SortIndex },
+        { typeof(ComplexType), object? (ComplexType e) => e?.UniqueInt },
+        { typeof(NestedComplexType), object? (NestedComplexType e) => e?.UniqueInt },
+    }.ToDictionary(e => e.Key, e => e.Value);
 
     public IReadOnlyDictionary<Type, object> EntityAsserters { get; }
 
@@ -95,12 +93,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Animal), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Animal)e;
-                        var aa = (Animal)a;
+                        var ee = (Animal)e!;
+                        var aa = (Animal)a!;
 
                         Assert.Equal(ee.Species, aa.Species);
                         Assert.Equal(ee.Name, aa.Name);
@@ -111,12 +109,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Bird), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Bird)e;
-                        var aa = (Bird)a;
+                        var ee = (Bird)e!;
+                        var aa = (Bird)a!;
 
                         Assert.Equal(ee.Species, aa.Species);
                         Assert.Equal(ee.Name, aa.Name);
@@ -128,12 +126,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Eagle), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Eagle)e;
-                        var aa = (Eagle)a;
+                        var ee = (Eagle)e!;
+                        var aa = (Eagle)a!;
 
                         Assert.Equal(ee.Species, aa.Species);
                         Assert.Equal(ee.Name, aa.Name);
@@ -146,12 +144,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Kiwi), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Kiwi)e;
-                        var aa = (Kiwi)a;
+                        var ee = (Kiwi)e!;
+                        var aa = (Kiwi)a!;
 
                         Assert.Equal(ee.Species, aa.Species);
                         Assert.Equal(ee.Name, aa.Name);
@@ -164,12 +162,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(AnimalQuery), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (AnimalQuery)e;
-                        var aa = (AnimalQuery)a;
+                        var ee = (AnimalQuery)e!;
+                        var aa = (AnimalQuery)a!;
 
                         Assert.Equal(ee.Name, aa.Name);
                         Assert.Equal(ee.CountryId, aa.CountryId);
@@ -179,12 +177,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(BirdQuery), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (BirdQuery)e;
-                        var aa = (BirdQuery)a;
+                        var ee = (BirdQuery)e!;
+                        var aa = (BirdQuery)a!;
 
                         Assert.Equal(ee.Name, aa.Name);
                         Assert.Equal(ee.CountryId, aa.CountryId);
@@ -196,12 +194,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(EagleQuery), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (EagleQuery)e;
-                        var aa = (EagleQuery)a;
+                        var ee = (EagleQuery)e!;
+                        var aa = (EagleQuery)a!;
 
                         Assert.Equal(ee.Name, aa.Name);
                         Assert.Equal(ee.CountryId, aa.CountryId);
@@ -214,12 +212,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(KiwiQuery), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (KiwiQuery)e;
-                        var aa = (KiwiQuery)a;
+                        var ee = (KiwiQuery)e!;
+                        var aa = (KiwiQuery)a!;
 
                         Assert.Equal(ee.Name, aa.Name);
                         Assert.Equal(ee.CountryId, aa.CountryId);
@@ -232,12 +230,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Plant), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Plant)e;
-                        var aa = (Plant)a;
+                        var ee = (Plant)e!;
+                        var aa = (Plant)a!;
 
                         Assert.Equal(ee.Species, aa.Species);
                         Assert.Equal(ee.Name, aa.Name);
@@ -248,12 +246,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Flower), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Flower)e;
-                        var aa = (Flower)a;
+                        var ee = (Flower)e!;
+                        var aa = (Flower)a!;
 
                         Assert.Equal(ee.Species, aa.Species);
                         Assert.Equal(ee.Name, aa.Name);
@@ -264,12 +262,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Daisy), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Daisy)e;
-                        var aa = (Daisy)a;
+                        var ee = (Daisy)e!;
+                        var aa = (Daisy)a!;
 
                         Assert.Equal(ee.Species, aa.Species);
                         Assert.Equal(ee.Name, aa.Name);
@@ -280,12 +278,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Rose), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Rose)e;
-                        var aa = (Rose)a;
+                        var ee = (Rose)e!;
+                        var aa = (Rose)a!;
 
                         Assert.Equal(ee.Species, aa.Species);
                         Assert.Equal(ee.Name, aa.Name);
@@ -297,12 +295,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Country), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Country)e;
-                        var aa = (Country)a;
+                        var ee = (Country)e!;
+                        var aa = (Country)a!;
 
                         Assert.Equal(ee.Id, aa.Id);
                         Assert.Equal(ee.Name, aa.Name);
@@ -312,12 +310,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Drink), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Drink)e;
-                        var aa = (Drink)a;
+                        var ee = (Drink)e!;
+                        var aa = (Drink)a!;
 
                         Assert.Equal(ee.SortIndex, aa.SortIndex);
 
@@ -329,12 +327,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Coke), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Coke)e;
-                        var aa = (Coke)a;
+                        var ee = (Coke)e!;
+                        var aa = (Coke)a!;
 
                         Assert.Equal(ee.SortIndex, aa.SortIndex);
                         Assert.Equal(ee.SugarGrams, aa.SugarGrams);
@@ -351,12 +349,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Lilt), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Lilt)e;
-                        var aa = (Lilt)a;
+                        var ee = (Lilt)e!;
+                        var aa = (Lilt)a!;
 
                         Assert.Equal(ee.SortIndex, aa.SortIndex);
                         Assert.Equal(ee.SugarGrams, aa.SugarGrams);
@@ -370,12 +368,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(Tea), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (Tea)e;
-                        var aa = (Tea)a;
+                        var ee = (Tea)e!;
+                        var aa = (Tea)a!;
 
                         Assert.Equal(ee.SortIndex, aa.SortIndex);
                         Assert.Equal(ee.HasMilk, aa.HasMilk);
@@ -390,12 +388,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(ComplexType), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (ComplexType)e;
-                        var aa = (ComplexType)a;
+                        var ee = (ComplexType)e!;
+                        var aa = (ComplexType)a!;
 
                         AssertComplexType(ee, aa);
                     }
@@ -404,12 +402,12 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             {
                 typeof(NestedComplexType), (e, a) =>
                 {
-                    Assert.Equal(e == null, a == null);
+                    Assert.Equal(e is null, a is null);
 
-                    if (a != null)
+                    if (a is not null)
                     {
-                        var ee = (NestedComplexType)e;
-                        var aa = (NestedComplexType)a;
+                        var ee = (NestedComplexType)e!;
+                        var aa = (NestedComplexType)a!;
 
                         AssertNestedComplexType(ee, aa);
                     }
@@ -417,7 +415,7 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
             },
         }.ToDictionary(e => e.Key, e => (object)e.Value);
 
-    private void AssertComplexType(ComplexType e, ComplexType a)
+    private void AssertComplexType(ComplexType? e, ComplexType? a)
     {
         if (!EnableComplexTypes)
         {
@@ -428,7 +426,7 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
 
         if (e is not null)
         {
-            Assert.Equal(e.UniqueInt, a.UniqueInt);
+            Assert.Equal(e.UniqueInt, a!.UniqueInt);
             Assert.Equal(e.Int, a.Int);
 
             Assert.Equal(e.Nested is null, a.Nested is null);
@@ -439,7 +437,7 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
         }
     }
 
-    private void AssertNestedComplexType(NestedComplexType e, NestedComplexType a)
+    private void AssertNestedComplexType(NestedComplexType? e, NestedComplexType? a)
     {
         if (!EnableComplexTypes)
         {
@@ -450,7 +448,7 @@ public abstract class InheritanceQueryFixtureBase : SharedStoreFixtureBase<Inher
 
         if (e is not null)
         {
-            Assert.Equal(e.UniqueInt, a.UniqueInt);
+            Assert.Equal(e.UniqueInt, a!.UniqueInt);
             Assert.Equal(e.NestedInt, a.NestedInt);
         }
     }
