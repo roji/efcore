@@ -8,8 +8,8 @@ namespace Microsoft.EntityFrameworkCore.Query.Translations;
 
 // This test suite covers translations of JSON functions on EF.Functions (e.g. EF.Functions.JsonExists).
 // It does not cover general, built-in JSON support via complex type mapping, etc.
-public abstract class JsonTranslationsRelatinalTestBase<TFixture>(TFixture fixture) : QueryTestBase<TFixture>(fixture)
-    where TFixture : JsonTranslationsRelatinalTestBase<TFixture>.JsonTranslationsQueryFixtureBase, new()
+public abstract class JsonTranslationsRelationalTestBase<TFixture>(TFixture fixture) : QueryTestBase<TFixture>(fixture)
+    where TFixture : JsonTranslationsRelationalTestBase<TFixture>.JsonTranslationsQueryFixtureBase, new()
 {
     [ConditionalFact]
     public virtual Task JsonExists_on_scalar_string_column()

@@ -271,9 +271,9 @@ public class SqlServerSqlTranslatingExpressionVisitor(
                             "JSON_PATH_EXISTS",
                             [translatedJson, translatedPath],
                             nullable: true,
-                            // Note that json_type() does propagate nullability; however, our query pipeline assumes that if arguments
-                            // propagate nullability, that's the *only* reason for the function to return null; this means that if the
-                            // arguments are non-nullable, the IS NOT NULL wrapping check can be optimized away.
+                            // Note that JSON_PATH_EXISTS() does propagate nullability; however, our query pipeline assumes that if
+                            // arguments propagate nullability, that's the *only* reason for the function to return null; this means that
+                            // if the arguments are non-nullable, the IS NOT NULL wrapping check can be optimized away.
                             argumentsPropagateNullability: [false, false],
                             typeof(int)),
                         _sqlExpressionFactory.Constant(1));

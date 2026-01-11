@@ -3,7 +3,7 @@
 
 namespace Microsoft.EntityFrameworkCore.Query.Translations;
 
-public class JsonTranslationsSqlServerTest : JsonTranslationsRelatinalTestBase<JsonTranslationsSqlServerTest.JsonTranslationsQuerySqlServerFixture>
+public class JsonTranslationsSqlServerTest : JsonTranslationsRelationalTestBase<JsonTranslationsSqlServerTest.JsonTranslationsQuerySqlServerFixture>
 {
     public JsonTranslationsSqlServerTest(JsonTranslationsQuerySqlServerFixture fixture, ITestOutputHelper testOutputHelper)
         : base(fixture)
