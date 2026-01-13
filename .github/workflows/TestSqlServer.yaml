@@ -18,9 +18,14 @@ jobs:
   build:
     runs-on: ubuntu-24.04
 
+    strategy:
+      fail-fast: false
+      matrix:
+        sqlserver_version: [2025, 2022, 2019, 2017]
+
     services:
       mssql:
-        image: mcr.microsoft.com/mssql/server:2025-latest
+        image: mcr.microsoft.com/mssql/server:${{ matrix.sqlserver_version }}-latest
         env:
           ACCEPT_EULA: "Y"
           SA_PASSWORD: "${{ secrets.MSSQL_SA_PASSWORD }}"
