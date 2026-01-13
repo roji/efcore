@@ -1,0 +1,55 @@
+name: Test SQL Server
+
+on:
+  push:
+    branches:
+      - main
+      - feature/*
+      - release/*
+  pull_request:
+    branches:
+      - main
+      - feature/*
+      - release/*
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2025-latest
+        env:
+          ACCEPT_EULA: "Y"
+          SA_PASSWORD: "${{ secrets.MSSQL_SA_PASSWORD }}"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $SA_PASSWORD -Q 'SELECT 1' -C"
+          --health-start-period=20s
+          --health-interval=2s
+          --health-retries=30
+          --health-timeout=5s
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # TODO: Try removing
+      - name: Restore
+        run: ./restore.sh
+
+      - name: Export SQL Server connection string as an environment variable for the tests
+        run: echo "Test__SqlServer__DefaultConnection=Server=localhost;Database=master;User=SA;Password=${{ secrets.MSSQL_SA_PASSWORD }};Connect Timeout=60;ConnectRetryCount=0;Trust Server Certificate=true" >> "$GITHUB_ENV"
+
+      - name: Test on SQL Server
+        run: dotnet test test/EFCore.SqlServer.FunctionalTests
+
+      - name: Publish Test Results
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: test-results
+          path: artifacts/log/Debug/*
