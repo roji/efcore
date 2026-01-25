@@ -14,30 +14,30 @@ public class TPTInheritanceBulkUpdatesSqliteTest(
     public virtual void Check_all_tests_overridden()
         => TestHelpers.AssertAllMethodsOverridden(GetType());
 
-    public override async Task Delete_where_hierarchy()
+    public override async Task Delete_on_root()
     {
-        await base.Delete_where_hierarchy();
+        await base.Delete_on_root();
 
         AssertSql();
     }
 
-    public override async Task Delete_where_hierarchy_derived()
+    public override async Task Delete_on_root_with_subquery()
     {
-        await base.Delete_where_hierarchy_derived();
+        await base.Delete_on_root_with_subquery();
 
         AssertSql();
     }
 
-    public override async Task Delete_where_using_hierarchy()
+    public override async Task Delete_on_leaf()
     {
-        await base.Delete_where_using_hierarchy();
+        await base.Delete_on_leaf();
 
         AssertSql();
     }
 
-    public override async Task Delete_where_using_hierarchy_derived()
+    public override async Task Delete_entity_type_referencing_hierarchy()
     {
-        await base.Delete_where_using_hierarchy_derived();
+        await base.Delete_entity_type_referencing_hierarchy();
 
         AssertSql();
     }
@@ -63,146 +63,83 @@ public class TPTInheritanceBulkUpdatesSqliteTest(
         AssertSql();
     }
 
-    public override async Task Delete_where_keyless_entity_mapped_to_sql_query()
+    public override async Task Update_root()
     {
-        await base.Delete_where_keyless_entity_mapped_to_sql_query();
-
-        AssertSql();
-    }
-
-    public override async Task Delete_where_hierarchy_subquery()
-    {
-        await base.Delete_where_hierarchy_subquery();
-
-        AssertSql();
-    }
-
-    public override async Task Update_base_type()
-    {
-        await base.Update_base_type();
+        await base.Update_root();
 
         AssertExecuteUpdateSql(
             """
-@p='Animal' (Size = 6)
+@p='999'
 
-UPDATE "Animals" AS "a0"
-SET "Name" = @p
+UPDATE "Roots" AS "r0"
+SET "RootInt" = @p
 FROM (
-    SELECT "a"."Id"
-    FROM "Animals" AS "a"
-    WHERE "a"."Name" = 'Great spotted kiwi'
+    SELECT "r"."Id"
+    FROM "Roots" AS "r"
+    WHERE "r"."RootInt" = 8
 ) AS "s"
-WHERE "a0"."Id" = "s"."Id"
+WHERE "r0"."Id" = "s"."Id"
 """);
     }
 
-    // #31402
-    public override Task Update_base_type_with_OfType()
-        => Assert.ThrowsAsync<SqliteException>(() => base.Update_base_property_on_derived_type());
+    // #31402 - SQLite doesn't support complex UPDATE FROM with OfType query
+    public override Task Update_with_OfType_leaf()
+        => Assert.ThrowsAsync<SqliteException>(() => base.Update_with_OfType_leaf());
 
-    public override async Task Update_where_hierarchy_subquery()
+    public override async Task Update_root_with_subquery()
     {
-        await base.Update_where_hierarchy_subquery();
+        await base.Update_root_with_subquery();
 
         AssertExecuteUpdateSql();
     }
 
-    // #31402
-    public override Task Update_base_property_on_derived_type()
-        => Assert.ThrowsAsync<SqliteException>(() => base.Update_base_property_on_derived_type());
+    // #31402 - SQLite doesn't support complex UPDATE FROM for TPT hierarchies
+    public override Task Update_root_property_on_leaf()
+        => Assert.ThrowsAsync<SqliteException>(() => base.Update_root_property_on_leaf());
 
-    public override async Task Update_derived_property_on_derived_type()
+    public override async Task Update_leaf_property()
     {
-        await base.Update_derived_property_on_derived_type();
+        await base.Update_leaf_property();
 
         AssertExecuteUpdateSql(
             """
-@p='0'
+@p='999'
 
-UPDATE "Kiwi" AS "k"
-SET "FoundOn" = @p
-FROM "Animals" AS "a"
-INNER JOIN "Birds" AS "b" ON "a"."Id" = "b"."Id"
-WHERE "a"."Id" = "k"."Id"
+UPDATE "Leaf1" AS "l"
+SET "Leaf1Int" = @p
+FROM "Roots" AS "r"
+INNER JOIN "Intermediate" AS "i" ON "r"."Id" = "i"."Id"
+WHERE "r"."Id" = "l"."Id"
 """);
     }
 
-    public override async Task Update_where_using_hierarchy()
+    public override async Task Update_both_root_and_leaf_properties()
     {
-        await base.Update_where_using_hierarchy();
-
-        AssertExecuteUpdateSql(
-            """
-@p='Monovia' (Size = 7)
-
-UPDATE "Countries" AS "c"
-SET "Name" = @p
-WHERE (
-    SELECT COUNT(*)
-    FROM "Animals" AS "a"
-    WHERE "c"."Id" = "a"."CountryId" AND "a"."CountryId" > 0) > 0
-""");
-    }
-
-    public override async Task Update_base_and_derived_types()
-    {
-        await base.Update_base_and_derived_types();
+        await base.Update_both_root_and_leaf_properties();
 
         AssertExecuteUpdateSql();
     }
 
-    public override async Task Update_where_using_hierarchy_derived()
+    public override async Task Update_entity_type_referencing_hierarchy()
     {
-        await base.Update_where_using_hierarchy_derived();
+        await base.Update_entity_type_referencing_hierarchy();
 
         AssertExecuteUpdateSql(
             """
-@p='Monovia' (Size = 7)
+@p='999'
 
-UPDATE "Countries" AS "c"
-SET "Name" = @p
-WHERE (
-    SELECT COUNT(*)
-    FROM "Animals" AS "a"
-    LEFT JOIN "Kiwi" AS "k" ON "a"."Id" = "k"."Id"
-    WHERE "c"."Id" = "a"."CountryId" AND "k"."Id" IS NOT NULL AND "a"."CountryId" > 0) > 0
-""");
-    }
-
-    public override async Task Update_where_keyless_entity_mapped_to_sql_query()
-    {
-        await base.Update_where_keyless_entity_mapped_to_sql_query();
-
-        AssertExecuteUpdateSql();
-    }
-
-    public override async Task Update_with_interface_in_property_expression()
-    {
-        await base.Update_with_interface_in_property_expression();
-
-        AssertExecuteUpdateSql(
-            """
-@p='0'
-
-UPDATE "Coke" AS "c"
-SET "SugarGrams" = @p
-FROM "Drinks" AS "d"
-WHERE "d"."Id" = "c"."Id"
-""");
-    }
-
-    public override async Task Update_with_interface_in_EF_Property_in_property_expression()
-    {
-        await base.Update_with_interface_in_EF_Property_in_property_expression();
-
-        AssertExecuteUpdateSql(
-            """
-@p='0'
-
-UPDATE "Coke" AS "c"
-SET "SugarGrams" = @p
-FROM "Drinks" AS "d"
-WHERE "d"."Id" = "c"."Id"
+UPDATE "RootReferencingEntities" AS "r1"
+SET "Int" = @p
+FROM (
+    SELECT "r"."Id"
+    FROM "RootReferencingEntities" AS "r"
+    LEFT JOIN (
+        SELECT "r0"."RootInt", "r0"."RootReferencingEntityId"
+        FROM "Roots" AS "r0"
+    ) AS "s" ON "r"."Id" = "s"."RootReferencingEntityId"
+    WHERE "s"."RootInt" = 8
+) AS "s0"
+WHERE "r1"."Id" = "s0"."Id"
 """);
     }
 

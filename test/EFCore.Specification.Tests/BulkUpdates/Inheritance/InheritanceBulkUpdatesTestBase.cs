@@ -1,7 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
+using Microsoft.EntityFrameworkCore.Query.Inheritance;
 
 namespace Microsoft.EntityFrameworkCore.BulkUpdates.Inheritance;
 
@@ -9,40 +9,34 @@ public abstract class InheritanceBulkUpdatesTestBase<TFixture>(TFixture fixture)
     where TFixture : InheritanceBulkUpdatesFixtureBase, new()
 {
     [ConditionalFact]
-    public virtual Task Delete_where_hierarchy()
+    public virtual Task Delete_on_root()
         => AssertDelete(
-            ss => ss.Set<Animal>().Where(e => e.Name == "Great spotted kiwi"),
+            ss => ss.Set<Root>().Where(e => e.RootInt == 8),
             rowsAffectedCount: 1);
 
     [ConditionalFact]
-    public virtual Task Delete_where_hierarchy_subquery()
+    public virtual Task Delete_on_root_with_subquery()
         => AssertDelete(
-            ss => ss.Set<Animal>().Where(e => e.Name == "Great spotted kiwi").OrderBy(e => e.Name).Skip(0).Take(3),
+            ss => ss.Set<Root>().Where(e => e.RootInt == 8).OrderBy(e => e.RootInt).Skip(0).Take(3),
             rowsAffectedCount: 1);
 
     [ConditionalFact]
-    public virtual Task Delete_where_hierarchy_derived()
+    public virtual Task Delete_on_leaf()
         => AssertDelete(
-            ss => ss.Set<Kiwi>().Where(e => e.Name == "Great spotted kiwi"),
+            ss => ss.Set<Leaf1>().Where(e => e.Leaf1Int == 1000),
             rowsAffectedCount: 1);
 
     [ConditionalFact]
-    public virtual Task Delete_where_using_hierarchy()
+    public virtual Task Delete_entity_type_referencing_hierarchy()
         => AssertDelete(
-            ss => ss.Set<Country>().Where(e => e.Animals.Where(a => a.CountryId > 0).Count() > 0),
-            rowsAffectedCount: 2);
-
-    [ConditionalFact]
-    public virtual Task Delete_where_using_hierarchy_derived()
-        => AssertDelete(
-            ss => ss.Set<Country>().Where(e => e.Animals.OfType<Kiwi>().Where(a => a.CountryId > 0).Count() > 0),
+            ss => ss.Set<RootReferencingEntity>().Where(e => e.Root!.RootInt == 8),
             rowsAffectedCount: 1);
 
     [ConditionalFact(Skip = "Issue#28525")]
     public virtual Task Delete_GroupBy_Where_Select_First()
         => AssertDelete(
-            ss => ss.Set<Animal>()
-                .GroupBy(e => e.CountryId)
+            ss => ss.Set<Root>()
+                .GroupBy(e => e.RootInt)
                 .Where(g => g.Count() < 3)
                 .Select(g => g.First()),
             rowsAffectedCount: 2);
@@ -50,100 +44,92 @@ public abstract class InheritanceBulkUpdatesTestBase<TFixture>(TFixture fixture)
     [ConditionalFact(Skip = "Issue#26753")]
     public virtual Task Delete_GroupBy_Where_Select_First_2()
         => AssertDelete(
-            ss => ss.Set<Animal>().Where(e => e
-                == ss.Set<Animal>().GroupBy(e => e.CountryId)
+            ss => ss.Set<Root>().Where(e => e
+                == ss.Set<Root>().GroupBy(e => e.RootInt)
                     .Where(g => g.Count() < 3).Select(g => g.First()).FirstOrDefault()),
             rowsAffectedCount: 2);
 
     [ConditionalFact]
     public virtual Task Delete_GroupBy_Where_Select_First_3()
         => AssertDelete(
-            ss => ss.Set<Animal>().Where(e => ss.Set<Animal>().GroupBy(e => e.CountryId)
+            ss => ss.Set<Root>().Where(e => ss.Set<Root>().GroupBy(e => e.RootInt)
                 .Where(g => g.Count() < 3).Select(g => g.First()).Any(i => i == e)),
-            rowsAffectedCount: 2);
+            rowsAffectedCount: 3);
 
     [ConditionalFact]
-    public virtual Task Update_base_type()
+    public virtual Task Update_root()
         => AssertUpdate(
-            ss => ss.Set<Animal>().Where(e => e.Name == "Great spotted kiwi"),
+            ss => ss.Set<Root>().Where(e => e.RootInt == 8),
             e => e,
-            s => s.SetProperty(e => e.Name, "Animal"),
+            s => s.SetProperty(e => e.RootInt, 999),
             rowsAffectedCount: 1,
-            (b, a) => a.ForEach(e => Assert.Equal("Animal", e.Name)));
+            (b, a) => a.ForEach(e => Assert.Equal(999, e.RootInt)));
 
     [ConditionalFact]
-    public virtual Task Update_base_type_with_OfType()
+    public virtual Task Update_with_OfType_leaf()
         => AssertUpdate(
-            ss => ss.Set<Animal>().OfType<Kiwi>(),
+            ss => ss.Set<Root>().OfType<Leaf1>(),
             e => e,
-            s => s.SetProperty(e => e.Name, "NewBird"),
-            rowsAffectedCount: 1,
-            (b, a) => a.ForEach(e => Assert.Equal("NewBird", e.Name)));
+            s => s.SetProperty(e => e.RootInt, 999),
+            rowsAffectedCount: 2,
+            (b, a) => a.ForEach(e => Assert.Equal(999, e.RootInt)));
 
     [ConditionalTheory(Skip = "InnerJoin"), MemberData(nameof(IsAsyncData))]
-    public virtual Task Update_where_hierarchy_subquery()
+    public virtual Task Update_root_with_subquery()
         => AssertUpdate(
-            ss => ss.Set<Animal>().Where(e => e.Name == "Great spotted kiwi").OrderBy(e => e.Name).Skip(0).Take(3),
+            ss => ss.Set<Root>().Where(e => e.RootInt == 8).OrderBy(e => e.UniqueId).Skip(0).Take(3),
             e => e,
-            s => s.SetProperty(e => e.Name, "Animal"),
+            s => s.SetProperty(e => e.RootInt, 999),
             rowsAffectedCount: 1);
 
     [ConditionalFact]
-    public virtual Task Update_base_property_on_derived_type()
+    public virtual Task Update_root_property_on_leaf()
         => AssertUpdate(
-            ss => ss.Set<Kiwi>(),
+            ss => ss.Set<Leaf1>(),
             e => e,
-            s => s.SetProperty(e => e.Name, "SomeOtherKiwi"),
-            rowsAffectedCount: 1);
-
-    [ConditionalFact]
-    public virtual Task Update_derived_property_on_derived_type()
-        => AssertUpdate(
-            ss => ss.Set<Kiwi>(),
-            e => e,
-            s => s.SetProperty(e => e.FoundOn, Island.North),
-            rowsAffectedCount: 1);
-
-    [ConditionalFact]
-    public virtual Task Update_base_and_derived_types()
-        => AssertUpdate(
-            ss => ss.Set<Kiwi>(),
-            e => e,
-            s => s
-                .SetProperty(e => e.Name, "Kiwi")
-                .SetProperty(e => e.FoundOn, Island.North),
-            rowsAffectedCount: 1);
-
-    [ConditionalFact]
-    public virtual Task Update_where_using_hierarchy()
-        => AssertUpdate(
-            ss => ss.Set<Country>().Where(e => e.Animals.Where(a => a.CountryId > 0).Count() > 0),
-            e => e,
-            s => s.SetProperty(e => e.Name, "Monovia"),
+            s => s.SetProperty(e => e.RootInt, 999),
             rowsAffectedCount: 2);
 
     [ConditionalFact]
-    public virtual Task Update_where_using_hierarchy_derived()
+    public virtual Task Update_leaf_property()
         => AssertUpdate(
-            ss => ss.Set<Country>().Where(e => e.Animals.OfType<Kiwi>().Where(a => a.CountryId > 0).Count() > 0),
+            ss => ss.Set<Leaf1>(),
             e => e,
-            s => s.SetProperty(e => e.Name, "Monovia"),
-            rowsAffectedCount: 1);
+            s => s.SetProperty(e => e.Leaf1Int, 999),
+            rowsAffectedCount: 2);
 
     [ConditionalFact]
-    public virtual Task Update_with_interface_in_property_expression()
+    public virtual Task Update_both_root_and_leaf_properties()
         => AssertUpdate(
-            ss => ss.Set<Coke>(),
+            ss => ss.Set<Leaf1>(),
             e => e,
-            s => s.SetProperty(c => ((ISugary)c).SugarGrams, 0),
-            rowsAffectedCount: 1);
+            s => s
+                .SetProperty(e => e.RootInt, 998)
+                .SetProperty(e => e.Leaf1Int, 999),
+            rowsAffectedCount: 2);
 
     [ConditionalFact]
-    public virtual Task Update_with_interface_in_EF_Property_in_property_expression()
+    public virtual Task Update_entity_type_referencing_hierarchy()
         => AssertUpdate(
-            ss => ss.Set<Coke>(),
+            ss => ss.Set<RootReferencingEntity>().Where(e => e.Root!.RootInt == 8),
             e => e,
-            // ReSharper disable once RedundantCast
-            s => s.SetProperty(c => EF.Property<int>((ISugary)c, nameof(ISugary.SugarGrams)), 0),
+            s => s.SetProperty(e => e.Int, 999),
             rowsAffectedCount: 1);
+
+    // [ConditionalFact]
+    // public virtual Task Update_with_interface_in_property_expression()
+    //     => AssertUpdate(
+    //         ss => ss.Set<Coke>(),
+    //         e => e,
+    //         s => s.SetProperty(c => ((ISugary)c).SugarGrams, 0),
+    //         rowsAffectedCount: 1);
+
+    // [ConditionalFact]
+    // public virtual Task Update_with_interface_in_EF_Property_in_property_expression()
+    //     => AssertUpdate(
+    //         ss => ss.Set<Coke>(),
+    //         e => e,
+    //         // ReSharper disable once RedundantCast
+    //         s => s.SetProperty(c => EF.Property<int>((ISugary)c, nameof(ISugary.SugarGrams)), 0),
+    //         rowsAffectedCount: 1);
 }

@@ -8,76 +8,65 @@ public class TPCFiltersInheritanceBulkUpdatesSqlServerTest(
     ITestOutputHelper testOutputHelper)
     : TPCFiltersInheritanceBulkUpdatesTestBase<TPCFiltersInheritanceBulkUpdatesSqlServerFixture>(fixture, testOutputHelper)
 {
-    public override async Task Delete_where_hierarchy()
+    public override async Task Delete_on_root()
     {
-        await base.Delete_where_hierarchy();
+        await base.Delete_on_root();
 
         AssertSql();
     }
 
-    public override async Task Delete_where_hierarchy_derived()
+    public override async Task Delete_on_root_with_subquery()
     {
-        await base.Delete_where_hierarchy_derived();
+        await base.Delete_on_root_with_subquery();
+
+        AssertSql();
+    }
+
+    public override async Task Delete_on_leaf()
+    {
+        await base.Delete_on_leaf();
 
         AssertSql(
             """
-DELETE FROM [k]
-FROM [Kiwi] AS [k]
-WHERE [k].[CountryId] = 1 AND [k].[Name] = N'Great spotted kiwi'
+DELETE FROM [l]
+FROM [Leaf1] AS [l]
+WHERE [l].[RootInt] <> 8 AND [l].[Leaf1Int] = 1001
 """);
     }
 
-    public override async Task Delete_where_using_hierarchy()
+    public override async Task Delete_entity_type_referencing_hierarchy()
     {
-        await base.Delete_where_using_hierarchy();
+        await base.Delete_entity_type_referencing_hierarchy();
 
         AssertSql(
             """
-DELETE FROM [c]
-FROM [Countries] AS [c]
-WHERE (
-    SELECT COUNT(*)
+DELETE FROM [r]
+FROM [RootReferencingEntities] AS [r]
+LEFT JOIN (
+    SELECT [u].[RootInt], [u].[RootReferencingEntityId]
     FROM (
-        SELECT [e].[CountryId]
-        FROM [Eagle] AS [e]
+        SELECT [r0].[RootInt], [r0].[RootReferencingEntityId]
+        FROM [Roots] AS [r0]
         UNION ALL
-        SELECT [k].[CountryId]
-        FROM [Kiwi] AS [k]
+        SELECT [c].[RootInt], [c].[RootReferencingEntityId]
+        FROM [ConcreteIntermediate] AS [c]
+        UNION ALL
+        SELECT [i].[RootInt], [i].[RootReferencingEntityId]
+        FROM [Intermediate] AS [i]
+        UNION ALL
+        SELECT [l].[RootInt], [l].[RootReferencingEntityId]
+        FROM [Leaf3] AS [l]
+        UNION ALL
+        SELECT [l0].[RootInt], [l0].[RootReferencingEntityId]
+        FROM [Leaf1] AS [l0]
+        UNION ALL
+        SELECT [l1].[RootInt], [l1].[RootReferencingEntityId]
+        FROM [Leaf2] AS [l1]
     ) AS [u]
-    WHERE [u].[CountryId] = 1 AND [c].[Id] = [u].[CountryId] AND [u].[CountryId] > 0) > 0
+    WHERE [u].[RootInt] <> 8
+) AS [u0] ON [r].[Id] = [u0].[RootReferencingEntityId]
+WHERE [u0].[RootInt] = 9
 """);
-    }
-
-    public override async Task Delete_where_using_hierarchy_derived()
-    {
-        await base.Delete_where_using_hierarchy_derived();
-
-        AssertSql(
-            """
-DELETE FROM [c]
-FROM [Countries] AS [c]
-WHERE (
-    SELECT COUNT(*)
-    FROM (
-        SELECT [k].[CountryId]
-        FROM [Kiwi] AS [k]
-    ) AS [u]
-    WHERE [u].[CountryId] = 1 AND [c].[Id] = [u].[CountryId] AND [u].[CountryId] > 0) > 0
-""");
-    }
-
-    public override async Task Delete_where_keyless_entity_mapped_to_sql_query()
-    {
-        await base.Delete_where_keyless_entity_mapped_to_sql_query();
-
-        AssertSql();
-    }
-
-    public override async Task Delete_where_hierarchy_subquery()
-    {
-        await base.Delete_where_hierarchy_subquery();
-
-        AssertSql();
     }
 
     public override async Task Delete_GroupBy_Where_Select_First()
@@ -101,124 +90,110 @@ WHERE (
         AssertSql();
     }
 
-    public override async Task Update_base_type()
+    public override async Task Update_root()
     {
-        await base.Update_base_type();
+        await base.Update_root();
 
         AssertExecuteUpdateSql();
     }
 
-    public override async Task Update_base_type_with_OfType()
+    public override async Task Update_with_OfType_leaf()
     {
-        await base.Update_base_type_with_OfType();
+        await base.Update_with_OfType_leaf();
 
         AssertExecuteUpdateSql();
     }
 
-    public override async Task Update_where_hierarchy_subquery()
+    public override async Task Update_root_with_subquery()
     {
-        await base.Update_where_hierarchy_subquery();
+        await base.Update_root_with_subquery();
 
         AssertExecuteUpdateSql();
     }
 
-    public override async Task Update_base_property_on_derived_type()
+    public override async Task Update_root_property_on_leaf()
     {
-        await base.Update_base_property_on_derived_type();
+        await base.Update_root_property_on_leaf();
 
         AssertExecuteUpdateSql(
             """
-@p='SomeOtherKiwi' (Size = 4000)
+@p='999'
 
-UPDATE [k]
-SET [k].[Name] = @p
-FROM [Kiwi] AS [k]
-WHERE [k].[CountryId] = 1
+UPDATE [l]
+SET [l].[RootInt] = @p
+FROM [Leaf1] AS [l]
+WHERE [l].[RootInt] <> 8
 """);
     }
 
-    public override async Task Update_derived_property_on_derived_type()
+    public override async Task Update_leaf_property()
     {
-        await base.Update_derived_property_on_derived_type();
+        await base.Update_leaf_property();
 
         AssertExecuteUpdateSql(
             """
-@p='0' (Size = 1)
+@p='999'
 
-UPDATE [k]
-SET [k].[FoundOn] = @p
-FROM [Kiwi] AS [k]
-WHERE [k].[CountryId] = 1
+UPDATE [l]
+SET [l].[Leaf1Int] = @p
+FROM [Leaf1] AS [l]
+WHERE [l].[RootInt] <> 8
 """);
     }
 
-    public override async Task Update_where_using_hierarchy()
+    public override async Task Update_both_root_and_leaf_properties()
     {
-        await base.Update_where_using_hierarchy();
+        await base.Update_both_root_and_leaf_properties();
 
         AssertExecuteUpdateSql(
             """
-@p='Monovia' (Size = 4000)
+@p='998'
+@p1='999'
 
-UPDATE [c]
-SET [c].[Name] = @p
-FROM [Countries] AS [c]
-WHERE (
-    SELECT COUNT(*)
+UPDATE [l]
+SET [l].[RootInt] = @p,
+    [l].[Leaf1Int] = @p1
+FROM [Leaf1] AS [l]
+WHERE [l].[RootInt] <> 8
+""");
+    }
+
+    public override async Task Update_entity_type_referencing_hierarchy()
+    {
+        await base.Update_entity_type_referencing_hierarchy();
+
+        AssertExecuteUpdateSql(
+            """
+@p='999'
+
+UPDATE [r]
+SET [r].[Int] = @p
+FROM [RootReferencingEntities] AS [r]
+LEFT JOIN (
+    SELECT [u].[RootInt], [u].[RootReferencingEntityId]
     FROM (
-        SELECT [e].[CountryId]
-        FROM [Eagle] AS [e]
+        SELECT [r0].[RootInt], [r0].[RootReferencingEntityId]
+        FROM [Roots] AS [r0]
         UNION ALL
-        SELECT [k].[CountryId]
-        FROM [Kiwi] AS [k]
+        SELECT [c].[RootInt], [c].[RootReferencingEntityId]
+        FROM [ConcreteIntermediate] AS [c]
+        UNION ALL
+        SELECT [i].[RootInt], [i].[RootReferencingEntityId]
+        FROM [Intermediate] AS [i]
+        UNION ALL
+        SELECT [l].[RootInt], [l].[RootReferencingEntityId]
+        FROM [Leaf3] AS [l]
+        UNION ALL
+        SELECT [l0].[RootInt], [l0].[RootReferencingEntityId]
+        FROM [Leaf1] AS [l0]
+        UNION ALL
+        SELECT [l1].[RootInt], [l1].[RootReferencingEntityId]
+        FROM [Leaf2] AS [l1]
     ) AS [u]
-    WHERE [u].[CountryId] = 1 AND [c].[Id] = [u].[CountryId] AND [u].[CountryId] > 0) > 0
+    WHERE [u].[RootInt] <> 8
+) AS [u0] ON [r].[Id] = [u0].[RootReferencingEntityId]
+WHERE [u0].[RootInt] = 9
 """);
-    }
-
-    public override async Task Update_base_and_derived_types()
-    {
-        await base.Update_base_and_derived_types();
-
-        AssertExecuteUpdateSql(
-            """
-@p='Kiwi' (Size = 4000)
-@p1='0' (Size = 1)
-
-UPDATE [k]
-SET [k].[Name] = @p,
-    [k].[FoundOn] = @p1
-FROM [Kiwi] AS [k]
-WHERE [k].[CountryId] = 1
-""");
-    }
-
-    public override async Task Update_where_using_hierarchy_derived()
-    {
-        await base.Update_where_using_hierarchy_derived();
-
-        AssertExecuteUpdateSql(
-            """
-@p='Monovia' (Size = 4000)
-
-UPDATE [c]
-SET [c].[Name] = @p
-FROM [Countries] AS [c]
-WHERE (
-    SELECT COUNT(*)
-    FROM (
-        SELECT [k].[CountryId]
-        FROM [Kiwi] AS [k]
-    ) AS [u]
-    WHERE [u].[CountryId] = 1 AND [c].[Id] = [u].[CountryId] AND [u].[CountryId] > 0) > 0
-""");
-    }
-
-    public override async Task Update_where_keyless_entity_mapped_to_sql_query()
-    {
-        await base.Update_where_keyless_entity_mapped_to_sql_query();
-
-        AssertExecuteUpdateSql();
     }
 
     protected override void ClearLog()

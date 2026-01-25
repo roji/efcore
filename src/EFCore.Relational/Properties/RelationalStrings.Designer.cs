@@ -3446,7 +3446,7 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics.Internal
         }
 
         /// <summary>
-        ///     The foreign key {foreignKeyProperties} on the entity type '{entityType}' targeting '{principalEntityType}' cannot be represented in the database. '{principalEntityType}' is mapped using the table per concrete type meaning that the derived entities will not be present in {'principalTable'}. If this foreign key on '{entityType}' will never reference entities derived from '{principalEntityType}' then the foreign key constraint name can be specified explicitly to force it to be created.
+        ///     The foreign key {foreignKeyProperties} on the entity type '{entityType}' targeting '{principalEntityType}' cannot be represented in the database. '{principalEntityType}' is mapped using the table-per-concrete-type (TPC), meaning that the derived entities will not be present in {'principalTable'}. If this foreign key on '{entityType}' will never reference entities derived from '{principalEntityType}', then the foreign key constraint name can be specified explicitly to force it to be created.
         /// </summary>
         public static FallbackEventDefinition LogForeignKeyTpcPrincipal(IDiagnosticsLogger logger)
         {

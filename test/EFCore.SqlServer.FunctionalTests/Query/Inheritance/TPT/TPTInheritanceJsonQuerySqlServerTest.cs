@@ -6,113 +6,125 @@ namespace Microsoft.EntityFrameworkCore.Query.Inheritance.TPT;
 public class TPTInheritanceJsonQuerySqlServerTest(TPTInheritanceJsonQuerySqlServerFixture fixture, ITestOutputHelper testOutputHelper)
     : TPTInheritanceJsonQueryRelationalTestBase<TPTInheritanceJsonQuerySqlServerFixture>(fixture, testOutputHelper)
 {
-    public override async Task Filter_on_complex_type_property_on_derived_type()
+    public override async Task Filter_on_complex_type_property_on_leaf()
     {
-        await base.Filter_on_complex_type_property_on_derived_type();
+        await base.Filter_on_complex_type_property_on_leaf();
 
         AssertSql(
             """
-SELECT [d].[Id], [d].[SortIndex], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [d].[ComplexTypeCollection], [d].[ParentComplexType], [c].[ChildComplexType]
-FROM [Drinks] AS [d]
-INNER JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
-WHERE CAST(JSON_VALUE([c].[ChildComplexType], '$.Int') AS int) = 10
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType], [l].[ChildComplexType]
+FROM [Roots] AS [r]
+INNER JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+INNER JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+WHERE CAST(JSON_VALUE([l].[ChildComplexType], '$.Int') AS int) = 9
 """);
     }
 
-    public override async Task Filter_on_complex_type_property_on_base_type()
+    public override async Task Filter_on_complex_type_property_on_root()
     {
-        await base.Filter_on_complex_type_property_on_base_type();
+        await base.Filter_on_complex_type_property_on_root();
 
         AssertSql(
             """
-SELECT [d].[Id], [d].[SortIndex], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [l].[LiltCO2], [l].[SugarGrams], [t].[CaffeineGrams], [t].[HasMilk], [d].[ComplexTypeCollection], [d].[ParentComplexType], [c].[ChildComplexType], [t].[ChildComplexType], CASE
-    WHEN [t].[Id] IS NOT NULL THEN N'Tea'
-    WHEN [l].[Id] IS NOT NULL THEN N'Lilt'
-    WHEN [c].[Id] IS NOT NULL THEN N'Coke'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType], [l0].[ChildComplexType], [l1].[ChildComplexType], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
 END AS [Discriminator]
-FROM [Drinks] AS [d]
-LEFT JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
-LEFT JOIN [Lilt] AS [l] ON [d].[Id] = [l].[Id]
-LEFT JOIN [Tea] AS [t] ON [d].[Id] = [t].[Id]
-WHERE CAST(JSON_VALUE([d].[ParentComplexType], '$.Int') AS int) = 8
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE CAST(JSON_VALUE([r].[ParentComplexType], '$.Int') AS int) = 8
 """);
     }
 
-    public override async Task Filter_on_nested_complex_type_property_on_derived_type()
+    public override async Task Filter_on_nested_complex_type_property_on_leaf()
     {
-        await base.Filter_on_nested_complex_type_property_on_derived_type();
+        await base.Filter_on_nested_complex_type_property_on_leaf();
 
         AssertSql(
             """
-SELECT [d].[Id], [d].[SortIndex], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [d].[ComplexTypeCollection], [d].[ParentComplexType], [c].[ChildComplexType]
-FROM [Drinks] AS [d]
-INNER JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
-WHERE CAST(JSON_VALUE([c].[ChildComplexType], '$.Nested.NestedInt') AS int) = 58
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [i].[IntermediateInt], [l].[Ints], [l].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType], [l].[ChildComplexType]
+FROM [Roots] AS [r]
+INNER JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+INNER JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
+WHERE CAST(JSON_VALUE([l].[ChildComplexType], '$.Nested.Int') AS int) = 51
 """);
     }
 
-    public override async Task Filter_on_nested_complex_type_property_on_base_type()
+    public override async Task Filter_on_nested_complex_type_property_on_root()
     {
-        await base.Filter_on_nested_complex_type_property_on_base_type();
+        await base.Filter_on_nested_complex_type_property_on_root();
 
         AssertSql(
             """
-SELECT [d].[Id], [d].[SortIndex], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [l].[LiltCO2], [l].[SugarGrams], [t].[CaffeineGrams], [t].[HasMilk], [d].[ComplexTypeCollection], [d].[ParentComplexType], [c].[ChildComplexType], [t].[ChildComplexType], CASE
-    WHEN [t].[Id] IS NOT NULL THEN N'Tea'
-    WHEN [l].[Id] IS NOT NULL THEN N'Lilt'
-    WHEN [c].[Id] IS NOT NULL THEN N'Coke'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType], [l0].[ChildComplexType], [l1].[ChildComplexType], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
 END AS [Discriminator]
-FROM [Drinks] AS [d]
-LEFT JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
-LEFT JOIN [Lilt] AS [l] ON [d].[Id] = [l].[Id]
-LEFT JOIN [Tea] AS [t] ON [d].[Id] = [t].[Id]
-WHERE CAST(JSON_VALUE([d].[ParentComplexType], '$.Nested.NestedInt') AS int) = 50
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
+WHERE CAST(JSON_VALUE([r].[ParentComplexType], '$.Nested.Int') AS int) = 50
 """);
     }
 
-    public override async Task Project_complex_type_on_derived_type()
+    public override async Task Project_complex_type_on_leaf()
     {
-        await base.Project_complex_type_on_derived_type();
+        await base.Project_complex_type_on_leaf();
 
         AssertSql(
             """
-SELECT [c].[ChildComplexType]
-FROM [Drinks] AS [d]
-INNER JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
+SELECT [l].[ChildComplexType]
+FROM [Roots] AS [r]
+INNER JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+INNER JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
 """);
     }
 
-    public override async Task Project_complex_type_on_base_type()
+    public override async Task Project_complex_type_on_root()
     {
-        await base.Project_complex_type_on_base_type();
+        await base.Project_complex_type_on_root();
 
         AssertSql(
             """
-SELECT [d].[ParentComplexType]
-FROM [Drinks] AS [d]
+SELECT [r].[ParentComplexType]
+FROM [Roots] AS [r]
 """);
     }
 
-    public override async Task Project_nested_complex_type_on_derived_type()
+    public override async Task Project_nested_complex_type_on_leaf()
     {
-        await base.Project_nested_complex_type_on_derived_type();
+        await base.Project_nested_complex_type_on_leaf();
 
         AssertSql(
             """
-SELECT JSON_QUERY([c].[ChildComplexType], '$.Nested')
-FROM [Drinks] AS [d]
-INNER JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
+SELECT JSON_QUERY([l].[ChildComplexType], '$.Nested')
+FROM [Roots] AS [r]
+INNER JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+INNER JOIN [Leaf1] AS [l] ON [r].[Id] = [l].[Id]
 """);
     }
 
-    public override async Task Project_nested_complex_type_on_base_type()
+    public override async Task Project_nested_complex_type_on_root()
     {
-        await base.Project_nested_complex_type_on_base_type();
+        await base.Project_nested_complex_type_on_root();
 
         AssertSql(
             """
-SELECT JSON_QUERY([d].[ParentComplexType], '$.Nested')
-FROM [Drinks] AS [d]
+SELECT JSON_QUERY([r].[ParentComplexType], '$.Nested')
+FROM [Roots] AS [r]
 """);
     }
 
@@ -122,18 +134,22 @@ FROM [Drinks] AS [d]
 
         AssertSql(
             """
-SELECT [d].[Id], [d].[SortIndex], [c].[CaffeineGrams], [c].[CokeCO2], [c].[Ints], [c].[SugarGrams], [l].[LiltCO2], [l].[SugarGrams], [t].[CaffeineGrams], [t].[HasMilk], [d].[ComplexTypeCollection], [d].[ParentComplexType], [c].[ChildComplexType], [t].[ChildComplexType], CASE
-    WHEN [t].[Id] IS NOT NULL THEN N'Tea'
-    WHEN [l].[Id] IS NOT NULL THEN N'Lilt'
-    WHEN [c].[Id] IS NOT NULL THEN N'Coke'
+SELECT [r].[Id], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [c].[ConcreteIntermediateInt], [i].[IntermediateInt], [l].[Leaf3Int], [l0].[Ints], [l0].[Leaf1Int], [l1].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType], [l0].[ChildComplexType], [l1].[ChildComplexType], CASE
+    WHEN [l1].[Id] IS NOT NULL THEN N'Leaf2'
+    WHEN [l0].[Id] IS NOT NULL THEN N'Leaf1'
+    WHEN [l].[Id] IS NOT NULL THEN N'Leaf3'
+    WHEN [i].[Id] IS NOT NULL THEN N'Intermediate'
+    WHEN [c].[Id] IS NOT NULL THEN N'ConcreteIntermediate'
 END AS [Discriminator]
-FROM [Drinks] AS [d]
-LEFT JOIN [Coke] AS [c] ON [d].[Id] = [c].[Id]
-LEFT JOIN [Lilt] AS [l] ON [d].[Id] = [l].[Id]
-LEFT JOIN [Tea] AS [t] ON [d].[Id] = [t].[Id]
+FROM [Roots] AS [r]
+LEFT JOIN [ConcreteIntermediate] AS [c] ON [r].[Id] = [c].[Id]
+LEFT JOIN [Intermediate] AS [i] ON [r].[Id] = [i].[Id]
+LEFT JOIN [Leaf3] AS [l] ON [r].[Id] = [l].[Id]
+LEFT JOIN [Leaf1] AS [l0] ON [r].[Id] = [l0].[Id]
+LEFT JOIN [Leaf2] AS [l1] ON [r].[Id] = [l1].[Id]
 WHERE (
     SELECT COUNT(*)
-    FROM OPENJSON([d].[ComplexTypeCollection], '$') WITH ([Int] int '$.Int') AS [c0]
+    FROM OPENJSON([r].[ComplexTypeCollection], '$') WITH ([Int] int '$.Int') AS [c0]
     WHERE [c0].[Int] > 59) = 2
 """);
     }

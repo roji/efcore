@@ -14,591 +14,475 @@ public class InheritanceQueryCosmosTest : InheritanceQueryTestBase<InheritanceQu
         Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
-    public override async Task Using_OfType_on_multiple_type_with_no_result()
-    {
-        await base.Using_OfType_on_multiple_type_with_no_result();
+    [ConditionalFact]
+    public virtual void Check_all_tests_overridden()
+        => TestHelpers.AssertAllMethodsOverridden(GetType());
 
-        AssertSql();
-    }
-
-    public override async Task Can_query_when_shared_column()
+    public override async Task Query_root()
     {
-        await base.Can_query_when_shared_column();
+        await base.Query_root();
 
         AssertSql(
             """
 SELECT VALUE c
 FROM root c
-WHERE (c["Discriminator"] = 1)
-OFFSET 0 LIMIT 2
-""",
-            //
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["Discriminator"] = 2)
-OFFSET 0 LIMIT 2
-""",
-            //
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["Discriminator"] = 3)
-OFFSET 0 LIMIT 2
+WHERE c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2")
 """);
     }
 
-    public override async Task Can_query_all_types_when_shared_column()
+    public override async Task Query_intermediate()
     {
-        await base.Can_query_all_types_when_shared_column();
+        await base.Query_intermediate();
 
         AssertSql(
             """
 SELECT VALUE c
 FROM root c
-WHERE c["Discriminator"] IN (0, 1, 2, 3)
+WHERE c["Discriminator"] IN ("Intermediate", "Leaf1", "Leaf2")
 """);
     }
 
-    public override async Task Can_use_of_type_animal()
+    public override async Task Query_leaf1()
     {
-        await base.Can_use_of_type_animal();
+        await base.Query_leaf1();
 
         AssertSql(
             """
 SELECT VALUE c
 FROM root c
-WHERE c["Discriminator"] IN ("Eagle", "Kiwi")
-ORDER BY c["Species"]
+WHERE (c["Discriminator"] = "Leaf1")
 """);
     }
 
-    public override async Task Can_use_is_kiwi()
+    public override async Task Query_leaf2()
     {
-        await base.Can_use_is_kiwi();
+        await base.Query_leaf2();
 
         AssertSql(
             """
 SELECT VALUE c
 FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Discriminator"] = "Kiwi"))
+WHERE (c["Discriminator"] = "Leaf2")
 """);
     }
 
-    public override async Task Can_use_is_kiwi_with_cast()
+    public override async Task Filter_root()
     {
-        await base.Can_use_is_kiwi_with_cast();
-
-        AssertSql(
-            """
-SELECT VALUE ((c["Discriminator"] = "Kiwi") ? c["FoundOn"] : 0)
-FROM root c
-WHERE c["Discriminator"] IN ("Eagle", "Kiwi")
-""");
-    }
-
-    public override async Task Can_use_backwards_is_animal()
-    {
-        await base.Can_use_backwards_is_animal();
+        await base.Filter_root();
 
         AssertSql(
             """
 SELECT VALUE c
 FROM root c
-WHERE (c["Discriminator"] = "Kiwi")
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["RootInt"] = 8))
 """);
     }
 
-    public override async Task Can_use_is_kiwi_with_other_predicate()
+    public override async Task Project_scalar_from_leaf()
     {
-        await base.Can_use_is_kiwi_with_other_predicate();
+        await base.Project_scalar_from_leaf();
+
+        AssertSql(
+            """
+SELECT VALUE c["Leaf1Int"]
+FROM root c
+WHERE (c["Discriminator"] = "Leaf1")
+""");
+    }
+
+    public override async Task Project_root_scalar_via_root_with_EF_Property_and_downcast()
+    {
+        await base.Project_root_scalar_via_root_with_EF_Property_and_downcast();
+
+        AssertSql(
+            """
+SELECT VALUE c["RootInt"]
+FROM root c
+WHERE c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2")
+""");
+    }
+
+    public override async Task Project_scalar_from_root_via_leaf()
+    {
+        await base.Project_scalar_from_root_via_leaf();
+
+        AssertSql(
+            """
+SELECT VALUE c["RootInt"]
+FROM root c
+WHERE (c["Discriminator"] = "Leaf1")
+""");
+    }
+
+    public override async Task Project_scalar_from_root_via_root()
+    {
+        await base.Project_scalar_from_root_via_root();
+
+        AssertSql(
+            """
+SELECT VALUE c["RootInt"]
+FROM root c
+WHERE c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2")
+""");
+    }
+
+    public override async Task OfType_root_via_root()
+    {
+        await base.OfType_root_via_root();
 
         AssertSql(
             """
 SELECT VALUE c
 FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND ((c["Discriminator"] = "Kiwi") AND (c["CountryId"] = 1)))
+WHERE c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2")
 """);
     }
 
-    public override async Task Can_use_is_kiwi_in_projection()
+    public override async Task OfType_root_via_leaf()
     {
-        await base.Can_use_is_kiwi_in_projection();
-
-        AssertSql(
-            """
-SELECT VALUE (c["Discriminator"] = "Kiwi")
-FROM root c
-WHERE c["Discriminator"] IN ("Eagle", "Kiwi")
-""");
-    }
-
-    public override async Task Can_use_of_type_bird()
-    {
-        await base.Can_use_of_type_bird();
+        await base.OfType_root_via_leaf();
 
         AssertSql(
             """
 SELECT VALUE c
 FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND c["Discriminator"] IN ("Eagle", "Kiwi"))
-ORDER BY c["Species"]
+WHERE (c["Discriminator"] = "Leaf1")
 """);
     }
 
-    public override async Task Can_use_of_type_bird_predicate()
+    public override async Task OfType_intermediate()
     {
-        await base.Can_use_of_type_bird_predicate();
+        await base.OfType_intermediate();
 
         AssertSql(
             """
 SELECT VALUE c
 FROM root c
-WHERE ((c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["CountryId"] = 1)) AND c["Discriminator"] IN ("Eagle", "Kiwi"))
-ORDER BY c["Species"]
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND c["Discriminator"] IN ("Intermediate", "Leaf1", "Leaf2"))
 """);
     }
 
-    public override async Task Can_use_of_type_bird_with_projection()
+    public override async Task OfType_leaf1()
     {
-        await base.Can_use_of_type_bird_with_projection();
-
-        AssertSql(
-            """
-SELECT VALUE c["EagleId"]
-FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND c["Discriminator"] IN ("Eagle", "Kiwi"))
-""");
-    }
-
-    public override async Task Can_use_of_type_bird_first()
-    {
-        await base.Can_use_of_type_bird_first();
+        await base.OfType_leaf1();
 
         AssertSql(
             """
 SELECT VALUE c
 FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND c["Discriminator"] IN ("Eagle", "Kiwi"))
-ORDER BY c["Species"]
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Leaf1"))
+""");
+    }
+
+    public override async Task OfType_leaf2()
+    {
+        await base.OfType_leaf2();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Leaf2"))
+""");
+    }
+
+    public override async Task OfType_leaf_with_predicate_on_leaf()
+    {
+        await base.OfType_leaf_with_predicate_on_leaf();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE ((c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Leaf1")) AND (c["Leaf1Int"] = 1000))
+""");
+    }
+
+    public override async Task OfType_leaf_with_predicate_on_root()
+    {
+        await base.OfType_leaf_with_predicate_on_root();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE ((c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Leaf1")) AND (c["RootInt"] = 8))
+""");
+    }
+
+    public override async Task Predicate_on_root_and_OfType_leaf()
+    {
+        await base.Predicate_on_root_and_OfType_leaf();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE ((c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["RootInt"] = 8)) AND (c["Discriminator"] = "Leaf1"))
+""");
+    }
+
+    public override async Task OfType_leaf_and_project_scalar()
+    {
+        await base.OfType_leaf_and_project_scalar();
+
+        AssertSql(
+            """
+SELECT VALUE c["Leaf1Int"]
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Leaf1"))
+""");
+    }
+
+    public override async Task OfType_OrderBy_First()
+    {
+        await base.OfType_OrderBy_First();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Leaf1"))
+ORDER BY c["Leaf1Int"]
 OFFSET 0 LIMIT 1
 """);
     }
 
-    public override async Task Can_use_of_type_kiwi()
-    {
-        await base.Can_use_of_type_kiwi();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Discriminator"] = "Kiwi"))
-""");
-    }
-
-    public override async Task Can_use_backwards_of_type_animal()
-    {
-        await base.Can_use_backwards_of_type_animal();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["Discriminator"] = "Kiwi")
-""");
-    }
-
-    public override async Task Can_use_of_type_rose()
-    {
-        await base.Can_use_of_type_rose();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["$type"] IN ("Daisy", "Rose") AND (c["$type"] = "Rose"))
-""");
-    }
-
-    public override async Task Can_query_all_animals()
-    {
-        await base.Can_query_all_animals();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE c["Discriminator"] IN ("Eagle", "Kiwi")
-ORDER BY c["Species"]
-""");
-    }
-
-    [ConditionalFact(Skip = "Issue#17246 Views are not supported")]
-    public override async Task Can_query_all_animal_views()
-    {
-        await base.Can_query_all_animal_views();
-
-        AssertSql(" ");
-    }
-
-    public override async Task Can_query_all_plants()
-    {
-        await base.Can_query_all_plants();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE c["$type"] IN ("Daisy", "Rose")
-ORDER BY c["id"]
-""");
-    }
-
-    public override async Task Can_filter_all_animals()
-    {
-        await base.Can_filter_all_animals();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Name"] = "Great spotted kiwi"))
-ORDER BY c["Species"]
-""");
-    }
-
-    public override async Task Can_query_all_birds()
-    {
-        await base.Can_query_all_birds();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE c["Discriminator"] IN ("Eagle", "Kiwi")
-ORDER BY c["Species"]
-""");
-    }
-
-    public override async Task Can_query_just_kiwis()
-    {
-        await base.Can_query_just_kiwis();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["Discriminator"] = "Kiwi")
-OFFSET 0 LIMIT 2
-""");
-    }
-
-    public override async Task Can_query_just_roses()
-    {
-        await base.Can_query_just_roses();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["$type"] = "Rose")
-OFFSET 0 LIMIT 2
-""");
-    }
-
-    [ConditionalFact(Skip = "Issue#17246 Non-embedded Include")]
-    public override async Task Can_include_animals()
-    {
-        await base.Can_include_animals();
-
-        AssertSql(" ");
-    }
-
-    [ConditionalFact(Skip = "Issue#17246 Non-embedded Include")]
-    public override async Task Can_include_prey()
-    {
-        await base.Can_include_prey();
-
-        AssertSql(" ");
-    }
-
-    public override async Task Can_use_of_type_kiwi_where_south_on_derived_property()
-    {
-        await base.Can_use_of_type_kiwi_where_south_on_derived_property();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE ((c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Discriminator"] = "Kiwi")) AND (c["FoundOn"] = 1))
-""");
-    }
-
-    public override async Task Can_use_of_type_kiwi_where_north_on_derived_property()
-    {
-        await base.Can_use_of_type_kiwi_where_north_on_derived_property();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE ((c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Discriminator"] = "Kiwi")) AND (c["FoundOn"] = 0))
-""");
-    }
-
-    public override async Task Discriminator_used_when_projection_over_derived_type()
-    {
-        await base.Discriminator_used_when_projection_over_derived_type();
-
-        AssertSql(
-            """
-SELECT VALUE c["FoundOn"]
-FROM root c
-WHERE (c["Discriminator"] = "Kiwi")
-""");
-    }
-
-    public override async Task Discriminator_used_when_projection_over_derived_type2()
-    {
-        await base.Discriminator_used_when_projection_over_derived_type2();
-
-        AssertSql(
-            """
-SELECT c["IsFlightless"], c["Discriminator"]
-FROM root c
-WHERE c["Discriminator"] IN ("Eagle", "Kiwi")
-""");
-    }
-
-    public override async Task Discriminator_with_cast_in_shadow_property()
-    {
-        await base.Discriminator_with_cast_in_shadow_property();
-
-        AssertSql(
-            """
-SELECT VALUE c["Name"]
-FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND ("Kiwi" = c["Discriminator"]))
-""");
-    }
-
-    public override async Task Discriminator_used_when_projection_over_of_type()
-    {
-        await base.Discriminator_used_when_projection_over_of_type();
-
-        AssertSql(
-            """
-SELECT VALUE c["FoundOn"]
-FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Discriminator"] = "Kiwi"))
-""");
-    }
-
-    [ConditionalFact(Skip = "Issue#17246 Transations not supported")]
-    public override async Task Can_insert_update_delete()
-    {
-        await base.Can_insert_update_delete();
-
-        AssertSql(" ");
-    }
-
-    public override async Task Union_siblings_with_duplicate_property_in_subquery()
-    {
-        await base.Union_siblings_with_duplicate_property_in_subquery();
-
-        AssertSql(" ");
-    }
-
-    public override async Task OfType_Union_subquery()
-    {
-        await base.OfType_Union_subquery();
-
-        AssertSql(" ");
-    }
-
-    public override async Task OfType_Union_OfType()
-    {
-        await base.OfType_Union_OfType();
-
-        AssertSql(" ");
-    }
-
-    public override Task Subquery_OfType()
+    public override Task OfType_in_subquery()
         => AssertTranslationFailedWithDetails(
-            () => base.Subquery_OfType(),
+            () => base.OfType_in_subquery(),
             CosmosStrings.LimitOffsetNotSupportedInSubqueries);
+
+    public override async Task Is_root_via_root()
+    {
+        await base.Is_root_via_root();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2")
+""");
+    }
+
+    public override async Task Is_root_via_leaf()
+    {
+        await base.Is_root_via_leaf();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] = "Leaf1")
+""");
+    }
+
+    public override async Task Is_intermediate()
+    {
+        await base.Is_intermediate();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND c["Discriminator"] IN ("Intermediate", "Leaf1", "Leaf2"))
+""");
+    }
+
+    public override async Task Is_leaf_via_root()
+    {
+        await base.Is_leaf_via_root();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Leaf1"))
+""");
+    }
+
+    public override async Task Is_leaf_via_leaf()
+    {
+        await base.Is_leaf_via_leaf();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] = "Leaf1")
+""");
+    }
+
+    public override async Task Is_in_projection()
+    {
+        await base.Is_in_projection();
+
+        AssertSql(
+            """
+SELECT VALUE (c["Discriminator"] = "Leaf1")
+FROM root c
+WHERE c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2")
+""");
+    }
+
+    public override async Task Is_with_other_predicate()
+    {
+        await base.Is_with_other_predicate();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND ((c["Discriminator"] = "Leaf1") AND (c["RootInt"] = 8)))
+""");
+    }
+
+    [ConditionalFact(Skip = "Issue#17246 subquery usage")]
+    public override Task Is_on_subquery_result()
+        => base.Is_on_subquery_result();
+
+    [ConditionalFact(Skip = "Issue#17246 Non-embedded Include")]
+    public override Task Include_root()
+        => base.Include_root();
+
+    public override async Task Filter_on_discriminator()
+    {
+        await base.Filter_on_discriminator();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Leaf1"))
+""");
+    }
+
+    public override async Task Project_discriminator()
+    {
+        await base.Project_discriminator();
+
+        AssertSql(
+            """
+SELECT VALUE c["Discriminator"]
+FROM root c
+WHERE c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2")
+""");
+    }
+
+    public override async Task GetType_abstract_root()
+    {
+        await base.GetType_abstract_root();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Root"))
+""");
+    }
+
+    public override async Task GetType_abstract_intermediate()
+    {
+        await base.GetType_abstract_intermediate();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Intermediate"))
+""");
+    }
+
+    public override async Task GetType_leaf1()
+    {
+        await base.GetType_leaf1();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Leaf1"))
+""");
+    }
+
+    public override async Task GetType_leaf2()
+    {
+        await base.GetType_leaf2();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Leaf2"))
+""");
+    }
+
+    public override async Task GetType_leaf_reverse_equality()
+    {
+        await base.GetType_leaf_reverse_equality();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] = "Leaf1"))
+""");
+    }
+
+    public override async Task GetType_not_leaf1()
+    {
+        await base.GetType_not_leaf1();
+
+        AssertSql(
+            """
+SELECT VALUE c
+FROM root c
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (c["Discriminator"] != "Leaf1"))
+""");
+    }
+
+    public override async Task OfType_Union_OfType_on_same_type_Where()
+    {
+        await base.OfType_Union_OfType_on_same_type_Where();
+
+        AssertSql();
+    }
+
+    public override async Task OfType_leaf_Union_intermediate_OfType_leaf()
+    {
+        await base.OfType_leaf_Union_intermediate_OfType_leaf();
+
+        AssertSql();
+    }
 
     public override async Task Union_entity_equality()
     {
         await base.Union_entity_equality();
 
-        AssertSql(" ");
+        AssertSql();
     }
 
-    public override async Task Setting_foreign_key_to_a_different_type_throws()
+    public override async Task Conditional_with_is_and_downcast_in_projection()
     {
-        await base.Setting_foreign_key_to_a_different_type_throws();
+        await base.Conditional_with_is_and_downcast_in_projection();
+
+        AssertSql(
+            """
+SELECT VALUE ((c["Discriminator"] = "Leaf1") ? (c["Leaf1Int"] = 50) : false)
+FROM root c
+WHERE c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2")
+""");
+    }
+
+    public override async Task Is_on_multiple_contradictory_types()
+    {
+        await base.Is_on_multiple_contradictory_types();
 
         AssertSql(
             """
 SELECT VALUE c
 FROM root c
-WHERE (c["Discriminator"] = "Kiwi")
-OFFSET 0 LIMIT 2
-""");
-    }
-
-    public override async Task Byte_enum_value_constant_used_in_projection()
-    {
-        await base.Byte_enum_value_constant_used_in_projection();
-
-        AssertSql(
-            """
-SELECT VALUE (c["IsFlightless"] ? 0 : 1)
-FROM root c
-WHERE (c["Discriminator"] = "Kiwi")
-""");
-    }
-
-    public override async Task Member_access_on_intermediate_type_works()
-    {
-        await base.Member_access_on_intermediate_type_works();
-
-        AssertSql(
-            """
-SELECT VALUE c["Name"]
-FROM root c
-WHERE (c["Discriminator"] = "Kiwi")
-ORDER BY c["Name"]
-""");
-    }
-
-    [ConditionalFact(Skip = "Issue#17246 subquery usage")]
-    public override async Task Is_operator_on_result_of_FirstOrDefault()
-    {
-        await base.Is_operator_on_result_of_FirstOrDefault();
-
-        AssertSql(" ");
-    }
-
-    public override async Task Selecting_only_base_properties_on_base_type()
-    {
-        await base.Selecting_only_base_properties_on_base_type();
-
-        AssertSql(
-            """
-SELECT VALUE c["Name"]
-FROM root c
-WHERE c["Discriminator"] IN ("Eagle", "Kiwi")
-""");
-    }
-
-    public override async Task Selecting_only_base_properties_on_derived_type()
-    {
-        await base.Selecting_only_base_properties_on_derived_type();
-
-        AssertSql(
-            """
-SELECT VALUE c["Name"]
-FROM root c
-WHERE c["Discriminator"] IN ("Eagle", "Kiwi")
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_abstract_base_type()
-    {
-        await base.GetType_in_hierarchy_in_abstract_base_type();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND false)
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_intermediate_type()
-    {
-        await base.GetType_in_hierarchy_in_intermediate_type();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND false)
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling()
-    {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Discriminator"] = "Eagle"))
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2()
-    {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Discriminator"] = "Kiwi"))
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2_reverse()
-    {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2_reverse();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Discriminator"] = "Kiwi"))
-""");
-    }
-
-    public override async Task GetType_in_hierarchy_in_leaf_type_with_sibling2_not_equal()
-    {
-        await base.GetType_in_hierarchy_in_leaf_type_with_sibling2_not_equal();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE (c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Discriminator"] != "Kiwi"))
-""");
-    }
-
-    public override async Task Using_is_operator_on_multiple_type_with_no_result()
-    {
-        await base.Using_is_operator_on_multiple_type_with_no_result();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE ((c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Discriminator"] = "Kiwi")) AND (c["Discriminator"] = "Eagle"))
-""");
-    }
-
-    public override async Task Using_is_operator_with_of_type_on_multiple_type_with_no_result()
-    {
-        await base.Using_is_operator_with_of_type_on_multiple_type_with_no_result();
-
-        AssertSql(
-            """
-SELECT VALUE c
-FROM root c
-WHERE ((c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Discriminator"] = "Kiwi")) AND (c["Discriminator"] = "Eagle"))
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND ((c["Discriminator"] = "Leaf1") AND (c["Discriminator"] = "Leaf2")))
 """);
     }
 
@@ -610,7 +494,7 @@ WHERE ((c["Discriminator"] IN ("Eagle", "Kiwi") AND (c["Discriminator"] = "Kiwi"
             """
 SELECT VALUE c
 FROM root c
-WHERE (c["Discriminator"] IN (0, 1, 2, 3) AND (ARRAY_LENGTH(c["Ints"]) > 0))
+WHERE (c["Discriminator"] IN ("Root", "ConcreteIntermediate", "Intermediate", "Leaf3", "Leaf1", "Leaf2") AND (ARRAY_LENGTH(c["Ints"]) > 0))
 """);
     }
 
@@ -622,8 +506,5 @@ WHERE (c["Discriminator"] IN (0, 1, 2, 3) AND (ARRAY_LENGTH(c["Ints"]) > 0))
 
     protected override void ClearLog()
         => Fixture.TestSqlLoggerFactory.Clear();
-
-    [ConditionalFact]
-    public virtual void Check_all_tests_overridden()
-        => TestHelpers.AssertAllMethodsOverridden(GetType());
 }
+

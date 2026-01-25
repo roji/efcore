@@ -1,8 +1,6 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
-
 namespace Microsoft.EntityFrameworkCore.Query.Inheritance;
 
 public class InheritanceQueryCosmosFixture : InheritanceQueryFixtureBase
@@ -30,14 +28,7 @@ public class InheritanceQueryCosmosFixture : InheritanceQueryFixtureBase
     {
         base.OnModelCreating(modelBuilder, context);
 
-        modelBuilder.Entity<Animal>().ToContainer("Animals");
-        modelBuilder.Entity<Plant>().ToContainer("Plants");
-        modelBuilder.Entity<Plant>().Property<string>("Discriminator").ToJsonProperty("_type");
-        modelBuilder.Entity<Country>().ToContainer("Countries");
-        modelBuilder.Entity<Drink>().ToContainer("Drinks");
-        modelBuilder.Entity<KiwiQuery>().ToContainer("Animals");
-        modelBuilder.Entity<AnimalQuery>().ToContainer("Animals");
-        modelBuilder.Entity<BirdQuery>().ToContainer("Animals");
-        modelBuilder.Entity<KiwiQuery>().ToContainer("Animals");
+        modelBuilder.Entity<Root>().ToContainer("Roots");
+        modelBuilder.Entity<RootReferencingEntity>().ToContainer("RootReferencingEntities");
     }
 }

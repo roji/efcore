@@ -805,7 +805,7 @@
     <comment>Error RelationalEventId.ForeignKeyPropertiesMappedToUnrelatedTables string string string string string string string</comment>
   </data>
   <data name="LogForeignKeyTpcPrincipal" xml:space="preserve">
-    <value>The foreign key {foreignKeyProperties} on the entity type '{entityType}' targeting '{principalEntityType}' cannot be represented in the database. '{principalEntityType}' is mapped using the table per concrete type meaning that the derived entities will not be present in {'principalTable'}. If this foreign key on '{entityType}' will never reference entities derived from '{principalEntityType}' then the foreign key constraint name can be specified explicitly to force it to be created.</value>
+    <value>The foreign key {foreignKeyProperties} on the entity type '{entityType}' targeting '{principalEntityType}' cannot be represented in the database. '{principalEntityType}' is mapped using the table-per-concrete-type (TPC), meaning that the derived entities will not be present in {'principalTable'}. If this foreign key on '{entityType}' will never reference entities derived from '{principalEntityType}', then the foreign key constraint name can be specified explicitly to force it to be created.</value>
     <comment>Warning RelationalEventId.ForeignKeyTpcPrincipalWarning string string string string string string string</comment>
   </data>
   <data name="LogGeneratingDown" xml:space="preserve">

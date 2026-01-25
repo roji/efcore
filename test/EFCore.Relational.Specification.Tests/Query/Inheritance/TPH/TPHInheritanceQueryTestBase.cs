@@ -1,8 +1,6 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
-
 namespace Microsoft.EntityFrameworkCore.Query.Inheritance.TPH;
 
 public abstract class TPHInheritanceQueryTestBase<TFixture> : InheritanceQueryTestBase<TFixture>
@@ -15,45 +13,46 @@ public abstract class TPHInheritanceQueryTestBase<TFixture> : InheritanceQueryTe
         Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
     }
 
-    [ConditionalFact]
-    public virtual void FromSql_on_root()
-    {
-        using var context = CreateContext();
-        context.Set<Animal>().FromSqlRaw(NormalizeDelimitersInRawString("select * from [Animals]")).ToList();
-    }
+    // FromSql is not supported when complex types are enabled (which they are by default in relational)
+    // [ConditionalFact]
+    // public virtual void FromSql_on_root()
+    // {
+    //     using var context = CreateContext();
+    //     context.Set<Root>().FromSqlRaw(NormalizeDelimitersInRawString("SELECT * FROM [Roots]")).ToList();
+    // }
 
-    [ConditionalFact]
-    public virtual void FromSql_on_derived()
-    {
-        using var context = CreateContext();
-        context.Set<Eagle>().FromSqlRaw(NormalizeDelimitersInRawString("select * from [Animals]")).ToList();
-    }
+    // [ConditionalFact]
+    // public virtual void FromSql_on_leaf()
+    // {
+    //     using var context = CreateContext();
+    //     context.Set<Leaf1>().FromSqlRaw(NormalizeDelimitersInRawString("SELECT * FROM [Roots]")).ToList();
+    // }
 
-    [ConditionalFact]
-    public virtual void Casting_to_base_type_joining_with_query_type_works()
-    {
-        using var context = CreateContext();
-        var query = context.Set<Eagle>();
+    // [ConditionalFact]
+    // public virtual void Casting_to_base_type_joining_with_query_type_works()
+    // {
+    //     using var context = CreateContext();
+    //     var query = context.Set<Eagle>();
 
-        GetEntityWithAuditHistoryQuery(context, query);
-    }
+    //     GetEntityWithAuditHistoryQuery(context, query);
+    // }
 
-    private void GetEntityWithAuditHistoryQuery<T>(InheritanceContext context, IQueryable<T> query)
-        where T : Animal
-    {
-        var queryTypeQuery = context.Set<AnimalQuery>().FromSqlRaw(NormalizeDelimitersInRawString("Select * from [Animals]"));
+    // private void GetEntityWithAuditHistoryQuery<T>(InheritanceContext context, IQueryable<T> query)
+    //     where T : Animal
+    // {
+    //     var queryTypeQuery = context.Set<AnimalQuery>().FromSqlRaw(NormalizeDelimitersInRawString("Select * from [Animals]"));
 
-        var animalQuery = query.Cast<Animal>();
+    //     var animalQuery = query.Cast<Animal>();
 
-        var joinQuery =
-            from animal in animalQuery
-            join keylessanimal in queryTypeQuery on animal.Name equals keylessanimal.Name
-            select new { animal, keylessanimal };
+    //     var joinQuery =
+    //         from animal in animalQuery
+    //         join keylessanimal in queryTypeQuery on animal.Name equals keylessanimal.Name
+    //         select new { animal, keylessanimal };
 
-        var result = joinQuery.ToList();
+    //     var result = joinQuery.ToList();
 
-        Assert.Single(result);
-    }
+    //     Assert.Single(result);
+    // }
 
     protected override void UseTransaction(DatabaseFacade facade, IDbContextTransaction transaction)
         => facade.UseTransaction(transaction.GetDbTransaction());

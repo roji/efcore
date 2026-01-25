@@ -8,97 +8,97 @@ public class TPHInheritanceTableSplittingQuerySqlServerTest(
     ITestOutputHelper testOutputHelper)
     : TPHInheritanceTableSplittingQueryRelationalTestBase<TPHInheritanceQuerySqlServerFixture>(fixture, testOutputHelper)
 {
-    public override async Task Filter_on_complex_type_property_on_derived_type()
+    public override async Task Filter_on_complex_type_property_on_leaf()
     {
-        await base.Filter_on_complex_type_property_on_derived_type();
+        await base.Filter_on_complex_type_property_on_leaf();
 
         AssertSql(
             """
-SELECT [d].[Id], [d].[Discriminator], [d].[SortIndex], [d].[CaffeineGrams], [d].[CokeCO2], [d].[Ints], [d].[SugarGrams], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [d].[ChildComplexType_Int], [d].[ChildComplexType_UniqueInt], [d].[ChildComplexType_Nested_NestedInt], [d].[ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-WHERE [d].[Discriminator] = 1 AND [d].[ChildComplexType_Int] = 10
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1' AND [r].[ChildComplexType_Int] = 9
 """);
     }
 
-    public override async Task Filter_on_complex_type_property_on_base_type()
+    public override async Task Filter_on_complex_type_property_on_root()
     {
-        await base.Filter_on_complex_type_property_on_base_type();
+        await base.Filter_on_complex_type_property_on_root();
 
         AssertSql(
             """
-SELECT [d].[Id], [d].[Discriminator], [d].[SortIndex], [d].[CaffeineGrams], [d].[CokeCO2], [d].[Ints], [d].[SugarGrams], [d].[LiltCO2], [d].[HasMilk], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [d].[ChildComplexType_Int], [d].[ChildComplexType_UniqueInt], [d].[ChildComplexType_Nested_NestedInt], [d].[ChildComplexType_Nested_UniqueInt], [d].[Tea_ChildComplexType_Int], [d].[Tea_ChildComplexType_UniqueInt], [d].[Tea_ChildComplexType_Nested_NestedInt], [d].[Tea_ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-WHERE [d].[ParentComplexType_Int] = 8
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[ParentComplexType_Int] = 8
 """);
     }
 
-    public override async Task Filter_on_nested_complex_type_property_on_derived_type()
+    public override async Task Filter_on_nested_complex_type_property_on_leaf()
     {
-        await base.Filter_on_nested_complex_type_property_on_derived_type();
+        await base.Filter_on_nested_complex_type_property_on_leaf();
 
         AssertSql(
             """
-SELECT [d].[Id], [d].[Discriminator], [d].[SortIndex], [d].[CaffeineGrams], [d].[CokeCO2], [d].[Ints], [d].[SugarGrams], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [d].[ChildComplexType_Int], [d].[ChildComplexType_UniqueInt], [d].[ChildComplexType_Nested_NestedInt], [d].[ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-WHERE [d].[Discriminator] = 1 AND [d].[ChildComplexType_Nested_NestedInt] = 58
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[IntermediateInt], [r].[Ints], [r].[Leaf1Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1' AND [r].[ChildComplexType_Nested_Int] = 51
 """);
     }
 
-    public override async Task Filter_on_nested_complex_type_property_on_base_type()
+    public override async Task Filter_on_nested_complex_type_property_on_root()
     {
-        await base.Filter_on_nested_complex_type_property_on_base_type();
+        await base.Filter_on_nested_complex_type_property_on_root();
 
         AssertSql(
             """
-SELECT [d].[Id], [d].[Discriminator], [d].[SortIndex], [d].[CaffeineGrams], [d].[CokeCO2], [d].[Ints], [d].[SugarGrams], [d].[LiltCO2], [d].[HasMilk], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [d].[ChildComplexType_Int], [d].[ChildComplexType_UniqueInt], [d].[ChildComplexType_Nested_NestedInt], [d].[ChildComplexType_Nested_UniqueInt], [d].[Tea_ChildComplexType_Int], [d].[Tea_ChildComplexType_UniqueInt], [d].[Tea_ChildComplexType_Nested_NestedInt], [d].[Tea_ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-WHERE [d].[ParentComplexType_Nested_NestedInt] = 50
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[ParentComplexType_Nested_Int] = 50
 """);
     }
 
-    public override async Task Project_complex_type_on_derived_type()
+    public override async Task Project_complex_type_on_leaf()
     {
-        await base.Project_complex_type_on_derived_type();
+        await base.Project_complex_type_on_leaf();
 
         AssertSql(
             """
-SELECT [d].[ChildComplexType_Int], [d].[ChildComplexType_UniqueInt], [d].[ChildComplexType_Nested_NestedInt], [d].[ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-WHERE [d].[Discriminator] = 1
+SELECT [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
 """);
     }
 
-    public override async Task Project_complex_type_on_base_type()
+    public override async Task Project_complex_type_on_root()
     {
-        await base.Project_complex_type_on_base_type();
+        await base.Project_complex_type_on_root();
 
         AssertSql(
             """
-SELECT [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
+SELECT [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
 """);
     }
 
-    public override async Task Project_nested_complex_type_on_derived_type()
+    public override async Task Project_nested_complex_type_on_leaf()
     {
-        await base.Project_nested_complex_type_on_derived_type();
+        await base.Project_nested_complex_type_on_leaf();
 
         AssertSql(
             """
-SELECT [d].[ChildComplexType_Nested_NestedInt], [d].[ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
-WHERE [d].[Discriminator] = 1
+SELECT [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
+WHERE [r].[Discriminator] = N'Leaf1'
 """);
     }
 
-    public override async Task Project_nested_complex_type_on_base_type()
+    public override async Task Project_nested_complex_type_on_root()
     {
-        await base.Project_nested_complex_type_on_base_type();
+        await base.Project_nested_complex_type_on_root();
 
         AssertSql(
             """
-SELECT [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
+SELECT [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
 """);
     }
 
@@ -108,11 +108,11 @@ FROM [Drinks] AS [d]
 
         AssertSql(
             """
-SELECT [d].[Id], [d].[Discriminator], [d].[SortIndex], [d].[CaffeineGrams], [d].[CokeCO2], [d].[Ints], [d].[SugarGrams], [d].[LiltCO2], [d].[HasMilk], [d].[ComplexTypeCollection], [d].[ParentComplexType_Int], [d].[ParentComplexType_UniqueInt], [d].[ParentComplexType_Nested_NestedInt], [d].[ParentComplexType_Nested_UniqueInt], [d].[ChildComplexType_Int], [d].[ChildComplexType_UniqueInt], [d].[ChildComplexType_Nested_NestedInt], [d].[ChildComplexType_Nested_UniqueInt], [d].[Tea_ChildComplexType_Int], [d].[Tea_ChildComplexType_UniqueInt], [d].[Tea_ChildComplexType_Nested_NestedInt], [d].[Tea_ChildComplexType_Nested_UniqueInt]
-FROM [Drinks] AS [d]
+SELECT [r].[Id], [r].[Discriminator], [r].[RootInt], [r].[RootReferencingEntityId], [r].[UniqueId], [r].[ConcreteIntermediateInt], [r].[IntermediateInt], [r].[Leaf3Int], [r].[Ints], [r].[Leaf1Int], [r].[Leaf2Int], [r].[ComplexTypeCollection], [r].[ParentComplexType_Int], [r].[ParentComplexType_UniqueId], [r].[ParentComplexType_Nested_Int], [r].[ParentComplexType_Nested_UniqueId], [r].[ChildComplexType_Int], [r].[ChildComplexType_UniqueId], [r].[ChildComplexType_Nested_Int], [r].[ChildComplexType_Nested_UniqueId], [r].[Leaf2_ChildComplexType_Int], [r].[Leaf2_ChildComplexType_UniqueId], [r].[Leaf2_ChildComplexType_Nested_Int], [r].[Leaf2_ChildComplexType_Nested_UniqueId]
+FROM [Roots] AS [r]
 WHERE (
     SELECT COUNT(*)
-    FROM OPENJSON([d].[ComplexTypeCollection], '$') WITH ([Int] int '$.Int') AS [c]
+    FROM OPENJSON([r].[ComplexTypeCollection], '$') WITH ([Int] int '$.Int') AS [c]
     WHERE [c].[Int] > 59) = 2
 """);
     }

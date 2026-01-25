@@ -8,9 +8,5 @@ namespace Microsoft.EntityFrameworkCore.Query.Inheritance;
 public class IncompleteMappingInheritanceQuerySqliteTest(
     IncompleteMappingInheritanceQuerySqliteFixture fixture,
     ITestOutputHelper testOutputHelper)
-    : TPHInheritanceQueryTestBase<IncompleteMappingInheritanceQuerySqliteFixture>(fixture, testOutputHelper)
-{
-    public override Task Can_insert_update_delete()
-        // Test from InheritanceSqliteTest causes transaction failure. We only need to test it once.
-        => Task.CompletedTask;
-}
+    : TPHInheritanceQueryTestBase<IncompleteMappingInheritanceQuerySqliteFixture>(fixture, testOutputHelper);
+
